@@ -1,0 +1,74 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { currentPlayer, legalCommands, bankMarket, WORKER_BY_ID } from '../game/engine.js';
+import { rowNodeLabel } from '../game/row-economy.js';
+import { SECTORS } from '../game/data.js';
+import { STAR_MARKETS } from './markets.js';
+import ResourceIcon from './ResourceIcon.jsx';
+import WorkerCard, { HireChoices } from './WorkerCard.jsx';
+
+// Orientamento della plancia fisica: metallurgia in alto, tessile a sinistra.
+export const STAR_PLACES={
+  Metallurgica:{x:50,y:12},
+  Chimica:{x:90,y:44},
+  Servizi:{x:71,y:86,icon:'🌿'},
+  Sindacato:{x:29,y:86,icon:'✊'},
+  Tessile:{x:10,y:44},
+  Borsa:{x:50,y:49,icon:'🏙'},
+};
+function Meeple({player}) {return <svg viewBox="0 0 30 34" className="star-meeple" role="img" aria-label={player.name}><path d="M10 10 Q6 1 15 1 Q24 1 20 10 L29 17 25 23 20 20 23 33 15 33 15 26 14 33 6 33 9 20 4 23 1 17Z" fill={player.color} stroke="#fff" strokeWidth="1.5"/></svg>;}
+export function CardPreview({worker,node,bank,state,dispatch,onClose}) {
+  const ref=useRef(null), p=currentPlayer(state);
+  useEffect(()=>{ref.current.showModal();},[]);
+  const legal=!p.isAI&&!state.pending?legalCommands(state):[];
+  const options=legal.filter(c=>c.type==='hire'&&c.cardId===worker.id);
+  const nodes=bank?Object.keys(state.nodeBanks).filter(n=>state.nodeBanks[n].includes(bank)):node?[node]:[];
+  const moves=legal.filter(c=>c.type==='move'&&nodes.includes(c.node));
+  return <dialog ref={ref} className="card-preview" onCancel={onClose} onClick={e=>{if(e.target===e.currentTarget)onClose();}} aria-label="Dettaglio carta">
+    <button className="card-preview-close" autoFocus onClick={onClose} aria-label="Chiudi carta">×</button>
+    <WorkerCard worker={worker}/>
+    {options.length>0?<HireChoices worker={worker} options={options} state={state} player={p} dispatch={cmd=>{dispatch(cmd);onClose();}}/>:
+      moves.length?<div className="card-install-options">{moves.map(move=><button key={move.node} className="lab-primary" onClick={()=>{dispatch(move);onClose();}}>Vai a {rowNodeLabel(state,move.node)} · {move.cost?`${move.cost} M`:'gratis'}</button>)}</div>:
+      <p className="lab-muted">{state.phase==='borsa'?'In Città puoi consultare le carte, ma non acquistarle.':nodes.length?`Carta acquistabile da ${nodes.map(n=>rowNodeLabel(state,n)).join(' o ')}. Servono marchi sufficienti.`:'Carta già installata nella fabbrica.'}</p>}
+  </dialog>;
+}
+export default function StarBoard({state,dispatch,onActions,onNodeAction}) {
+  const p=currentPlayer(state), [selected,setSelected]=useState(null);
+  const canChoose=state.phase==='action'&&!p.isAI&&!state.pending;
+  const canMove=state.phase==='move'&&!p.isAI&&!state.pending;
+  const inCity=state.phase==='borsa'&&!p.isAI&&!state.pending;
+  const commands=(canMove||canChoose||inCity)?legalCommands(state):[];
+  const legal=commands.filter(c=>c.type==='move');
+  const isDepartment=SECTORS.includes(p.node);
+  const nodeAction=isDepartment?{type:'activate',label:'Produci',unavailable:'Produzione non disponibile: serve un operaio attivo nel reparto.'}:state.rowEconomy?.enabled&&p.node==='Sindacato'?{type:'repress',label:'Repressione',unavailable:'Serve tensione da ridurre e marchi sufficienti.'}:state.rowEconomy?.enabled&&p.node==='Servizi'?{type:'investWelfare',label:'Welfare',unavailable:'Marchi insufficienti per investire nel welfare.'}:null;
+  const canAct=nodeAction&&commands.some(c=>c.type===nodeAction.type);
+  const edges=[['Metallurgica','Servizi'],['Servizi','Tessile'],['Tessile','Chimica'],['Chimica','Sindacato'],['Sindacato','Metallurgica']];
+  return <section id="stella" className="star-board" aria-label="Plancia a stella">
+    <div className="star-caption"><div><p className="lab-eyebrow">LA CITTÀ INDUSTRIALE</p><h2>{canMove?'Posiziona il tuo procuratore':canChoose?(isDepartment?'Assumi o produci':'Scegli una delle due carte'):inCity?'Consegna in Città':'La plancia comune'}</h2></div><span>{canMove?'Tocca un nodo illuminato':canChoose?'Tocca una carta evidenziata':'Puoi sempre ingrandire le carte'}</span></div>
+    <p className="star-instructions">{inCity?<>Una commessa per visita. La consegna termina il turno. <button onClick={onActions}>Consegna commessa</button> <button className="node-action-shortcut" onClick={()=>dispatch(commands.find(c=>c.type==='endTurn'))}>Termina turno</button></>:canChoose?<>Sei a <b>{rowNodeLabel(state,p.node)}</b>: clicca una delle due carte verdi e scegli <b>Sopra</b> o <b>Sotto</b>. <button className={nodeAction?"node-action-shortcut":undefined} onClick={nodeAction?()=>onNodeAction(nodeAction.type):onActions} disabled={!!nodeAction&&!canAct} title={nodeAction&&!canAct?nodeAction.unavailable:undefined}>{nodeAction?nodeAction.label:"Altre azioni"}</button></>:'Ogni nodo dà accesso alle due carte adiacenti.'}</p>
+    <div className="star-viewport"><div className="star-stage">
+      <svg className="star-drawing" viewBox="0 0 1000 800" preserveAspectRatio="none" aria-hidden="true">
+        <defs><radialGradient id="star-brass"><stop stopColor="#efd8a6"/><stop offset="1" stopColor="#916c41"/></radialGradient></defs>
+        <circle cx="500" cy="400" r="290" fill="none" stroke="#c5af84" strokeWidth="1" strokeDasharray="3 8"/>
+        <path d="M500 96 710 688 100 352 900 352 290 688Z" fill="#b48d5915" stroke="#594f41" strokeWidth="16" strokeLinejoin="round"/>
+        {edges.map(([a,b])=><line key={a} x1={STAR_PLACES[a].x*10} y1={STAR_PLACES[a].y*8} x2={STAR_PLACES[b].x*10} y2={STAR_PLACES[b].y*8} stroke="url(#star-brass)" strokeWidth="7" strokeDasharray="3 3"/>)}
+        <circle cx="500" cy="392" r="65" fill="#d8bd87" stroke="#6a5842" strokeWidth="5"/>
+        <text x="500" y="238" textAnchor="middle" fill="#7a6346" fontFamily="Georgia" fontSize="14" letterSpacing="4">OFFICINA 1907</text>
+      </svg>
+      {Object.entries(STAR_PLACES).map(([node,pos])=>{
+        const command=legal.find(c=>c.node===node), here=state.players.filter(q=>q.node===node);
+        return <button key={node} className={`star-destination ${command?'star-available':''} ${p.node===node?'star-current':''}`} style={{left:`${pos.x}%`,top:`${pos.y}%`}} disabled={!command} onClick={()=>dispatch(command)} aria-label={`Vai a ${rowNodeLabel(state,node)}${command?` · ${command.cost?`${command.cost} M`:'gratis'}`:''}`}>
+          <span className="star-node-name">{SECTORS.includes(node)?<ResourceIcon resource={node} decorative/>:<span>{pos.icon}</span>} {rowNodeLabel(state,node)}</span>
+          <span className="star-seats">{Array.from({length:node==='Borsa'?Math.max(2,here.length):2},(_,i)=><span className="star-seat" key={i}>{here[i]?<Meeple player={here[i]}/>:<i>○</i>}</span>)}</span>
+          <small>{p.node===node?'Sei qui':command?command.cost?`${command.cost} M per entrare`:'Ingresso gratuito':here.length>=2&&node!=='Borsa'?'Posti occupati':' '}</small>
+        </button>;
+      })}
+      {STAR_MARKETS.map(({bank,nodes,x,y})=><div key={bank} className={`star-market ${canChoose&&state.nodeBanks[p.node]?.includes(bank)?'star-market-active':''}`} style={{left:`${x}%`,top:`${y}%`}}>
+        <div className="star-market-label">{nodes.map(n=>rowNodeLabel(state,n)).join(' / ')}<small>{state.banks[bank].length} carte</small></div>
+        {bankMarket(state,bank).map(id=><WorkerCard key={id} worker={WORKER_BY_ID[id]} onInspect={()=>setSelected({id,bank})}/>)}
+        {!bankMarket(state,bank).length&&<span className="empty-card">Mazzo esaurito</span>}
+      </div>)}
+    </div></div>
+    <div className="star-legend">{state.players.map(q=><span key={q.id}><Meeple player={q}/>{q.name}{q.id===p.id?' · di turno':''}</span>)}<small>Clicca una carta per leggerla e scegliere Sopra o Sotto. Il costo di ingresso è indicato sul nodo.</small></div>
+    {selected&&<CardPreview worker={WORKER_BY_ID[selected.id]} bank={selected.bank} state={state} dispatch={dispatch} onClose={()=>setSelected(null)}/>}
+  </section>;
+}

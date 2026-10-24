@@ -1,12 +1,8 @@
 import React from 'react';
-import { RESOURCE_OF } from '../game/data.js';
+import { Amount } from '../components/Amount.jsx';
 import { machineText } from './cards.js';
 
-export function Amount({kind,value,label}) {
-  const resource=RESOURCE_OF[kind]||kind;
-  const text=label||(kind==='coin'?`${value} marchi`:kind==='pv'?`${value} punti vittoria`:kind==='choice'?`${value} risorse a scelta`:`${value} ${resource.toLowerCase()}`);
-  return <span className={`amount-token ${kind==='coin'?'amount-coin':kind==='pv'?'amount-pv':kind==='choice'?'amount-choice':`amount-resource resource-${resource}`}`} role="img" aria-label={text} title={text}>{value}</span>;
-}
+export { Amount };
 export function WorkerSymbol(){return <svg className="function-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="4" fill="currentColor"/><path d="M5 23v-8a7 7 0 0 1 14 0v8h-5v-8h-4v8Z" fill="currentColor"/></svg>;}
 export function Development({value}) {
   return <span className="symbol-effect" role="img" aria-label={`Sopra: operaio, sviluppo +${value}`} title={`Sopra: operaio, sviluppo +${value}`}><WorkerSymbol/><b>+{value}</b></span>;

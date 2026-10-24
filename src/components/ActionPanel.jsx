@@ -1,10 +1,12 @@
 import { repressionCost, rowNodeLabel } from '../game/row-economy.js';
 import IndustrialActions from './IndustrialActions.jsx';
-import { productionChoices } from './production-choices.js';
+import { productionChoices, productionPreview } from './production-choices.js';
+import { Amount } from './Amount.jsx';
+import { effectChoiceLabel } from './effect-choice.js';
 import { policiesOf, welfareEfficiency } from '../game/industrial.js';
 import { hireCost, deptOfSector, describeTileEffect } from '../game/engine.js';
 import React, { useState } from 'react';
-import { activeTrackEnd, rowTrackModel, SECTORS, RESOURCE_OF, SECTOR_COLORS, NATION_FLAGS, NODE_BANKS, UNBLOCK_COST } from '../game/data.js';
+import { SECTORS, RESOURCE_OF, SECTOR_COLORS, NATION_FLAGS, NODE_BANKS, UNBLOCK_COST } from '../game/data.js';
 import { currentPlayer, legalCommands, WORKER_BY_ID, rankedIndices, indexValue, cellNow, expectedDividend, describeRace } from '../game/engine.js';
 
 import FactoryMap from './FactoryMap.jsx';
@@ -318,12 +320,17 @@ export function ProductionActions({state,p,activations,dispatch}) {
             const I = state.industrial;
             if(state.rowEconomy?.enabled&&state.rowTrack){
               const sustainable=c.sustainableRow!==undefined;
-              const available=activeTrackEnd(d.prod,d.tension,state.trackModel,true)/rowTrackModel(state.trackModel).columns;
-              const rows=sustainable?Math.min(available,d.sustainableWelfare):available;
+              const preview=productionPreview(state,c);
+              const resources=Object.entries(preview.resources).filter(([resource,amount])=>amount!==0||resource===RESOURCE_OF[c.sector]);
               return <button key={`${c.sector}-${sustainable?'sustainable':'intense'}`} className="primary production-choice" onClick={()=>dispatch(c)}>
                 <strong>{sustainable?'Sostenibile':'Intensa'}</strong>
-                <small>Produci {rows} {rows===1?'riga':'righe'} del tracciato{sustainable?` · ${d.sustainableWelfare} welfare`:''} · tensione {sustainable?'−1':'+1'}</small>
-                <small>Macchinari attivi{sustainable&&d.tension===0?' · tensione già a zero':''}</small>
+                <span className="production-yield">
+                  {resources.map(([resource,amount])=><Amount key={resource} kind={resource} value={amount}/>)}
+                  <Amount kind="coin" value={preview.coins}/>
+                  <span>Tensione <b>{d.tension} → {preview.tension}</b></span>
+                </span>
+                <small>Macchinari inclusi</small>
+                {preview.conversions.map((card,i)=><small key={i}>Conversione facoltativa dopo: {effectChoiceLabel(card)}</small>)}
               </button>;
             }
             const bonus = I?.enabled ? welfareEfficiency(state, { ...d, tension: Math.min(I.tensionLimit, d.tension + c.intensity) }, c.intensity) : 0;

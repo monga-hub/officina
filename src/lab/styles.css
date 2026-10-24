@@ -220,3 +220,5 @@
 
 .production-choice>strong,.production-choice>small{display:block}
 .lab-shell .production-choice>small{color:inherit;margin-top:4px}
+.production-yield{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:6px}
+.production-yield>span:last-child{margin-left:4px}

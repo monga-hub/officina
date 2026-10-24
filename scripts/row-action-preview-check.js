@@ -105,7 +105,7 @@ assert.deepEqual(repression.departments.map(d=>[d.before.tension,d.after.tension
 assert.deepEqual(repression.departments.map(d=>d.after.available),[4,2,0]);
 tokens.players[0].node='Servizi';tokens.players[0].welfareTokens=2;
 const bundle=preview(tokens,{type:'investWelfare',scope:'factory'});
-assert.equal(bundle.cost,9);
+assert.equal(bundle.cost,4);
 assert.deepEqual(bundle.welfareTokens,{before:2,after:5});
 bundle.departments.forEach(({before,after})=>{
   assert.equal(after.tension,before.tension);

@@ -52,4 +52,14 @@ for(const invalid of ['{broken',JSON.stringify({version:2}),JSON.stringify({vers
  data.set(GAME_SAVE_KEY,invalid);assert.throws(()=>loadGame(storage));assert.equal(data.get(GAME_SAVE_KEY),invalid);
 }
 data.set(GAME_SAVE_KEY,firstRaw);assert.equal(loadGame(storage).state.phase,'action');
+// A price update applies to new games, never to a saved match or its undo history.
+const oldPrice=structuredClone(config);oldPrice.rowEconomy.welfareCost=9;
+const oldSession=gameSession(oldPrice);oldSession.history=[structuredClone(oldSession.state)];
+saveGame(oldPrice,oldSession,storage);
+const oldPriceSave=loadGame(storage),oldPriceRestored=gameSession(oldPriceSave.config,oldPriceSave);
+assert.equal(defaults().welfareCost,4);
+assert.equal(oldPriceSave.config.rowEconomy.welfareCost,9);
+assert.deepEqual(plain(oldPriceRestored),plain(oldSession));
+assert.equal(oldPriceRestored.state.rowEconomy.welfareCost,9);
+assert.equal(oldPriceRestored.history[0].rowEconomy.welfareCost,9);
 console.log('OK: automatic game saves restore rules, registry, decks, choices, undo, pause and results; invalid saves and write failures preserve stored data.');

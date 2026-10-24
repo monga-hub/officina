@@ -17,7 +17,7 @@ assert.equal(missingResources(contractNeeds([])), '');
 const reference=JSON.parse(fs.readFileSync(new URL('../src/lab/reference.json',import.meta.url)));
 const c=defaults(),cfg=gameConfig(c);
 assert.equal(c.rulesRevision,RULES_REVISION);
-assert.equal(c.welfareCost,9);assert.equal(c.repressionBase,2);assert.equal(c.repressionStep,0);
+assert.equal(c.welfareCost,4);assert.equal(c.repressionBase,2);assert.equal(c.repressionStep,0);
 assert.equal(cfg.rowEconomy.welfareMode,'tokens');assert.equal(cfg.rowEconomy.welfareScope,'factory');
 assert.equal(cfg.rowEconomy.welfareHireDiscount,false);
 // The pending UI must describe the exact formula and quantities used by the engine.
@@ -117,10 +117,27 @@ assert.equal(migrated.rulesRevision,RULES_REVISION);assert.equal(migrated.repres
 assert.deepEqual(parseConfig(JSON.stringify(migrated)),migrated,'Migrated configurations retain edits after reload');
 const oldDefaults={...structuredClone(c),welfareCost:3,repressionStep:1};delete oldDefaults.rulesRevision;
 const upgradedDefaults=parseConfig(JSON.stringify(oldDefaults));
-assert.equal(upgradedDefaults.welfareCost,9,'The old default price must not silently remain after an update');
+assert.equal(upgradedDefaults.welfareCost,4,'The old default price must not silently remain after an update');
 assert.equal(upgradedDefaults.repressionBase,2);assert.equal(upgradedDefaults.repressionStep,0);
 const revisedPrice={...structuredClone(c),welfareCost:3};
 assert.equal(parseConfig(JSON.stringify(revisedPrice)).welfareCost,3,'A price deliberately edited under the new rules survives reload');
+const previousPreset={...structuredClone(c),welfareCost:9};delete previousPreset.presetRevision;
+const updatedPreset=parseConfig(JSON.stringify(previousPreset));
+assert.deepEqual(updatedPreset,c,'Only the former default price and preset revision migrate');
+for(const price of [0,3,5,6]){
+  const custom={...previousPreset,welfareCost:price};
+  assert.equal(parseConfig(JSON.stringify(custom)).welfareCost,price,'Existing custom prices survive the preset update');
+}
+assert.equal(parseConfig(JSON.stringify({...c,welfareCost:9})).welfareCost,9,'An explicit 9 in the new preset survives reload');
+assert.equal(previousPreset.welfareCost,9);assert.ok(!('presetRevision' in previousPreset));
+let welfarePurchase=initGame(playableConfig(c,1));welfarePurchase.phase='action';welfarePurchase.players[0].node='Servizi';
+welfarePurchase.players[0].coins=3;
+assert.ok(!legalCommands(welfarePurchase).some(m=>m.type==='investWelfare'));
+welfarePurchase.players[0].coins=4;
+const buyTokens=legalCommands(welfarePurchase).find(m=>m.type==='investWelfare');assert.ok(buyTokens);
+const boughtTokens=applyCommand(welfarePurchase,buyTokens);
+assert.equal(boughtTokens.players[0].coins,0);assert.equal(boughtTokens.players[0].welfareTokens,3);
+assert.equal(boughtTokens.rowEconomy.repressionBase,2);
 assert.equal(oldSave.repressionStep,1);assert.equal(oldDefaults.welfareCost,3,'Migration must not mutate the source');
 const legacyState=initGame(historicalConfig);
 assert.notEqual(legacyState.rowEconomy.welfareMode,'tokens','Original game configurations keep their historical rules');

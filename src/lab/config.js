@@ -8,11 +8,12 @@ export const MODELS = ['righe4corte', 'righe4', 'righe3'];
 export const AI_NAMES = { forecast2: 'Nuova IA · valuta gli utilizzi futuri', beam2: 'IA precedente · confronto', greedy: 'Rapida · controllo tecnico' };
 export const STORAGE_KEY = 'officina1907-laboratorio-v1';
 export const RULES_REVISION = 2;
+const PRESET_REVISION = 1;
 export function defaults() {
-  return structuredClone({ schema: 'officina-lab-1', rulesRevision: RULES_REVISION, name: 'Prova di riferimento',
+  return structuredClone({ schema: 'officina-lab-1', rulesRevision: RULES_REVISION, presetRevision: PRESET_REVISION, name: 'Prova di riferimento',
     players: 2, turns: 28, startingCoins: [15, 15, 15, 15],
     trackModel: 'righe4corte', track: reference.tracks.terziario,
-    welfareCost: 9, repressionBase: 2, repressionStep: 0,
+    welfareCost: 4, repressionBase: 2, repressionStep: 0,
     contractCoins: reference.rowEconomy.contractCoins,
     machineSlots: [2, 2, 2],
     workers: reference.workers.filter(w => !w.power && w.deck !== 'Impiegati'), contracts: reference.contracts,
@@ -27,6 +28,7 @@ const integer = (v, lo, hi, name) => check(Number.isInteger(v) && v >= lo && v <
 export function validate(c) {
   check(c && c.schema === 'officina-lab-1', 'Importa una configurazione del nuovo Laboratorio, non un report o una configurazione del vecchio simulatore.');
   check(c.rulesRevision === RULES_REVISION, 'Versione delle regole non supportata: riapri la configurazione dal Laboratorio aggiornato.');
+  check(c.presetRevision === PRESET_REVISION, 'Versione delle impostazioni non supportata: riapri la configurazione dal Laboratorio aggiornato.');
   check(typeof c.name === 'string' && c.name.length <= 100, 'Nome della prova non valido.');
   integer(c.players, 2, 4, 'Giocatori'); integer(c.turns, 1, 60, 'Turni');
   check(Array.isArray(c.startingCoins) && c.startingCoins.length === 4, 'Servono i marchi iniziali dei quattro posti.');
@@ -104,9 +106,15 @@ export function parseConfig(raw) {
   // Only editor configurations migrate; saved matches retain their original rules and state.
   if (c?.schema === 'officina-lab-1') {
     if (c.rulesRevision == null || c.rulesRevision === 1) {
-      if (c.welfareCost === 3) c.welfareCost = 9;
+      if (c.welfareCost === 3) c.welfareCost = 4;
       c.repressionStep = 0;
       c.rulesRevision = RULES_REVISION;
+      c.presetRevision = PRESET_REVISION;
+    }
+    // Update the former default once; later custom prices (including 9) survive reload.
+    if (c.presetRevision == null) {
+      if (c.welfareCost === 9) c.welfareCost = 4;
+      c.presetRevision = PRESET_REVISION;
     }
     if (Array.isArray(c.workers)) c.workers = c.workers.filter(w => !w?.power && w?.deck !== 'Impiegati');
   }

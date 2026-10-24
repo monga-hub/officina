@@ -63,7 +63,7 @@ for (const count of [0, 1, 3, 9]) {
   assert.equal(evaluate(s, 0), base);
 }
 assert.deepEqual(s.rowEconomy, rules);
-assert.equal(s.rowEconomy.welfareCost, 9);
+assert.equal(s.rowEconomy.welfareCost, 4);
 assert.equal(s.rowEconomy.repressionBase, 2);
 assert.equal(continuationValue(s, 0, 0), evaluate(s, 0, true));
 

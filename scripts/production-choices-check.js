@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import { defaults, playableConfig } from '../src/lab/config.js';
+import { initGame, legalCommands, applyCommand, WORKER_BY_ID } from '../src/game/engine.js';
+import { productionChoices } from '../src/components/production-choices.js';
+const config=playableConfig(defaults(),2);
+const initial=initGame(config),role='terziario',p=initial.players[0],d=p.depts[role];
+const worker=Object.values(WORKER_BY_ID).find(w=>w.sector===d.sector);
+const machine=Object.values(WORKER_BY_ID).find(w=>w.effect?.verbo==='prendi'&&w.effect.f1.tipo==='moneta');
+d.sopra=[worker.id];d.sotto=[machine.id];d.prod=13;
+initial.phase='action';p.node=d.sector;
+const resources=p=>Object.values(p.resources).reduce((a,b)=>a+b,0);
+for(const [welfare,tension,expected] of [[1,0,1],[2,0,2],[3,0,3],[5,0,4],[2,3,1],[2,4,0]]){
+  const s=structuredClone(initial),dept=s.players[0].depts[role];
+  dept.sustainableWelfare=welfare;dept.tension=tension;
+  const commands=legalCommands(s).filter(c=>c.type==='activate');
+  const choices=productionChoices(s,commands);
+  assert.equal(choices.length,2,'Only Intensa and Sostenibile are displayed');
+  const sustainable=choices.find(c=>c.sustainableRow!==undefined);
+  const after=applyCommand(s,sustainable);
+  assert.equal(resources(after.players[0])-resources(s.players[0]),expected,`${welfare} welfare, tension ${tension}`);
+  assert.equal(after.players[0].coins-s.players[0].coins,machine.effect.f1.q,'Machines activate once');
+  assert.equal(after.players[0].depts[role].tension,Math.max(0,tension-1));
+  const intense=applyCommand(s,choices.find(c=>c.sustainableRow===undefined));
+  assert.equal(resources(intense.players[0])-resources(s.players[0]),4-tension);
+  assert.equal(intense.players[0].coins-s.players[0].coins,machine.effect.f1.q);
+}
+assert.equal(productionChoices(initial,legalCommands(initial).filter(c=>c.type==='activate')).length,1,'No welfare: only intense');
+const legacy=structuredClone(initial);legacy.players[0].depts[role].sustainableWelfare=2;
+assert.doesNotThrow(()=>applyCommand(legacy,{type:'activate',sector:d.sector,intensity:1,sustainableRow:[1,3]}),'Old saved commands stay replayable');
+const previous=[{sector:'Tessile',intensity:1},{sector:'Tessile',intensity:2}];
+assert.equal(productionChoices({rowEconomy:{enabled:false}},previous),previous);
+console.log('OK: two production modes, automatic welfare 1/2/3/5, tension limits, machines once and historical commands.');

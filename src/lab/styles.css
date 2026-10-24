@@ -217,3 +217,6 @@
 .card-preview>.card-install-options{margin:0;min-width:0;max-height:calc(100dvh - 80px);overflow-y:auto;align-content:start;padding:3px}
 .card-preview>.lab-muted{margin:0;min-width:0}
 @media(max-width:480px){.card-preview[open]{gap:10px;padding-left:10px;padding-right:10px}.card-preview .card-install-options button{padding:9px 7px}}
+
+.production-choice>strong,.production-choice>small{display:block}
+.lab-shell .production-choice>small{color:inherit;margin-top:4px}

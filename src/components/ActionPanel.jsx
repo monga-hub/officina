@@ -1,9 +1,10 @@
 import { repressionCost, rowNodeLabel } from '../game/row-economy.js';
 import IndustrialActions from './IndustrialActions.jsx';
+import { productionChoices } from './production-choices.js';
 import { policiesOf, welfareEfficiency } from '../game/industrial.js';
 import { hireCost, deptOfSector, describeTileEffect } from '../game/engine.js';
 import React, { useState } from 'react';
-import { SECTORS, RESOURCE_OF, SECTOR_COLORS, NATION_FLAGS, NODE_BANKS, UNBLOCK_COST } from '../game/data.js';
+import { activeTrackEnd, rowTrackModel, SECTORS, RESOURCE_OF, SECTOR_COLORS, NATION_FLAGS, NODE_BANKS, UNBLOCK_COST } from '../game/data.js';
 import { currentPlayer, legalCommands, WORKER_BY_ID, rankedIndices, indexValue, cellNow, expectedDividend, describeRace } from '../game/engine.js';
 
 import FactoryMap from './FactoryMap.jsx';
@@ -312,9 +313,19 @@ export function ProductionActions({state,p,activations,dispatch}) {
   return activations.length > 0 && (
         <>
           <h4>Attiva un reparto</h4>
-          {activations.map(c => {
+          {productionChoices(state,activations).map(c => {
             const d = deptOfSector(p, c.sector);
             const I = state.industrial;
+            if(state.rowEconomy?.enabled&&state.rowTrack){
+              const sustainable=c.sustainableRow!==undefined;
+              const available=activeTrackEnd(d.prod,d.tension,state.trackModel,true)/rowTrackModel(state.trackModel).columns;
+              const rows=sustainable?Math.min(available,d.sustainableWelfare):available;
+              return <button key={`${c.sector}-${sustainable?'sustainable':'intense'}`} className="primary production-choice" onClick={()=>dispatch(c)}>
+                <strong>{sustainable?'Sostenibile':'Intensa'}</strong>
+                <small>Produci {rows} {rows===1?'riga':'righe'} del tracciato{sustainable?` · ${d.sustainableWelfare} welfare`:''} · tensione {sustainable?'−1':'+1'}</small>
+                <small>Macchinari attivi{sustainable&&d.tension===0?' · tensione già a zero':''}</small>
+              </button>;
+            }
             const bonus = I?.enabled ? welfareEfficiency(state, { ...d, tension: Math.min(I.tensionLimit, d.tension + c.intensity) }, c.intensity) : 0;
             const welfare = I?.enabled && policiesOf(state, d).some(card => card.effect === 'efficiency')
               ? bonus > 0 ? ` · Welfare +${bonus}` : ' · nessun bonus Welfare' : '';

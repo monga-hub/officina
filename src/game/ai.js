@@ -11,6 +11,7 @@ import {
 } from './engine.js';
 
 import { activeWorkers, policiesOf, welfareEfficiency, wellbeing } from './industrial.js';
+import { tokenWelfare } from './row-economy.js';
 
 // profiler artigianale per il rollout: contatori + tempo per bucket, azzerati a mano con resetRolloutStats().
 // Copre le chiamate applyCommand fatte da ai.js (playForward, bestActionAt, bestActionAtRollout) — non quelle
@@ -22,6 +23,7 @@ export const rolloutStats = {
   msApplyCommand: 0,
   perDecisionLog: [], // {turn, node, nCandidates, ms} — una riga per ogni decisione rollout (bestActionAtRollout)
   beamCalls: 0, beamExpanded: 0, beamLayers: 0, beamForecasts: 0,
+  tokenDeferredForecasts: 0, tokenRecoveryBranches: 0,
 };
 export function resetRolloutStats() {
   for (const k in rolloutStats) rolloutStats[k] = Array.isArray(rolloutStats[k]) ? [] : 0;
@@ -316,16 +318,25 @@ function tileScore(state, owner, role, tile) {
   return f.pv + perActivation * TILE_ACTIVATIONS_LEFT;
 }
 
+function plansTokens(state, playerId) {
+  return tokenWelfare(state) && state.players[playerId].aiContinuation === 'forecast2';
+}
+function defersToken(state, playerId) {
+  return state.aiTokenPlan?.playerId === playerId && state.turn < state.aiTokenPlan.notBeforeTurn;
+}
+
 // ----- pending: sciopero, tile tracciato e effetti opzionali -----
 function resolvePending(state) {
   if (state.pending.type === 'welfareToken') {
     const owner = state.pending.playerId, legal = legalCommands(state);
-    // shortcut: recovery is greedy like other pending choices; revisit before drawing balance conclusions.
-    // Use the same state evaluation as other actions; ties keep the consumable token.
     let best = legal.find(c => c.type === 'skipWelfareToken');
-    let value = evaluate(timedApply(state, best), owner);
+    if (defersToken(state, owner)) return best;
+    // Only real decisions start a search; speculative states always have aiRollout=null.
+    const valueOf = s => state.aiRollout && plansTokens(state, owner)
+      ? continuationValue(s, state.aiRollout.depth, owner) : evaluate(s, owner);
+    let value = valueOf(timedApply(state, best));
     for (const command of legal.filter(c => c.type === 'spendWelfareToken')) {
-      const candidate = evaluate(timedApply(state, command), owner);
+      const candidate = valueOf(timedApply(state, command));
       if (candidate > value) { best = command; value = candidate; }
     }
     return best;
@@ -523,9 +534,50 @@ function finishOwnTurn(state, playerId, endTurn) {
   return s;
 }
 
+// Keep end-of-action recovery choices open until their future uses have been compared.
+function pendingOutcomes(state, playerId, branchTokens) {
+  let s = { ...state, aiRollout: null }, guard = 0;
+  while (s.pending && guard++ < 20) {
+    if (branchTokens && s.pending.type === 'welfareToken' && s.pending.playerId === playerId) {
+      const commands = legalCommands(s).sort((a, b) => Number(b.type === 'skipWelfareToken') - Number(a.type === 'skipWelfareToken'));
+      rolloutStats.tokenRecoveryBranches += commands.length;
+      return commands.map(command => timedApply(s, command));
+    }
+    s = timedApply(s, chooseCommandForPending(s));
+  }
+  return [s];
+}
+function deferredTokenValue(state, depth, playerId, fallback) {
+  if (state.gameOver || !plansTokens(state, playerId) || !state.players[playerId].welfareTokens) return fallback;
+  let best = fallback;
+  // shortcut: vary the first spending turn, then continue greedily; replan on every real decision.
+  // The final schedule holds all tokens through the window. No token value is added to evaluate().
+  for (let delay = 1; delay <= depth; delay++) {
+    const planned = { ...state, aiTokenPlan: { playerId, notBeforeTurn: state.turn + delay } };
+    best = Math.max(best, evaluate(playForward(planned, depth), playerId, true));
+    rolloutStats.tokenDeferredForecasts++;
+  }
+  return best;
+}
+
+function tokenFutureValue(state, depth, playerId) {
+  return deferredTokenValue(state, depth, playerId, evaluate(playForward(state, depth), playerId, true));
+}
+function pendingOutcomeForRollout(state, depth, playerId) {
+  const outcomes = pendingOutcomes(state, playerId, plansTokens(state, playerId));
+  if (outcomes.length === 1) return outcomes[0];
+  // shortcut: predict recovery with future paths here; the real pending decision rechecks ordinary alternatives.
+  let best = outcomes[0], value = tokenFutureValue(best, depth, playerId);
+  for (const outcome of outcomes.slice(1)) {
+    const candidate = tokenFutureValue(outcome, depth, playerId);
+    if (candidate > value) { best = outcome; value = candidate; }
+  }
+  return best;
+}
+
 // Stesso orizzonte e stessa valutazione del rollout precedente, senza quote per tipo di azione.
 export function continuationValue(state, depth, playerId) {
-  const fallback = evaluate(playForward(state, depth), playerId, true);
+  const fallback = tokenFutureValue(state, depth, playerId);
   const mode = state.players[playerId].aiContinuation;
   if (!state.rowEconomy?.enabled || !['beam2', 'forecast2'].includes(mode)) return fallback;
   rolloutStats.beamCalls++;
@@ -585,10 +637,9 @@ function bestActionAtRollout(state, { depth, rollouts }) {
   for (const cmd of candidates) {
     let s2;
     try { s2 = timedApply(state, cmd); } catch { continue; }
-    let guard = 0;
-    while (s2.pending && guard++ < 20) { const dec = chooseCommandForPending(s2); s2 = timedApply(s2, dec); }
+    const outcome = pendingOutcomeForRollout(s2, depth, p.id);
     let total = 0;
-    for (let r = 0; r < rollouts; r++) total += continuationValue(s2, depth, p.id);
+    for (let r = 0; r < rollouts; r++) total += continuationValue(outcome, depth, p.id);
     const score = total / rollouts;
     if (!best || score > best.score) best = { cmd, score };
   }
@@ -620,11 +671,11 @@ export function logDecision(state, rolloutOpts = { depth: 4, rollouts: 1 }, topN
   for (const cmd of candidates) {
     let s2;
     try { s2 = applyCommand(state, cmd); } catch { continue; }
-    let guard = 0;
-    while (s2.pending && guard++ < 20) { const dec = chooseCommandForPending(s2); s2 = applyCommand(s2, dec); }
-    greedy.push({ label: labelCmd(cmd), score: evaluate(s2, p.id) - base });
+    const greedyOutcome = pendingOutcomes(s2, p.id, false)[0];
+    greedy.push({ label: labelCmd(cmd), score: evaluate(greedyOutcome, p.id) - base });
+    const outcome = pendingOutcomeForRollout(s2, rolloutOpts.depth, p.id);
     let total = 0;
-    for (let r = 0; r < rolloutOpts.rollouts; r++) total += continuationValue(s2, rolloutOpts.depth, p.id);
+    for (let r = 0; r < rolloutOpts.rollouts; r++) total += continuationValue(outcome, rolloutOpts.depth, p.id);
     rollout.push({ label: labelCmd(cmd), score: total / rolloutOpts.rollouts });
   }
   greedy.sort((a, b) => b.score - a.score);
@@ -649,7 +700,7 @@ function bestActionAt(state) {
     // risolvi greedy i pending per valutare lo stato finale
     let guard = 0;
     while (s2.pending && guard++ < 20) {
-      const dec = chooseCommandForPending(s2);
+      const dec = chooseCommandForPending({ ...s2, aiRollout: null });
       s2 = timedApply(s2, dec);
     }
     const score = evaluate(s2, p.id) - base;
@@ -666,6 +717,7 @@ function actionCandidates(state, p) {
   const node = p.node;
   const out = [];
   const legal = legalCommands(state).filter(c => {
+    if (c.welfareToken && defersToken(state, p.id)) return false;
     if (!state.rowEconomy?.enabled) return true;
     // Vincoli sperimentali dell'agente, non regole: il tavolo libero resta il riferimento.
     if (p.aiRecovery === 'repression' && c.type === 'investWelfare') return false;

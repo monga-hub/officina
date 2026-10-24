@@ -57,7 +57,7 @@ export default function StarBoard({state,dispatch,onActions,onNodeAction}) {
       </svg>
       {Object.entries(STAR_PLACES).map(([node,pos])=>{
         const command=legal.find(c=>c.node===node), here=state.players.filter(q=>q.node===node);
-        return <button key={node} className={`star-destination ${command?'star-available':''} ${p.node===node?'star-current':''}`} style={{left:`${pos.x}%`,top:`${pos.y}%`}} disabled={!command} onClick={()=>dispatch(command)} aria-label={`Vai a ${rowNodeLabel(state,node)}${command?` · ${command.cost?`${command.cost} M`:'gratis'}`:''}`}>
+        return <button key={node} data-node={node} className={`star-destination ${command?'star-available':''} ${p.node===node?'star-current':''}`} style={{left:`${pos.x}%`,top:`${pos.y}%`}} disabled={!command} onClick={()=>dispatch(command)} aria-label={`Vai a ${rowNodeLabel(state,node)}${command?` · ${command.cost?`${command.cost} M`:'gratis'}`:''}`}>
           <span className="star-node-name">{SECTORS.includes(node)?<ResourceIcon resource={node} decorative/>:<span>{pos.icon}</span>} {rowNodeLabel(state,node)}</span>
           <span className="star-seats">{Array.from({length:node==='Borsa'?Math.max(2,here.length):2},(_,i)=><span className="star-seat" key={i}>{here[i]?<Meeple player={here[i]}/>:<i>○</i>}</span>)}</span>
           <small>{p.node===node?'Sei qui':command?command.cost?`${command.cost} M per entrare`:'Ingresso gratuito':here.length>=2&&node!=='Borsa'?'Posti occupati':' '}</small>

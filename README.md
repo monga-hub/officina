@@ -10,7 +10,7 @@ Scarica [lab.html pronto all’uso](https://github.com/monga-hub/officina/raw/re
 
 La partita si salva automaticamente dopo ogni mossa. Alla riapertura premi **Riprendi partita**. Il salvataggio comprende scelte in sospeso, impostazioni, pausa IA e le ultime 10 mosse annullabili. Resta nel browser utilizzato: non viene caricato su GitHub e non si trasferisce automaticamente ad altri dispositivi. Per i file locali la persistenza dipende dal browser; mantieni lo stesso file e percorso. L’avvio locale qui sotto offre un indirizzo stabile.
 
-Sul telefono il tavolo si ridimensiona per mostrare insieme fabbrica, stella e commesse. Ruota lo schermo per avere una vista più grande, oppure usa **Ingrandisci** e **Vista completa**. Carte e finestre delle azioni si aprono a dimensione normale.
+Sul telefono il tavolo si ridimensiona per mostrare insieme fabbrica, stella e commesse. La vista usa automaticamente lo spazio disponibile, senza barre di zoom aggiuntive. Puoi ruotare lo schermo o usare lo zoom del browser. Carte e finestre delle azioni si aprono a dimensione normale.
 
 ## Avvio locale dai sorgenti
 

@@ -68,7 +68,7 @@
 .lab-shell.table-overview{padding:0 12px 10px}
 .table-overview .play-header{max-width:none;padding:8px 0;gap:18px;min-height:48px}.table-overview .play-header h1{font-size:23px}.table-overview .play-header .lab-eyebrow{display:none}.table-overview .play-header button{padding:7px 10px}.table-overview .play-turn{display:flex;gap:10px;align-items:center}
 .table-overview .play-jumps{position:static;max-width:none;padding:5px 0;gap:8px}.table-overview .play-jumps a,.table-overview .play-jumps button{padding:5px 10px;font-size:12px}
-.table-overview .play-layout{display:grid;max-width:none;margin:8px 0 0;grid-template-columns:250px minmax(700px,1fr) 260px;gap:10px;align-items:start}
+.table-overview .play-layout{display:grid;max-width:none;margin:8px 0 0;grid-template-columns:360px minmax(620px,1fr) 210px;gap:10px;align-items:start}
 .table-overview .play-layout>.play-factory-column{grid-column:1;grid-row:1;min-width:0}
 .table-overview .play-layout>.star-board{grid-column:2;grid-row:1;min-width:0}
 .table-overview .play-layout>.play-contracts-side{grid-column:3;grid-row:1;padding:10px}
@@ -101,7 +101,7 @@
 .table-overview .play-factory-heading{line-height:1.2}.table-overview .play-wallet{line-height:1.25;padding:3px 0;margin-bottom:6px}.table-overview .play-wallet b{font-size:14px}.table-overview .play-direction{display:none}
 .table-overview .order-card>header{line-height:1.2}.table-overview .order-resources li{line-height:1.2}.table-overview .order-resources{margin-top:4px}.table-overview .order-status{margin-top:3px}
 }
-@container tableCanvas (min-width:1500px){.table-overview .play-layout{grid-template-columns:320px minmax(700px,1fr) 300px}.table-overview .play-department>header h3{font-size:15px}.table-overview .play-department>header>span{font-size:12px}.table-overview .star-market .paper-card{font-size:15px!important}.table-overview .star-market .card-half strong{font-size:15px}.table-overview .star-market .paper-card-top{font-size:13px}.table-overview .star-market .card-half small{font-size:10px}.table-overview .star-destination{font-size:18px}.table-overview .star-destination small{font-size:12px}}
+@container tableCanvas (min-width:1500px){.table-overview .play-layout{grid-template-columns:500px minmax(620px,1fr) 220px}.table-overview .play-department>header h3{font-size:15px}.table-overview .play-department>header>span{font-size:12px}.table-overview .star-market .paper-card{font-size:15px!important}.table-overview .star-market .card-half strong{font-size:15px}.table-overview .star-market .paper-card-top{font-size:13px}.table-overview .star-market .card-half small{font-size:10px}.table-overview .star-destination{font-size:18px}.table-overview .star-destination small{font-size:12px}}
 @media(min-width:1500px) and (min-height:850px){.table-overview .opposed-cell,.table-overview .row-tension-step{height:24px;min-height:24px;font-size:14px}.table-overview .opposed-cell small{font-size:10px}.table-overview .opposed-track-head,.table-overview .opposed-track-foot{font-size:11px}.table-overview .play-departments{gap:12px}.table-overview .department-cards>summary{font-size:12px}}
 
 .lab-shell .star-instructions .node-action-shortcut{background:#244c39;color:white;border-color:#244c39;font-weight:700;padding:5px 12px}.lab-shell .star-instructions .node-action-shortcut:disabled{opacity:.5}.node-action-choices h4{display:none}.lab-shell .node-action-choices button{display:block;width:100%;padding:14px;text-align:left;margin:10px 0;font-size:14px;background:#e8efdf;border-color:#8ba17a;line-height:1.5}
@@ -181,3 +181,11 @@
 .symbol-key>div>span{display:flex;align-items:center;gap:7px}
 .table-fit-compact .star-stage{height:420px;min-height:420px}
 .table-fit-compact .star-market .paper-card{height:148px}
+
+/* Give the production tracks the space freed by the compact market and orders. */
+@container tableCanvas (min-width:1500px){
+.table-overview .opposed-cell,.table-overview .row-tension-step{height:22px;min-height:22px;font-size:14px}
+.table-overview .opposed-cell small{font-size:10px}
+.table-overview .opposed-track-head,.table-overview .opposed-track-foot{font-size:11px}
+.table-overview .play-department .opposed-cell .amount-token{width:18px;min-width:18px;height:18px;font-size:12px}
+}

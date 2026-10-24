@@ -1453,16 +1453,20 @@ function contractDecksEmpty(state) {
   return ['small', 'medium', 'large'].every(size => state.contracts[size].deck.length === 0);
 }
 
+export function welfareRecoveryCommands(state, p) {
+  if (state.turnFlags?.producedRole || state.turnFlags?.welfareTokenResolved) return [];
+  const role = DEPT_ROLES.find(role => p.depts[role].sector === p.node);
+  const max = role ? Math.min(availableWelfareTokens(state, p), p.depts[role].tension) : 0;
+  return Array.from({ length: max }, (_, i) => ({ type: 'spendWelfareToken', role, count: i + 1 }));
+}
+
 function finishTurn(state) {
   const p = currentPlayer(state);
-  // Un gettone recupera un reparto fermo mentre si svolge l'azione del turno.
-  if (availableWelfareTokens(state, p) > 0 && !state.turnFlags?.welfareTokenResolved) {
-    const options = DEPT_ROLES.filter(role => role !== state.turnFlags?.producedRole && p.depts[role].tension > 0);
-    if (options.length) {
-      state.phase = 'resolving';
-      state.pending = { type: 'welfareToken', playerId: p.id, options };
-      return;
-    }
+  const recoveries = welfareRecoveryCommands(state, p);
+  if (recoveries.length) {
+    state.phase = 'resolving';
+    state.pending = { type: 'welfareToken', playerId: p.id, options: [recoveries[0].role] };
+    return;
   }
   trimToCap(state, p); // tetto risorse: prodotto tutto nel turno, ora scarta il surplus fino al tetto (tenendo il carburante utile)
   p.coinsHistory.push(p.coins);
@@ -1565,10 +1569,7 @@ export function legalCommands(state) {
   if (state.pending) {
     const pend = state.pending;
     if (pend.type === 'welfareToken') {
-      if (pend.playerId === p.id && availableWelfareTokens(state, p) > 0) {
-        for (const role of DEPT_ROLES)
-          if (role !== state.turnFlags?.producedRole && p.depts[role].tension > 0) cmds.push({ type: 'spendWelfareToken', role });
-      }
+      if (pend.playerId === p.id) cmds.push(...welfareRecoveryCommands(state, p));
       cmds.push({ type: 'skipWelfareToken' });
     } else if (pend.type === 'sciopero') {
       for (const id of pend.options) cmds.push({ type: 'strikeBlock', cardId: id });
@@ -1878,6 +1879,8 @@ function cloneState(prev) {
 }
 
 export function applyCommand(prev, cmd) {
+  // Le scelte salvate prima delle quantità indicavano implicitamente un gettone.
+  if (cmd.type === 'spendWelfareToken' && cmd.count === undefined) cmd = { ...cmd, count: 1 };
   const state = cloneState(prev);
   const p = currentPlayer(state);
 
@@ -1890,12 +1893,12 @@ export function applyCommand(prev, cmd) {
       state.turnFlags.welfareTokenResolved = true;
       if (cmd.type === 'spendWelfareToken') {
         const d = p.depts[cmd.role];
-        p.welfareTokens--;
+        p.welfareTokens -= cmd.count;
         state.turnFlags.welfareTokenUsed = true;
-        d.tension = Math.max(0, d.tension - 1);
-        p.industrialStats.welfareTokensUsed = (p.industrialStats.welfareTokensUsed || 0) + 1;
+        d.tension -= cmd.count;
+        p.industrialStats.welfareTokensUsed = (p.industrialStats.welfareTokensUsed || 0) + cmd.count;
         p.industrialStats.welfareRecoveries = (p.industrialStats.welfareRecoveries || 0) + 1;
-        log(state, `${p.name}: usa un gettone welfare, tensione ${d.sector} a ${d.tension}.`);
+        log(state, `${p.name}: usa ${cmd.count} ${cmd.count === 1 ? 'gettone' : 'gettoni'} welfare, tensione ${d.sector} a ${d.tension}.`);
       }
       state.pending = null;
       finishTurn(state);

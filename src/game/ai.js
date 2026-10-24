@@ -335,7 +335,8 @@ function resolvePending(state) {
     const valueOf = s => state.aiRollout && plansTokens(state, owner)
       ? continuationValue(s, state.aiRollout.depth, owner) : evaluate(s, owner);
     let value = valueOf(timedApply(state, best));
-    for (const command of legal.filter(c => c.type === 'spendWelfareToken')) {
+    // Equal forecasts retain the most tokens; every legal recovery amount is evaluated.
+    for (const command of legal.filter(c => c.type === 'spendWelfareToken').sort((a, b) => (a.count ?? 1) - (b.count ?? 1))) {
       const candidate = valueOf(timedApply(state, command));
       if (candidate > value) { best = command; value = candidate; }
     }
@@ -539,7 +540,7 @@ function pendingOutcomes(state, playerId, branchTokens) {
   let s = { ...state, aiRollout: null }, guard = 0;
   while (s.pending && guard++ < 20) {
     if (branchTokens && s.pending.type === 'welfareToken' && s.pending.playerId === playerId) {
-      const commands = legalCommands(s).sort((a, b) => Number(b.type === 'skipWelfareToken') - Number(a.type === 'skipWelfareToken'));
+      const commands = legalCommands(s).sort((a, b) => Number(b.type === 'skipWelfareToken') - Number(a.type === 'skipWelfareToken') || (a.count ?? 1) - (b.count ?? 1));
       rolloutStats.tokenRecoveryBranches += commands.length;
       return commands.map(command => timedApply(s, command));
     }
@@ -652,7 +653,7 @@ function bestActionAtRollout(state, { depth, rollouts }) {
 function labelCmd(cmd) {
   if (cmd.type === 'hire') return `Assumi ${cmd.cardId}`;
   if (cmd.type === 'activate') return `Produci ${cmd.sector}${cmd.welfareToken ? ' · protetta' : ` ×${cmd.intensity ?? 1}`}`;
-  if (cmd.type === 'spendWelfareToken') return `Gettone welfare (${cmd.role})`;
+  if (cmd.type === 'spendWelfareToken') return `${cmd.count ?? 1} gettoni welfare (${cmd.role})`;
   if (cmd.type === 'buyPolicy') return `Welfare ${cmd.policyId} (${cmd.role})`;
   if (cmd.type === 'restartDepartment') return `Riapri ${cmd.role}`;
   if (cmd.type === 'buyWelfare') return (cmd.side === 'sotto' ? 'Macchinario ' : 'Welfare ') + cmd.cardId;

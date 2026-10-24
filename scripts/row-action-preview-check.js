@@ -112,12 +112,15 @@ bundle.departments.forEach(({before,after})=>{
   assert.equal(after.hireDiscount,0);
   assert.equal(after.sustainableLimit,0);
 });
-const recovering=applyCommand(tokens,{type:'investWelfare',scope:'factory'});
+tokens.players[0].node='Chimica';tokens.players[0].welfareTokens=3;
+const recovering=applyCommand(tokens,{type:'pass'});
 assert.equal(recovering.pending.type,'welfareToken');
-const recovery=preview(recovering,{type:'spendWelfareToken',role:'primario'});
-assert.equal(recovery.cost,0);
-assert.deepEqual(recovery.welfareTokens,{before:5,after:4});
-assert.equal(recovery.departments[0].before.tension,4);
-assert.equal(recovery.departments[0].after.tension,3);
-assert.equal(recovery.departments[0].after.available,1);
+for(const count of [1,2,3]) {
+  const recovery=preview(recovering,{type:'spendWelfareToken',role:'primario',count});
+  assert.equal(recovery.cost,0);
+  assert.deepEqual(recovery.welfareTokens,{before:3,after:3-count});
+  assert.equal(recovery.departments[0].before.tension,4);
+  assert.equal(recovery.departments[0].after.tension,4-count);
+  assert.equal(recovery.departments[0].after.available,count);
+}
 console.log('OK: legacy previews; fixed-price redistribution across all departments, token purchase/recovery, row availability and immutable state.');

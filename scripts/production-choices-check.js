@@ -92,7 +92,8 @@ checkPreview(tokens,protectedCommand,{resources:yields(2),coins:machine.effect.f
 assert.equal(applyCommand(tokens,protectedCommand).players[0].welfareTokens,2);
 const tokenIntense=tokenChoices.find(c=>!c.welfareToken);
 checkPreview(tokens,tokenIntense,{resources:yields(2),coins:machine.effect.f1.q,tension:3,conversions:[]});
-assert.equal(applyCommand(tokens,tokenIntense).pending.type,'welfareToken','Recovery choice is not a machine conversion');
+assert.equal(applyCommand(tokens,tokenIntense).pending,null,'Producing never opens a recovery choice');
+assert.equal(applyCommand(tokens,tokenIntense).players[0].welfareTokens,3,'Ordinary production keeps the tokens');
 const fullWarehouse=structuredClone(tokens);
 fullWarehouse.players[0].resources.Tessuti=9;
 for(const command of tokenChoices) {

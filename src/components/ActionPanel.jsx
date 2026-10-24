@@ -5,7 +5,7 @@ import { Amount } from './Amount.jsx';
 import { effectChoiceLabel } from './effect-choice.js';
 import { rowActionPreview } from './row-action-preview.js';
 import { policiesOf, welfareEfficiency } from '../game/industrial.js';
-import { hireCost, deptOfSector, describeTileEffect } from '../game/engine.js';
+import { hireCost, deptOfSector, describeTileEffect, welfareRecoveryCommands } from '../game/engine.js';
 import React, { useState } from 'react';
 import { SECTORS, RESOURCE_OF, SECTOR_COLORS, NATION_FLAGS, NODE_BANKS, UNBLOCK_COST } from '../game/data.js';
 import { currentPlayer, legalCommands, WORKER_BY_ID, rankedIndices, indexValue, cellNow, expectedDividend, describeRace } from '../game/engine.js';
@@ -180,7 +180,7 @@ function NodeActions({ state, p, legal, dispatch, renderHireCard }) {
       {p.node === 'Sindacato' && (state.industrial?.enabled ? <IndustrialActions state={state} player={p} legal={legal} dispatch={dispatch} /> : <TrattativaBuilder state={state} p={p} dispatch={dispatch} />)}
 
       <div className="pass-row">
-        <button className="ghost" onClick={() => dispatch({ type: 'pass' })}>Rinuncia all'azione</button>
+        <button className="ghost" onClick={() => dispatch({ type: 'pass' })}>{welfareRecoveryCommands(state,p).length?'Cura senza produrre':"Rinuncia all'azione"}</button>
       </div>
     </div>
   );
@@ -358,7 +358,7 @@ export function RowEconomyActions({state,legal,dispatch}) {
             </span>
             {welfare?<>
               <small>Gettoni: <b>{preview.welfareTokens.before} → {preview.welfareTokens.after}</b> · i nuovi dal prossimo turno.</small>
-              <small>Uno per turno: proteggi una produzione oppure recuperi −1 tensione in un reparto che non produce.</small>
+              <small>Solo nel reparto visitato: 1 gettone protegge la produzione; senza produrre puoi curare con più gettoni, −1 tensione ciascuno.</small>
             </>:<>
               <small>Righe utilizzabili: <b>{first.before.available} → {first.after.available}</b>.</small>
               {preview.departments.slice(1).map(({before,after})=><small key={before.sector}>{before.sector}: tensione <b>{before.tension} → {after.tension}</b> · righe <b>{before.available} → {after.available}</b></small>)}

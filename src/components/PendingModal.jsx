@@ -41,14 +41,16 @@ export default function PendingModal({ state, dispatch, renderResource=()=>null 
 }
 
 function WelfareTokenChoice({state,owner,legal,dispatch}) {
+  const choices=legal.filter(c=>c.type==='spendWelfareToken');
   return <>
     <h3>🌿 Recupero welfare</h3>
-    <p>Hai <b>{owner.welfareTokens} gettoni</b>. Puoi usarne uno in un reparto che non ha prodotto, senza spendere un’altra azione.</p>
+    {choices.length?<p>Hai <b>{owner.welfareTokens} gettoni</b>. Scegli quanti spenderne per curare il reparto in cui sei. Il recupero può seguire un acquisto o una rinuncia all’azione, mai una produzione.</p>:<p>In questo turno non puoi curare: devi trovarti nel reparto da recuperare e non aver prodotto. Conserva i gettoni per continuare.</p>}
     <div className="btn-row col">
-      {legal.filter(c=>c.type==='spendWelfareToken').map(command=>{
+      {choices.map(command=>{
         const {before,after}=rowActionPreview(state,command).departments[0];
-        return <button key={command.role} className="production-choice" onClick={()=>dispatch(command)}>
-          <strong>{before.sector} · 1 gettone</strong>
+        const count=command.count||1;
+        return <button key={`${command.role}-${count}`} className="production-choice" onClick={()=>dispatch(command)}>
+          <strong>{before.sector} · {count} {count===1?'gettone':'gettoni'}</strong>
           <span className="production-yield">Tensione <b>{before.tension} → {after.tension}</b></span>
           <small>Righe utilizzabili: <b>{before.available} → {after.available}</b></small>
         </button>;

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { currentPlayer, legalCommands, bankMarket, WORKER_BY_ID } from '../game/engine.js';
+import { currentPlayer, legalCommands, bankMarket, WORKER_BY_ID, welfareRecoveryCommands } from '../game/engine.js';
 import { rowNodeLabel } from '../game/row-economy.js';
 import { SECTORS } from '../game/data.js';
 import { STAR_MARKETS } from './markets.js';
@@ -43,10 +43,11 @@ export default function StarBoard({state,dispatch,onActions,onNodeAction}) {
   const isDepartment=SECTORS.includes(p.node);
   const nodeAction=isDepartment?{type:'activate',label:'Produci',unavailable:'Produzione non disponibile: serve un operaio attivo nel reparto.'}:state.rowEconomy?.enabled&&p.node==='Sindacato'?{type:'repress',label:'Repressione',unavailable:'Serve tensione da ridurre e marchi sufficienti.'}:state.rowEconomy?.enabled&&p.node==='Servizi'?{type:'investWelfare',label:'Welfare',unavailable:'Marchi insufficienti per investire nel welfare.'}:null;
   const canAct=nodeAction&&commands.some(c=>c.type===nodeAction.type);
+  const canRecover=canChoose&&welfareRecoveryCommands(state,p).length>0;
   const edges=[['Metallurgica','Servizi'],['Servizi','Tessile'],['Tessile','Chimica'],['Chimica','Sindacato'],['Sindacato','Metallurgica']];
   return <section id="stella" className="star-board" aria-label="Plancia a stella">
-    <div className="star-caption"><div><p className="lab-eyebrow">LA CITTÀ INDUSTRIALE</p><h2>{canMove?'Scegli un nodo':canChoose?(isDepartment?'Assumi o produci':'Scegli una delle due carte'):inCity?'Consegna in Città':'La plancia comune'}</h2></div><span>{canMove?'Tocca un nodo illuminato':canChoose?'Tocca una carta evidenziata':'Puoi sempre ingrandire le carte'}</span></div>
-    <p className="star-instructions">{inCity?<>Una commessa per visita. La consegna termina il turno. <button onClick={onActions}>Consegna commessa</button> <button className="node-action-shortcut" onClick={()=>dispatch(commands.find(c=>c.type==='endTurn'))}>Termina turno</button></>:canChoose?<><button className={nodeAction?"node-action-shortcut":undefined} onClick={nodeAction?()=>onNodeAction(nodeAction.type):onActions} disabled={!!nodeAction&&!canAct} title={nodeAction&&!canAct?nodeAction.unavailable:undefined}>{nodeAction?nodeAction.label:"Altre azioni"}</button></>:null}</p>
+    <div className="star-caption"><div><p className="lab-eyebrow">LA CITTÀ INDUSTRIALE</p><h2>{canMove?'Scegli un nodo':canChoose?(isDepartment?(canRecover?'Assumi, produci o cura':'Assumi o produci'):'Scegli una delle due carte'):inCity?'Consegna in Città':'La plancia comune'}</h2></div><span>{canMove?'Tocca un nodo illuminato':canChoose?'Tocca una carta evidenziata':'Puoi sempre ingrandire le carte'}</span></div>
+    <p className="star-instructions">{inCity?<>Una commessa per visita. La consegna termina il turno. <button onClick={onActions}>Consegna commessa</button> <button className="node-action-shortcut" onClick={()=>dispatch(commands.find(c=>c.type==='endTurn'))}>Termina turno</button></>:canChoose?<><button className={nodeAction?"node-action-shortcut":undefined} onClick={nodeAction?()=>onNodeAction(nodeAction.type):onActions} disabled={!!nodeAction&&!canAct} title={nodeAction&&!canAct?nodeAction.unavailable:undefined}>{nodeAction?nodeAction.label:"Altre azioni"}</button>{canRecover&&<button className="node-action-shortcut" onClick={()=>dispatch({type:'pass'})} title="Rinuncia all’azione e scegli quanti gettoni spendere per curare questo reparto.">Cura senza produrre</button>}</>:null}</p>
     <div className="star-viewport"><div className="star-stage">
       <svg className="star-drawing" viewBox="0 0 1000 800" preserveAspectRatio="none" aria-hidden="true">
         <defs><radialGradient id="star-brass"><stop stopColor="#efd8a6"/><stop offset="1" stopColor="#916c41"/></radialGradient></defs>

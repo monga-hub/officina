@@ -59,4 +59,8 @@ All’apertura e al ritorno in primo piano il simulatore controlla `version.json
 
 Per ricevere questo controllo, le versioni precedenti devono essere ricaricate manualmente una prima volta. Nessun service worker è installato; il controllo non aggiunge il download offline dell’app. `version.json` va pubblicato insieme al file HTML compilato.
 
-La produzione presenta due modalità: **Intensa** usa tutte le righe accessibili; **Sostenibile** usa automaticamente tante righe quanti sono i welfare, fino al numero di righe accessibili. Nessuna scelta manuale della riga. Nel tracciato di riferimento ogni riga dà una risorsa; nei tracciati modificati nell’editor si usano le prime righe accessibili. I comandi storici rimangono validi per riprodurre i report precedenti.
+La produzione presenta due modalità: **Intensa** usa tutte le righe accessibili e attiva i macchinari, poi aumenta la tensione di 1; **Protetta** offre gli stessi rendimenti e spende un gettone welfare per impedire l’aumento. Nel tracciato di riferimento ogni riga dà una risorsa.
+
+Il welfare costa **9 marchi per 3 gettoni**, utilizzabili dal proprio turno successivo, **solo nel reparto in cui si trova il procuratore**. Se non si produce, dopo un acquisto oppure rinunciando all’azione si possono spendere più gettoni insieme per curare quel reparto: **−1 tensione per gettone, fino a zero**. Non si può curare nello stesso turno in cui si produce. I gettoni non scontano le assunzioni e non valgono punti a fine partita.
+
+La repressione mantiene il costo fisso di **2 marchi**: azzera la tensione di un reparto e aumenta di 1 quella degli altri due, fino al limite del tracciato. I prezzi indicati sono quelli di riferimento e rimangono modificabili nell’editor.

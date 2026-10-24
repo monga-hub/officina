@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { defaults, playableConfig } from '../src/lab/config.js';
-import { initGame, applyCommand, legalCommands, WORKER_BY_ID } from '../src/game/engine.js';
+import { initGame, applyCommand, legalCommands, scorePlayer, WORKER_BY_ID } from '../src/game/engine.js';
 import { GAME_SAVE_KEY, SAVED_UNDO_LIMIT, gameSession, loadGame, saveGame } from '../src/lab/saved-game.js';
 const data=new Map(),storage={getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value)};
 const plain=value=>JSON.parse(JSON.stringify(value));
@@ -62,4 +62,38 @@ assert.equal(oldPriceSave.config.rowEconomy.welfareCost,9);
 assert.deepEqual(plain(oldPriceRestored),plain(oldSession));
 assert.equal(oldPriceRestored.state.rowEconomy.welfareCost,9);
 assert.equal(oldPriceRestored.history[0].rowEconomy.welfareCost,9);
+// Existing matches and their Undo snapshots adopt only the scoring change.
+const bonusConfig=structuredClone(oldPrice);delete bonusConfig.contractsOnly;
+bonusConfig.raceObjectives={enabled:true,podium:[7,5,3],list:[{id:'race_same',type:'sopra_same_nation',n:3,enabled:true}]};
+bonusConfig.tracks.terziario[1]={res:1,pv:8};bonusConfig.tracks.terziario[2]={pv:5};
+const bonusState=initGame(bonusConfig);
+bonusState.phase='borsa';bonusState.players[0].node='Borsa';bonusState.players[0].coins=100;
+bonusState.racesThisVisit=1;bonusState.raceObjectives.list[0].claims=[0];
+bonusState.players[1].contractsWon=[{pv:9}];
+const bonusFinal=structuredClone(bonusState);bonusFinal.gameOver=true;bonusFinal.phase='done';
+bonusFinal.results=bonusFinal.players.map(p=>scorePlayer(bonusFinal,p)).sort((a,b)=>b.total-a.total);
+assert.equal(bonusFinal.results[0].playerId,0);
+bonusFinal.log.push({turn:bonusFinal.turn,text:'FINE PARTITA. Vince il precedente primo classificato.'});
+const legacySave={version:1,savedAt:new Date().toISOString(),config:bonusConfig,state:bonusFinal,history:[bonusState],paused:true};
+const legacyRaw=JSON.stringify(legacySave);data.set(GAME_SAVE_KEY,legacyRaw);
+const updated=loadGame(storage);
+assert.equal(data.get(GAME_SAVE_KEY),legacyRaw,'Loading never overwrites the stored match');
+assert.equal(updated.config.contractsOnly,true);assert.equal(updated.config.raceObjectives.enabled,false);
+assert.deepEqual(updated.config.tracks.terziario[1],{res:1});assert.equal(updated.config.tracks.terziario[2],null);
+for(const state of [updated.state,...updated.history]){
+ assert.equal(state.contractsOnly,true);assert.equal(state.raceObjectives.enabled,false);assert.equal(state.racesThisVisit,0);
+ assert.equal(state.rowEconomy.welfareCost,9);assert.equal(scorePlayer(state,state.players[0]).total,0);
+ assert.equal(scorePlayer(state,state.players[1]).total,9);
+ assert.deepEqual(state.players,bonusState.players);assert.deepEqual(state.banks,bonusState.banks);
+ assert.equal(state.turn,bonusState.turn);assert.equal(state.current,bonusState.current);
+}
+assert.equal(updated.state.results[0].playerId,1);assert.equal(updated.state.results[0].total,9);
+assert.ok(updated.state.log.at(-1).text.includes(`${updated.state.players[1].name} con 9 PV`));
+assert.ok(legalCommands(updated.history[0]).some(c=>c.type==='borsaExit'),'Undo does not retain the old race restriction');
+assert.ok(!legalCommands(updated.history[0]).some(c=>c.type==='completeRace'));
+const directResume=gameSession(bonusConfig,legacySave);
+assert.deepEqual(plain(directResume.state),plain(updated.state));
+assert.equal(JSON.stringify(legacySave),legacyRaw,'Migration must not mutate its source');
+saveGame(updated.config,directResume,storage);
+assert.deepEqual(plain(loadGame(storage).state),plain(updated.state),'Migration is idempotent');
 console.log('OK: automatic game saves restore rules, registry, decks, choices, undo, pause and results; invalid saves and write failures preserve stored data.');

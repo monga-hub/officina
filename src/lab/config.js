@@ -9,16 +9,22 @@ export const AI_NAMES = { forecast2: 'Nuova IA · valuta gli utilizzi futuri', b
 export const STORAGE_KEY = 'officina1907-laboratorio-v1';
 export const RULES_REVISION = 2;
 const PRESET_REVISION = 1;
+export function withoutTrackPoints(track) {
+  return track.map(cell => {
+    if (!cell || !Object.hasOwn(cell, 'pv')) return cell;
+    const { pv, ...bonus } = cell;
+    return Object.keys(bonus).length ? bonus : null;
+  });
+}
 export function defaults() {
-  return structuredClone({ schema: 'officina-lab-1', rulesRevision: RULES_REVISION, presetRevision: PRESET_REVISION, name: 'Prova di riferimento',
+  return structuredClone({ schema: 'officina-lab-1', rulesRevision: RULES_REVISION, presetRevision: PRESET_REVISION, contractsOnly: true, name: 'Prova di riferimento',
     players: 2, turns: 28, startingCoins: [15, 15, 15, 15],
-    trackModel: 'righe4corte', track: reference.tracks.terziario,
+    trackModel: 'righe4corte', track: withoutTrackPoints(reference.tracks.terziario),
     welfareCost: 4, repressionBase: 2, repressionStep: 0,
     contractCoins: reference.rowEconomy.contractCoins,
     machineSlots: [2, 2, 2],
     workers: reference.workers.filter(w => !w.power && w.deck !== 'Impiegati'), contracts: reference.contracts,
     contractCount: reference.contractCount, contractMarket: 2,
-    conversions: reference.conversions, race: reference.raceObjectives,
     cityIncome: reference.borsaExit.coins, cityRefresh: true,
     simulation: { games: 3, seed: 1907, ai: 'forecast2', depth: 6, rollouts: 1 },
   });
@@ -29,6 +35,7 @@ export function validate(c) {
   check(c && c.schema === 'officina-lab-1', 'Importa una configurazione del nuovo Laboratorio, non un report o una configurazione del vecchio simulatore.');
   check(c.rulesRevision === RULES_REVISION, 'Versione delle regole non supportata: riapri la configurazione dal Laboratorio aggiornato.');
   check(c.presetRevision === PRESET_REVISION, 'Versione delle impostazioni non supportata: riapri la configurazione dal Laboratorio aggiornato.');
+  check(c.contractsOnly === true, 'Nel Laboratorio si contano solo i PV delle commesse.');
   check(typeof c.name === 'string' && c.name.length <= 100, 'Nome della prova non valido.');
   integer(c.players, 2, 4, 'Giocatori'); integer(c.turns, 1, 60, 'Turni');
   check(Array.isArray(c.startingCoins) && c.startingCoins.length === 4, 'Servono i marchi iniziali dei quattro posti.');
@@ -36,7 +43,7 @@ export function validate(c) {
   check(MODELS.includes(c.trackModel), 'Modello del tracciato non supportato.');
   check(Array.isArray(c.track) && c.track.length === TRACK_MODELS[c.trackModel].max + 1 && c.track[0] === null, 'Lunghezza del tracciato non valida.');
   for (const cell of c.track) if (cell !== null) {
-    check(typeof cell === 'object' && !Array.isArray(cell) && Object.keys(cell).length > 0 && Object.keys(cell).every(k => ['res', 'coins', 'pv'].includes(k)), 'Nel nuovo tracciato sono ammessi risorse, marchi e soglie PV.');
+    check(typeof cell === 'object' && !Array.isArray(cell) && Object.keys(cell).length > 0 && Object.keys(cell).every(k => ['res', 'coins'].includes(k)), 'Nel tracciato sono ammessi solo risorse e marchi.');
     Object.values(cell).forEach(v => integer(v, 0, 20, 'Bonus casella'));
   }
   for (const key of ['welfareCost', 'repressionBase', 'repressionStep']) integer(c[key], 0, 30, key);
@@ -45,7 +52,6 @@ export function validate(c) {
   c.machineSlots.forEach(v => integer(v, 0, 10, 'Spazi macchinari'));
   integer(c.cityIncome, 0, 20, 'Marchi all’uscita dalla città'); check(typeof c.cityRefresh === 'boolean', 'Ricambio commesse non valido.');
   integer(c.contractMarket, 1, 3, 'Commesse visibili');
-  for (const key of ['coinsPerPV', 'resPerPV']) integer(c.conversions?.[key], 1, 100, 'Conversione finale');
   const ids = new Set();
   check(Array.isArray(c.workers) && c.workers.length > 0 && c.workers.length <= 200, 'Mazzo lavoratori non valido.');
   for (const w of c.workers) {
@@ -73,10 +79,6 @@ export function validate(c) {
     }
     for (const n of [2, 3, 4]) integer(c.contractCount?.[n]?.[size], c.contractMarket, c.contracts[size].length, 'Commesse in partita');
   }
-  check(c.race && typeof c.race.enabled === 'boolean' && c.race.incentive === 0 && Array.isArray(c.race.podium) && c.race.podium.length === 3, 'Obiettivi di gara non validi.');
-  c.race.podium.forEach(v => integer(v, 0, 30, 'Podio'));
-  check(Array.isArray(c.race.list) && c.race.list.length === 3, 'Servono i tre obiettivi di gara.');
-  c.race.list.forEach((r, i) => { check(r.id === reference.raceObjectives.list[i].id && r.type === reference.raceObjectives.list[i].type && typeof r.enabled === 'boolean', 'Tipo di obiettivo non supportato.'); integer(r.n, 1, 12, 'Soglia obiettivo'); });
   check(c.simulation && Object.hasOwn(AI_NAMES, c.simulation.ai), 'Seleziona una IA supportata.');
   integer(c.simulation.games, 1, 100, 'Partite'); integer(c.simulation.seed, 0, 2147483547, 'Seme');
   integer(c.simulation.depth, 1, 12, 'Profondità IA'); integer(c.simulation.rollouts, 1, 5, 'Continuazioni casuali');
@@ -95,7 +97,7 @@ export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
       welfareCost: c.welfareCost, repressionBase: c.repressionBase, repressionStep: 0, contractCoins: { ...c.contractCoins } },
     slots: { ...Object.fromEntries(ROLES.map((r,i) => [r, { sopra: 3, sotto: c.machineSlots[i] }])), direzione: { sopra: 0, sotto: 0 } },
     borsaExit: { enabled: true, coins: c.cityIncome }, borsaRefresh: { enabled: c.cityRefresh },
-    conversions: { ...c.conversions }, raceObjectives: structuredClone(c.race),
+    contractsOnly: true, pianoEnabled: false, raceObjectives: { enabled: false, list: [] }, raceIncentive: 0,
     aiRollout: c.simulation.ai === 'greedy' ? null : { depth: c.simulation.depth, rollouts: c.simulation.rollouts },
     aiContinuation: c.simulation.ai,
     players: Array.from({ length: c.players }, (_,i) => ({ name: i < humans ? `Giocatore ${i+1}` : `IA ${i+1}`, isAI: i >= humans, personality: 'neutro', aiRecovery: 'free', aiEvaluation: 'baseline', aiContinuation: c.simulation.ai })),
@@ -103,8 +105,9 @@ export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
 }
 export function parseConfig(raw) {
   const c = JSON.parse(raw);
-  // Only editor configurations migrate; saved matches retain their original rules and state.
+  // Editor migrations preserve custom prices; scoring is now limited to contracts.
   if (c?.schema === 'officina-lab-1') {
+    c.contractsOnly = true;
     if (c.rulesRevision == null || c.rulesRevision === 1) {
       if (c.welfareCost === 3) c.welfareCost = 4;
       c.repressionStep = 0;
@@ -117,6 +120,7 @@ export function parseConfig(raw) {
       c.presetRevision = PRESET_REVISION;
     }
     if (Array.isArray(c.workers)) c.workers = c.workers.filter(w => !w?.power && w?.deck !== 'Impiegati');
+    if (Array.isArray(c.track)) c.track = withoutTrackPoints(c.track);
   }
   validate(c);
   // Only the current schema is persisted; imported legacy knobs cannot alter rules.

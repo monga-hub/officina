@@ -86,13 +86,13 @@ export function evaluate(state, playerId, rolloutLeaf = false) {
 function evaluateInner(state, playerId, rolloutLeaf) {
   const p = state.players[playerId];
   const w = profileOf(p);
-  if (state.industrial?.enabled && state.gameOver) return scorePlayer(state, p).total * 10;
+  if ((state.contractsOnly || state.industrial?.enabled) && state.gameOver) return scorePlayer(state, p).total * 10;
   let v = 0;
   v += p.contractsWon.reduce((a, c) => a + c.pv, 0) * 10 * w.wContract;
-  v += p.tile.objectives.reduce((a, o, i) => a + (p.achieved[i] ? o.pv : 0), 0) * 9 * w.wObjective;
+  if (!state.contractsOnly) v += p.tile.objectives.reduce((a, o, i) => a + (p.achieved[i] ? o.pv : 0), 0) * 9 * w.wObjective;
   // Obiettivi di gara già rivendicati: PV del posto sul podio. Greedy: dopo un 'completeRace' v sale → l'IA
   // rivendica quando è qualificata. Scala ×10 come le commesse (podio PV direttamente confrontabile).
-  if (state.raceObjectives?.enabled) {
+  if (!state.contractsOnly && state.raceObjectives?.enabled) {
     v += state.raceObjectives.list.reduce((a, it) => { const pl = it.claims.indexOf(playerId); return a + (pl >= 0 ? (state.raceObjectives.podium[pl] ?? 0) : 0); }, 0) * 10 * w.wObjective;
     // Progresso VERSO una race (knob di sistema raceIncentive, default 0 = non insegue). Distinto dal PV del
     // claim sopra: questo lure l'IA ad avvicinarsi (costruire i Sopra giusti), il claim blocca i PV.
@@ -102,7 +102,7 @@ function evaluateInner(state, playerId, rolloutLeaf) {
   // (casella al rango attuale ÷ investitori attuali). Stessa scala PV delle commesse (×10).
   // Deliberatamente NON è una costante euristica: è la formula del gioco letta dallo stato — così qui non si
   // ripete il buco di `perUse`/`tileScore`, dove l'IA decideva su un numero che il regolamento non conosce.
-  if (state.borsaIndici?.enabled) {
+  if (!state.contractsOnly && state.borsaIndici?.enabled) {
     for (const name of Object.keys(p.shares || {})) v += expectedDividend(state, name, true) * 10;
   }
   // peso di marchi/risorse scala con le conversioni finali configurate.
@@ -139,7 +139,7 @@ function evaluateInner(state, playerId, rolloutLeaf) {
     const remain = Math.max(1, state.clockThreshold - state.clock); // proxy turni residui
     v += p.factories.length * remain * 0.4 * (2 / state.rules.resPerPV) * w.wRes;
   }
-  v += trackPV(state, p) * 9 * w.wTrack; // soglie PV del tracciato = PV di fine partita
+  if (!state.contractsOnly) v += trackPV(state, p) * 9 * w.wTrack; // soglie PV del tracciato = PV di fine partita
   for (const role of DEPT_ROLES) {
     const d = p.depts[role];
     // prod/sopra/sotto = motore industriale del tableau → pesati come i tracciati
@@ -165,8 +165,10 @@ function evaluateInner(state, playerId, rolloutLeaf) {
     const I = state.industrial;
     const remaining = Math.max(0, state.endMode === 'rounds' ? state.roundLimit - state.turn : 20 - state.turn);
     const future = Math.min(4, remaining / 5);
-    v += (p.pvWelfare || 0) * 10;
-    if (I.welfareScoring === 'final') v += welfarePoints(state, p) * 10;
+    if (!state.contractsOnly) {
+      v += (p.pvWelfare || 0) * 10;
+      if (I.welfareScoring === 'final') v += welfarePoints(state, p) * 10;
+    }
     // Stime esplicite del motore futuro; stesso criterio per tutti, nessun bonus di vittoria per archetipo.
     for (const role of DEPT_ROLES) {
       const d = p.depts[role];
@@ -182,7 +184,7 @@ function evaluateInner(state, playerId, rolloutLeaf) {
         if (c.effect === 'efficiency') v += Math.min(activeWorkers(d), c.coverage) * c.amount * future * 1.5 * (I.welfareNeedsWellbeing && wellbeing(state, d) < c.wellbeing ? 0.25 : 1);
         if (c.effect === 'recovery') v += c.amount * future * 1.2;
         if (c.effect === 'flexibility') v += future * 1.2;
-        if (I.welfareScoring === 'quarter') {
+        if (!state.contractsOnly && I.welfareScoring === 'quarter') {
           const payments = Math.max(0, Math.floor(state.roundLimit / I.quarterLength) - Math.floor((state.turn - 1) / I.quarterLength));
           v += c.pv * payments * 5 * (wellbeing(state, d) >= c.wellbeing ? 1 : 0.4);
         }
@@ -208,7 +210,7 @@ function evaluateInner(state, playerId, rolloutLeaf) {
   // (produttore permanente per attivazione). ponytail: nessuno scoring per tipo di tile, da affinare.
   v += DEPT_ROLES.reduce((a, r) => a + Object.keys(p.depts[r].tileFills || {}).length, 0) * 2.5;
   // progresso verso obiettivi non ancora raggiunti
-  v += objectiveProgress(state, p) * 2.0 * w.wObjective;
+  if (!state.contractsOnly) v += objectiveProgress(state, p) * 2.0 * w.wObjective;
   return v;
 }
 

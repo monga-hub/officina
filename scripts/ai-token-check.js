@@ -3,9 +3,9 @@ import { defaults, gameConfig, ROLES } from '../src/lab/config.js';
 import { initGame, legalCommands, applyCommand, WORKER_BY_ID } from '../src/game/engine.js';
 import { chooseCommand, continuationValue, evaluate, resetRolloutStats, rolloutStats } from '../src/game/ai.js';
 
-function fixture({ node = 'Tessile', tension = [3, 0, 0], turn = 26, coins = 0, tokens = 3, prod = [13, 1, 1] } = {}) {
+function fixture({ node = 'Tessile', tension = [3, 0, 0], turn = 26, coins = 0, tokens = 3, prod = [13, 1, 1], contractsOnly = true } = {}) {
   const config = defaults(); config.simulation.seed = 73121;
-  const s = initGame(gameConfig(config)), p = s.players[0];
+  const s = initGame({ ...gameConfig(config), contractsOnly }), p = s.players[0];
   s.phase = 'action'; s.turn = turn; p.node = node; p.coins = coins; p.welfareTokens = tokens;
   ROLES.forEach((r, i) => {
     const d = p.depts[r]; d.prod = prod[i]; d.tension = tension[i];
@@ -35,10 +35,10 @@ for (const node of ['Servizi', 'Sindacato', 'Borsa']) {
 const produced = applyCommand(fixture(), produce('Tessile'));
 assert.notEqual(produced.pending?.type, 'welfareToken', 'Producing cannot be followed by a cure');
 
-// Same reserve and tension, different developed capacity: compare every amount and keep surplus tokens.
-// At this horizon there is one more possible visit to Tessile; extra recovery cannot improve its yield.
+// Historical scoring converts leftover resources into points. With one Tessile visit left,
+// recover only the capacity whose final production improves that conversion.
 for (const [development, count] of [[5, 1], [9, 2], [13, 3]]) {
-  const s = recovery(fixture({ prod: [development, 1, 1] }));
+  const s = recovery(fixture({ prod: [development, 1, 1], contractsOnly: false }));
   resetRolloutStats();
   assert.deepEqual(decide(s), heal(count), `Recover only the ${count} rows that can be used`);
   assert.ok(rolloutStats.tokenDeferredForecasts >= 6);
@@ -51,10 +51,34 @@ for (const [development, count] of [[5, 1], [9, 2], [13, 3]]) {
 }
 
 // Reserve sensitivity without a bonus for owning tokens: one token does not improve this final plan.
-const scarce = recovery(fixture({ tokens: 1 }));
+const scarce = recovery(fixture({ tokens: 1, contractsOnly: false }));
 assert.deepEqual(decide(scarce), skip);
 assert.equal(continuationValue(applyCommand(scarce, heal(1)), 6, 0), continuationValue(applyCommand(scarce, skip), 6, 0));
-assert.deepEqual(decide(recovery(fixture({ tokens: 3 }))), heal(3));
+assert.deepEqual(decide(recovery(fixture({ tokens: 3, contractsOnly: false }))), heal(3));
+
+// Contracts-only scoring: the last Tessile production cannot be followed by a City visit.
+// Extra leftover resources earn nothing, so every recovery amount ties with keeping the tokens.
+for (const development of [5, 9, 13]) {
+  const s = recovery(fixture({ prod: [development, 1, 1] }));
+  assert.deepEqual(decide(s), skip);
+  for (const command of legalCommands(s)) assert.equal(continuationValue(applyCommand(s, command), 6, 0), 0);
+}
+
+// One turn earlier, recovering one row permits 2 Tessuti on turn 27 and a 5-PV delivery on turn 28.
+// Without recovery only 1 Tessuto is available; extra recovery cannot improve this single delivery.
+const delivery = fixture({ turn: 25, prod: [5, 1, 1] });
+delivery.players[0].resources.Acciaio = 1;
+delivery.players[1].coins = 0;
+for (const bank of Object.keys(delivery.banks)) delivery.banks[bank] = [];
+for (const size of Object.keys(delivery.contracts)) delivery.contracts[size] = { deck: [], active: [] };
+delivery.contracts.small.active = [{
+  card: { id: 'recovery-delivery', size: 'small', pv: [5, 3], reqs: [['Tessile', 'Tessile', 'Metallurgica']], engine: null },
+  doneReq: [false], places: [null, null],
+}];
+const deliverable = recovery(delivery);
+assert.deepEqual(decide(deliverable), heal(1), 'Recover the one row that enables a contract delivery');
+for (const count of [1, 2, 3]) assert.equal(continuationValue(applyCommand(deliverable, heal(count)), 6, 0), 50);
+assert.equal(continuationValue(applyCommand(deliverable, skip), 6, 0), 0, 'Without recovery the contract cannot be paid');
 
 // Tokens have no artificial score, and neither weights nor gameplay settings vary with the search.
 const s = fixture(), base = evaluate(s, 0), rules = structuredClone(s.rowEconomy);
@@ -82,4 +106,4 @@ assert.deepEqual(decide(finalChoice), skip, 'No future production means no need 
 const end = applyCommand(finalChoice, skip);
 assert.ok(end.gameOver);
 assert.equal(continuationValue(end, 6, 1), evaluate(end, 1, true));
-console.log('OK: d6 evaluates local recovery amounts 1/2/3 and conservation, respects production/location, keeps weights and costs unchanged.');
+console.log('OK: d6 preserves historical recovery choices, values recovery for contract delivery, ignores leftover resources without final points, and respects location, production, costs and token conservation.');

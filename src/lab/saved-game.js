@@ -1,4 +1,5 @@
-import { initGame } from '../game/engine.js';
+import { initGame, scorePlayer } from '../game/engine.js';
+import { withoutTrackPoints } from './config.js';
 
 export const GAME_SAVE_KEY='officina1907-partita-v1';
 export const SAVED_UNDO_LIMIT=10;
@@ -18,19 +19,40 @@ export function validateGameSave(save) {
     ||typeof save.paused!=='boolean'||!Number.isFinite(Date.parse(save.savedAt)))throw new Error('Il salvataggio della partita non è leggibile.');
   return save;
 }
+function contractsOnlySave(save) {
+  if (save.config.contractsOnly && [save.state, ...save.history].every(state => state.contractsOnly)) return save;
+  const next = structuredClone(save), states = [next.state, ...next.history];
+  for (const rules of [next.config, ...states]) {
+    rules.contractsOnly = true;
+    rules.pianoEnabled = false;
+    rules.raceObjectives = { enabled: false, list: [] };
+    rules.raceIncentive = 0;
+    if (rules.tracks) for (const role of Object.keys(rules.tracks)) rules.tracks[role] = withoutTrackPoints(rules.tracks[role]);
+  }
+  for (const state of states) {
+    state.racesThisVisit = 0;
+    if (state.gameOver) {
+      state.results = state.players.map(p => scorePlayer(state, p))
+        .sort((a, b) => b.total - a.total || b.coins - a.coins || b.nContracts - a.nContracts);
+      const ending = state.log.findLast(entry => entry.text.startsWith('FINE PARTITA.'));
+      if (ending) ending.text = `FINE PARTITA. Vince ${state.results[0].name} con ${state.results[0].total} PV.`;
+    }
+  }
+  return next;
+}
 export function loadGame(storage=localStorage) {
   const raw=storage.getItem(GAME_SAVE_KEY);
-  return raw?validateGameSave(JSON.parse(raw)):null;
+  return raw?contractsOnlySave(validateGameSave(JSON.parse(raw))):null;
 }
 export function saveGame(config,session,storage=localStorage) {
-  const save=validateGameSave({version:1,savedAt:new Date().toISOString(),config,state:session.state,history:session.history.slice(-SAVED_UNDO_LIMIT),paused:session.paused});
+  const save=contractsOnlySave(validateGameSave({version:1,savedAt:new Date().toISOString(),config,state:session.state,history:session.history.slice(-SAVED_UNDO_LIMIT),paused:session.paused}));
   // A single atomic write keeps the previous save intact if storage is full or unavailable.
   storage.setItem(GAME_SAVE_KEY,JSON.stringify(save));
   return save;
 }
 export function gameSession(config,resume) {
-  if(resume)validateGameSave(resume);
-  // Rebuild card registries from the saved rules, then use the saved decks and state unchanged.
-  const initial=initGame({...config,headless:false});
+  if(resume)resume=contractsOnlySave(validateGameSave(resume));
+  // Preserve the match and its prices while applying the current contracts-only scoring.
+  const initial=initGame({...(resume?.config || config),headless:false});
   return resume?{state:resume.state,history:resume.history,paused:resume.paused}:{state:initial,history:[],paused:false};
 }

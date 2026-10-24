@@ -390,7 +390,7 @@ export function initGame(config) {
 
   // Piano Industriale attivo? Default OFF (spento): la tessera pescata resta ma senza obiettivi, così l'intera
   // catena scoring/AI/endGame (che itera p.tile.objectives) si azzera da sola senza guardie sparse.
-  const pianoEnabled = config.pianoEnabled ?? false;
+  const pianoEnabled = !config.contractsOnly && (config.pianoEnabled ?? false);
   // Tessere Piano Industriale: editabili via config.tiles (testo/PV/condizione obiettivi), altrimenti default OBJECTIVE_TILES.
   const tileDeck = (config.tiles && config.tiles.length) ? config.tiles : OBJECTIVE_TILES;
   // config.forcedTile/forcedSeat: per il "Ricalcola" dell'editor — forza una tessera su un posto fisso invece di pescarla a caso,
@@ -609,7 +609,8 @@ export function initGame(config) {
     borsaExit: mergeBorsaExit(config.borsaExit), // uscita con bonus fisso invece delle Commesse
     borsaRefresh: mergeBorsaRefresh(config.borsaRefresh), // refresh gratuito (Welfare o banchi) invece delle Commesse
     pianoEnabled, // Piano Industriale (obiettivi privati per-tessera) attivo? default OFF
-    raceObjectives: mergeRace(config.raceObjectives), // obiettivi di gara condivisi (podio) completabili in Città
+    contractsOnly: config.contractsOnly === true,
+    raceObjectives: mergeRace(config.contractsOnly ? { enabled: false, list: [] } : config.raceObjectives), // obiettivi di gara condivisi (podio) completabili in Città
     // Valore marginale del PROGRESSO verso una race nell'IA-evaluate (knob di SISTEMA: cambia le decisioni).
     // Default 0 = l'IA rivendica se si qualifica per caso ma NON devia per costruirla. Alzarlo (sweep 0/X/2X/4X)
     // per misurare se la meccanica crea decisioni. Distinto dai PV del claim (sempre valutati, non è l'incentivo).
@@ -1273,6 +1274,7 @@ export function describeCond(cond) {
 }
 
 function checkObjectives(state, player) {
+  if (state.contractsOnly) return;
   player.tile.objectives.forEach((obj, i) => {
     if (!player.achieved[i] && condMet(state, player, obj.cond)) {
       player.achieved[i] = true;
@@ -1350,13 +1352,19 @@ function factoryMajorityPV(state, p) {
 // ---------- Fine partita ----------
 // PV correnti di un giocatore (puro, non muta lo stato) — usato sia a fine partita sia per la timeline PV per round.
 export function scorePlayer(state, p) {
-  const pvWelfare = state.industrial?.enabled ? (p.pvWelfare || 0) + (state.industrial.welfareScoring === 'final' ? welfarePoints(state, p) : 0) : 0;
   const pvContracts = p.contractsWon.reduce((a, c) => a + c.pv, 0);
+  const blockedCount = DEPT_ROLES.reduce((a, r) => a + p.depts[r].blocked.length, 0);
+  if (state.contractsOnly) return {
+    playerId: p.id, name: p.name, pvContracts, total: pvContracts,
+    pvWelfare: 0, pvObjectives: 0, pvTrack: 0, pvCoins: 0, pvResources: 0,
+    pvStrikes: 0, pvBorsa: 0, pvFactoryMajority: 0, pvDeptComplete: 0, pvRace: 0,
+    blockedCount, coins: p.coins, nContracts: p.contractsWon.length,
+  };
+  const pvWelfare = state.industrial?.enabled ? (p.pvWelfare || 0) + (state.industrial.welfareScoring === 'final' ? welfarePoints(state, p) : 0) : 0;
   const pvObjectives = p.tile.objectives.reduce((a, o, i) => a + (p.achieved[i] ? o.pv : 0), 0);
   const pvTrack = trackPV(state, p);
   const pvCoins = Math.floor(p.coins / state.rules.coinsPerPV);
   const pvResources = Object.values(p.resources).reduce((a, n) => a + Math.floor(n / state.rules.resPerPV), 0);
-  const blockedCount = DEPT_ROLES.reduce((a, r) => a + p.depts[r].blocked.length, 0);
   const pvStrikes = state.strikePenalty ? -state.strikePenaltyPV * blockedCount : 0; // ogni carta bloccata a fine partita costa PV
   const pvBorsa = p.pvBorsa || 0; // dividendi della Borsa a indici (0 se la meccanica è spenta)
   const pvFactoryMajority = factoryMajorityPV(state, p);
@@ -1380,7 +1388,7 @@ function endGame(state) {
   // obiettivi valutati solo qui, non durante il turno: "nessuna carta bloccata" e "Tensioni a 0" descrivono lo
   // stato a fine partita, non un traguardo raggiunto una volta e per sempre (la Tensione, a differenza di
   // tracciati/carte/marchi, può risalire — non è monotona).
-  for (const p of state.players) {
+  for (const p of state.contractsOnly ? [] : state.players) {
     p.tile.objectives.forEach((obj, i) => {
       if (p.achieved[i]) return;
       if (obj.cond.type === 'no_blocked_end') {

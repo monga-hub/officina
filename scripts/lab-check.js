@@ -1,9 +1,9 @@
 import { effectChoiceLabel } from '../src/components/effect-choice.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { defaults, validate, parseConfig, gameConfig, playableConfig, RULES_REVISION } from '../src/lab/config.js';
+import { defaults, validate, parseConfig, gameConfig, playableConfig, RULES_REVISION, withoutTrackPoints } from '../src/lab/config.js';
 import { initGame, applyCommand, scorePlayer, legalCommands } from '../src/game/engine.js';
-import { chooseCommand } from '../src/game/ai.js';
+import { chooseCommand, evaluate } from '../src/game/ai.js';
 import { runGame, summarize } from '../src/lab/run.js';
 import { cardArtKey, machineText } from '../src/lab/cards.js';
 import { rowMachineCard } from '../src/game/row-economy.js';
@@ -55,9 +55,14 @@ assert.equal(machineText({sector:'Tessile',effect:{verbo:'prendi',f1:{q:2,tipo:'
 const historicalConfig={...reference,seed:1907,headless:true,players:cfg.players};
 const expected=initGame({...historicalConfig, workers:reference.workers.filter(w=>!w.power),
   nodeBanks:structuredClone(STAR_NODE_BANKS), singleContractVisit:true,
+  contractsOnly:true, pianoEnabled:false, raceObjectives:{enabled:false,list:[]}, raceIncentive:0,
   rowEconomy:cfg.rowEconomy,
   slots:{...reference.slots,direzione:{sopra:0,sotto:0}}});
 assert.deepEqual(initGame(cfg),expected,'Lab rules: no employees, adjacent markets and one contract per visit');
+assert.equal(scorePlayer(expected,expected.players[0]).total,0,'Starting money awards no points');
+assert.equal(expected.raceObjectives.enabled,false);
+assert.equal(expected.raceObjectives.list.length,0);
+assert.ok(!('race' in c)&&!('conversions' in c));
 const adjacent={Tessile:['A','E'],Metallurgica:['A','B'],Chimica:['B','C'],Servizi:['C','D'],Sindacato:['D','E']};
 assert.deepEqual(STAR_NODE_BANKS,adjacent);
 assert.equal(STAR_MARKETS.length,5);
@@ -86,6 +91,8 @@ function cityFixture(){
 }
 const city=cityFixture(),cityActions=legalCommands(city);
 assert.ok(!cityActions.some(cmd=>cmd.type==='hire'),'City never allows card purchases');
+assert.ok(!cityActions.some(cmd=>cmd.type==='completeRace'),'No race actions in the Lab');
+assert.throws(()=>applyCommand(city,{type:'completeRace',raceId:'race_same'}));
 const ended=applyCommand(city,cityActions.find(cmd=>cmd.type==='endTurn'));
 assert.equal(ended.current,1);assert.equal(ended.phase,'move');
 assert.equal(ended.players[0].contractsWon.length,0);
@@ -108,6 +115,36 @@ assert.ok(finalResult.gameOver,'A delivery on the final turn completes the game'
 assert.equal(finalResult.players[0].contractsWon.length,1);
 console.log('OK: City purchases forbidden; single delivery pays once, hands off play and ends the final round.');
 assert.deepEqual(parseConfig(JSON.stringify(c)),c,'Configuration round trip');
+const oldScoring={...structuredClone(c),race:structuredClone(reference.raceObjectives),conversions:{coinsPerPV:1,resPerPV:1}};
+delete oldScoring.contractsOnly;
+oldScoring.track[2]={pv:7,coins:2};oldScoring.track[3]={pv:9};
+const plainScoring=parseConfig(JSON.stringify(oldScoring));
+assert.equal(plainScoring.contractsOnly,true);
+assert.deepEqual(plainScoring.track[2],{coins:2});assert.equal(plainScoring.track[3],null);
+assert.ok(!('race' in plainScoring)&&!('conversions' in plainScoring));
+assert.equal(gameConfig(plainScoring).raceObjectives.enabled,false);
+assert.deepEqual(parseConfig(JSON.stringify(plainScoring)),plainScoring);
+assert.equal(oldScoring.track[2].pv,7);
+// Extra scoring sources remain inert, even in a snapshot from an old match.
+const scoreFixture=initGame(cfg),scorePlayer0=scoreFixture.players[0];
+scorePlayer0.coins=100;scorePlayer0.resources={Tessuti:12,Acciaio:12,Coloranti:12};
+scorePlayer0.contractsWon=[{pv:5},{pv:9}];scorePlayer0.pvWelfare=31;scorePlayer0.pvBorsa=19;
+scorePlayer0.tile.objectives=[{pv:17,cond:{type:'workers_same_nation',n:1}}];scorePlayer0.achieved=[true];
+scoreFixture.raceObjectives={enabled:true,podium:[7,5,3],list:[{id:'race_same',type:'sopra_same_nation',n:1,claims:[0]}]};
+scoreFixture.tracks.terziario[1]={pv:13};
+scoreFixture.strikePenalty=true;scorePlayer0.depts.terziario.blocked=['old-worker'];
+const nakedScore=scorePlayer(scoreFixture,scorePlayer0);
+assert.equal(nakedScore.total,14);assert.equal(nakedScore.coins,100);assert.equal(nakedScore.nContracts,2);assert.equal(nakedScore.blockedCount,1);
+for(const [key,value] of Object.entries(nakedScore))if(key.startsWith('pv')&&key!=='pvContracts')assert.equal(value,0,key);
+const cleaned=structuredClone(scoreFixture);
+cleaned.players[0].pvWelfare=0;cleaned.players[0].pvBorsa=0;cleaned.players[0].tile.objectives=[];cleaned.players[0].achieved=[];
+cleaned.raceObjectives.enabled=false;cleaned.tracks.terziario[1]=null;
+assert.equal(evaluate(scoreFixture,0),evaluate(cleaned,0),'AI ignores removed point sources');
+const richer=structuredClone(cleaned);richer.players[0].coins+=5;
+assert.ok(evaluate(richer,0)>evaluate(cleaned,0),'Money retains its value for future actions');
+scoreFixture.gameOver=true;assert.equal(evaluate(scoreFixture,0),140,'Terminal AI uses only contract points');
+const oldScored=structuredClone(scoreFixture);oldScored.contractsOnly=false;
+assert.ok(scorePlayer(oldScored,oldScored.players[0]).total>14,'Historical scoring remains available');
 const oldSave={...structuredClone(c),directionSlots:7,welfareCost:5,workers:structuredClone(reference.workers)};
 delete oldSave.rulesRevision;oldSave.repressionStep=1;
 oldSave.workers.find(w=>!w.power).v=7;
@@ -158,10 +195,10 @@ assert.deepEqual({...fastManual,aiRollout:manual.aiRollout},manual,'Rapid play o
 assert.equal(fastManual.aiRollout.depth,2);assert.equal(c.simulation.depth,6,'Playing must not mutate batch settings');
 assert.ok(playableConfig(c,2).players.every(p=>!p.isAI));
 assert.throws(()=>playableConfig(c,3));assert.throws(()=>playableConfig(c,1,'unknown'));
-for(const mutate of [x=>x.players=1,x=>x.track.pop(),x=>x.simulation.ai='forcedWelfare',x=>x.workers[1].id=x.workers[0].id,x=>x.contracts.small[0].reqs=[[]],x=>x.race.incentive=20,x=>x.contractCount[2].small=0,x=>x.rulesRevision=999,x=>x.repressionStep=1]){
+for(const mutate of [x=>x.players=1,x=>x.track.pop(),x=>x.simulation.ai='forcedWelfare',x=>x.workers[1].id=x.workers[0].id,x=>x.contracts.small[0].reqs=[[]],x=>x.track[1]={pv:7},x=>x.contractsOnly=false,x=>x.contractCount[2].small=0,x=>x.rulesRevision=999,x=>x.repressionStep=1]){
   const bad=structuredClone(c);mutate(bad);assert.throws(()=>validate(bad));
 }
-const edit=structuredClone(c);edit.welfareCost=5;edit.repressionBase=3;edit.startingCoins[0]=23;edit.machineSlots[0]=1;edit.contractCoins.small=7;edit.cityIncome=4;edit.race.podium[0]=11;
+const edit=structuredClone(c);edit.welfareCost=5;edit.repressionBase=3;edit.startingCoins[0]=23;edit.machineSlots[0]=1;edit.contractCoins.small=7;edit.cityIncome=4;
 edit.contracts.small.forEach(x=>x.pv[0]=23);
 edit.track[2]={coins:3};edit.workers[0].effect={verbo:'prendi',f1:{q:9,tipo:'moneta'}};
 const changed=initGame(gameConfig(edit));
@@ -172,11 +209,13 @@ const rapid=defaults();rapid.simulation.ai='greedy';const rapidCfg=gameConfig(ra
 const game=await runGame(rapidCfg);
 assert.equal(game.turns,28);assert.equal(game.people.length,2);
 assert.ok(game.commands.every(m=>m.role!=='direzione'&&m.bank!=='Impiegati'),'AI games cannot buy employees');
+assert.ok(game.commands.every(m=>m.type!=='completeRace'));
+assert.ok(game.people.every(p=>p.total===p.pvContracts),'Complete games score only contracts');
 let replay=initGame(rapidCfg);for(const cmd of game.commands)replay=applyCommand(replay,cmd);
 assert.ok(replay.gameOver);assert.deepEqual(replay.players.map(p=>scorePlayer(replay,p).total),game.people.map(p=>p.total));
 const summary=summarize([game]);assert.equal(summary.players,2);assert.equal(summary.welfareHistogram.reduce((n,r)=>n+r.count*r.players,0),game.people.reduce((n,p)=>n+p.stats.welfareBuys,0));
 for(const n of [3,4]){const many=defaults();many.players=n;many.simulation.ai='greedy';const g=await runGame(gameConfig(many));assert.equal(g.people.length,n);assert.equal(g.turns,28);}
-for(const model of ['righe4','righe3']){const many=defaults();const {TRACK_MODELS}=await import('../src/game/data.js');many.trackModel=model;many.track=structuredClone(TRACK_MODELS[model].track);many.simulation.ai='greedy';assert.equal((await runGame(gameConfig(many))).turns,28);}
+for(const model of ['righe4','righe3']){const many=defaults();const {TRACK_MODELS}=await import('../src/game/data.js');many.trackModel=model;many.track=withoutTrackPoints(TRACK_MODELS[model].track);many.simulation.ai='greedy';assert.equal((await runGame(gameConfig(many))).turns,28);}
 console.log('OK: reference rules without employees; saved-config migration; no employee purchases by humans or AI; validation; full games with 2/3/4 players and each row format; replay; counters.');
 const full=new URL('../reports/laboratorio-verifica-2026-10-16-d6.json',import.meta.url);
 if(fs.existsSync(full)){

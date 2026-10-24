@@ -208,3 +208,12 @@
 .table-overview .orders-table>.orders-grid{grid-auto-rows:1fr}
 .table-overview .orders-table>.orders-grid>.order-card{display:flex;flex-direction:column;justify-content:space-between}
 }
+
+/* Keep the card and its choices visible together, including landscape phones. */
+.card-preview[open]{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);align-items:center;gap:18px;width:min(700px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:34px 18px 16px}
+.card-preview>.paper-card{width:100%;max-width:230px;height:min(340px,calc(100dvh - 80px));margin:0;justify-self:center}
+.card-preview>.paper-card .card-portrait{flex:1;min-height:0;height:0;aspect-ratio:auto}
+.card-preview .paper-card-top,.card-preview .card-half{flex-shrink:0}
+.card-preview>.card-install-options{margin:0;min-width:0;max-height:calc(100dvh - 80px);overflow-y:auto;align-content:start;padding:3px}
+.card-preview>.lab-muted{margin:0;min-width:0}
+@media(max-width:480px){.card-preview[open]{gap:10px;padding-left:10px;padding-right:10px}.card-preview .card-install-options button{padding:9px 7px}}

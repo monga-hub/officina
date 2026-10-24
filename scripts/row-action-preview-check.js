@@ -3,7 +3,9 @@ import { defaults, playableConfig } from '../src/lab/config.js';
 import { initGame, applyCommand, WORKER_BY_ID } from '../src/game/engine.js';
 import { rowActionPreview } from '../src/components/row-action-preview.js';
 
-const initial=initGame(playableConfig(defaults(),2));
+const legacyConfig=playableConfig(defaults(),2);
+legacyConfig.rowEconomy={...legacyConfig.rowEconomy,welfareMode:'permanent',welfareCost:3,welfareHireDiscount:true,repressionStep:1};
+const initial=initGame(legacyConfig);
 initial.phase='action';
 initial.players[0].coins=30;
 initial.players[0].resources={Tessuti:4,Acciaio:3,Coloranti:2};
@@ -93,4 +95,29 @@ for(const type of ['repress','investWelfare']) {
   assert.equal(department.after.tension,type==='repress'?2:4);
   assert.equal(department.after.welfare,type==='repress'?2:3);
 }
-console.log('OK: welfare/repression costs, actual row recovery, future capacity, scope, discount settings, final actor and immutable previews.');
+const tokens=initGame(playableConfig(defaults(),2));
+tokens.phase='action';tokens.players[0].node='Sindacato';tokens.players[0].coins=30;
+tokens.players[0].repressions=7;
+roles.forEach((role,i)=>Object.assign(tokens.players[0].depts[role],{prod:13,tension:[3,1,4][i]}));
+const repression=preview(tokens,{type:'repress',role:'terziario'});
+assert.equal(repression.cost,2,'Redistribution has a fixed price');
+assert.deepEqual(repression.departments.map(d=>[d.before.tension,d.after.tension]),[[3,0],[1,2],[4,4]]);
+assert.deepEqual(repression.departments.map(d=>d.after.available),[4,2,0]);
+tokens.players[0].node='Servizi';tokens.players[0].welfareTokens=2;
+const bundle=preview(tokens,{type:'investWelfare',scope:'factory'});
+assert.equal(bundle.cost,9);
+assert.deepEqual(bundle.welfareTokens,{before:2,after:5});
+bundle.departments.forEach(({before,after})=>{
+  assert.equal(after.tension,before.tension);
+  assert.equal(after.hireDiscount,0);
+  assert.equal(after.sustainableLimit,0);
+});
+const recovering=applyCommand(tokens,{type:'investWelfare',scope:'factory'});
+assert.equal(recovering.pending.type,'welfareToken');
+const recovery=preview(recovering,{type:'spendWelfareToken',role:'primario'});
+assert.equal(recovery.cost,0);
+assert.deepEqual(recovery.welfareTokens,{before:5,after:4});
+assert.equal(recovery.departments[0].before.tension,4);
+assert.equal(recovery.departments[0].after.tension,3);
+assert.equal(recovery.departments[0].after.available,1);
+console.log('OK: legacy previews; fixed-price redistribution across all departments, token purchase/recovery, row availability and immutable state.');

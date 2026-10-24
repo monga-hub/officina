@@ -2,15 +2,16 @@ import { rowTrackModel, inferTrackModel } from './data.js';
 
 // Variante ottobre: valori sperimentali, separati dai salvataggi precedenti.
 export const ROW_ECONOMY_DEFAULT = {
-  enabled: false, welfareCost: 3, welfareScope: 'department', welfareHireDiscount: false, repressionBase: 2, repressionStep: 1,
+  enabled: false, welfareMode: 'permanent', welfareCost: 3, welfareScope: 'department', welfareHireDiscount: false, repressionBase: 2, repressionStep: 1,
   contractCoins: { small: 2, medium: 3, large: 4 }, machineCash: true,
 };
 export function normalizeRowEconomy(raw = {}) {
   const x = { ...ROW_ECONOMY_DEFAULT, ...(raw || {}) };
   x.enabled = x.enabled === true;
   x.machineCash = x.machineCash !== false;
+  x.welfareMode = x.welfareMode === 'tokens' ? 'tokens' : 'permanent';
   x.welfareScope = x.welfareScope === 'factory' ? 'factory' : 'department';
-  x.welfareHireDiscount = x.welfareHireDiscount === true;
+  x.welfareHireDiscount = x.welfareMode !== 'tokens' && x.welfareHireDiscount === true;
   for (const k of ['welfareCost', 'repressionBase', 'repressionStep'])
     x[k] = Number.isFinite(Number(x[k])) ? Math.max(0, Math.min(30, Math.round(Number(x[k])))) : ROW_ECONOMY_DEFAULT[k];
   x.contractCoins = Object.fromEntries(['small', 'medium', 'large'].map(k => {
@@ -19,7 +20,14 @@ export function normalizeRowEconomy(raw = {}) {
   }));
   return x;
 }
-export const repressionCost = (state, p) => state.rowEconomy.repressionBase + state.rowEconomy.repressionStep * (p.repressions || 0);
+export const tokenWelfare = state => state.rowEconomy?.enabled === true && state.rowEconomy.welfareMode === 'tokens';
+export function availableWelfareTokens(state, p) {
+  if (!tokenWelfare(state)) return 0;
+  const flags = state.players[state.current]?.id === p.id ? state.turnFlags : null;
+  if (flags?.welfareTokenUsed) return 0;
+  return Math.max(0, (p.welfareTokens || 0) - (flags?.welfareTokensPurchased || 0));
+}
+export const repressionCost = (state, p) => state.rowEconomy.repressionBase + (tokenWelfare(state) ? 0 : state.rowEconomy.repressionStep * (p.repressions || 0));
 export const rowNodeLabel = (state, node) => state.rowEconomy?.enabled
   ? ({ Servizi: 'Welfare', Sindacato: 'Repressione', Borsa: 'Città' }[node] || node)
   : ({ Servizi: 'Fabbriche', Borsa: 'Città' }[node] || node);

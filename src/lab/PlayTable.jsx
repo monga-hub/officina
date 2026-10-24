@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { currentPlayer, legalCommands, WORKER_BY_ID, scorePlayer, describeRace } from '../game/engine.js';
 import { deciderId } from '../game/ai.js';
 import { rowPressureState } from '../game/row-pressure.js';
-import { rowNodeLabel } from '../game/row-economy.js';
+import { rowNodeLabel, tokenWelfare } from '../game/row-economy.js';
 import { RESOURCE_OF } from '../game/data.js';
 import { ROLES } from './config.js';
 import RowProductionTrack from '../components/RowProductionTrack.jsx';
@@ -31,7 +31,7 @@ function Department({state,player,role,onInspect}) {
     <p className="play-row-count"><b>{p.available}/{p.developed}</b> righe utilizzabili{p.blocked>0&&<em> · {p.blocked} bloccate</em>}</p>
     <RowProductionTrack model={state.trackModel} prod={d.prod} tension={d.tension} wholeRows renderCell={renderCell} cellTitle={cellLabel}/>
 
-    <details className="department-cards"><summary>{d.sopra.length} operai · {d.sotto.length}/{state.slots[role].sotto} macchinari</summary>    <p className="lab-muted">{!p.staffed?'Serve un operaio per produrre.':p.welfare?`Sostenibile: fino a ${Math.min(p.available,p.welfare)} righe, poi tensione −1.`:'Intensa: righe accessibili, poi tensione +1.'}</p><h4>Operai · {d.sopra.length}</h4><div className="installed-cards">{d.sopra.map(id=><WorkerCard key={id} worker={WORKER_BY_ID[id]} side="sopra" onInspect={()=>onInspect(id)}/>)}</div>
+    <details className="department-cards"><summary>{d.sopra.length} operai · {d.sotto.length}/{state.slots[role].sotto} macchinari</summary>    <p className="lab-muted">{!p.staffed?'Serve un operaio per produrre.':tokenWelfare(state)?'Intensa: tutte le righe accessibili, poi tensione +1. Protetta: stessa produzione, spendi 1 gettone e la tensione resta invariata.':p.welfare?`Sostenibile: fino a ${Math.min(p.available,p.welfare)} righe, poi tensione −1.`:'Intensa: righe accessibili, poi tensione +1.'}</p><h4>Operai · {d.sopra.length}</h4><div className="installed-cards">{d.sopra.map(id=><WorkerCard key={id} worker={WORKER_BY_ID[id]} side="sopra" onInspect={()=>onInspect(id)}/>)}</div>
     <h4>Macchinari · {d.sotto.length}/{state.slots[role].sotto}</h4><div className="installed-cards">{d.sotto.map(id=><WorkerCard key={id} worker={WORKER_BY_ID[id]} side="sotto" onInspect={()=>onInspect(id)}/>)}</div>
     {!d.sotto.length&&<p className="lab-muted">Nessun macchinario installato.</p>}</details>
   </section>;
@@ -42,15 +42,17 @@ export default function PlayTable({state,dispatch,undo,paused,setPaused,onClose,
   const [view,setView]=useState(state.players.find(x=>!x.isAI)?.id??0), [inspected,setInspected]=useState(null);
   useEffect(()=>{if(!decider.isAI)setView(decider.id);},[decider.id]);
   useEffect(()=>{
-    if(state.phase==='borsa'&&!p.isAI&&!state.pending){setActionType(null);setActionsOpen(true);}
+    if(state.pending)setActionsOpen(false);
+    else if(state.phase==='borsa'&&!p.isAI){setActionType(null);setActionsOpen(true);}
     else if(state.phase==='move')setActionsOpen(false);
-  },[state.phase,state.current]);
+  },[state.phase,state.current,state.pending]);
   useEffect(()=>{
     if(actionsOpen&&!actionsRef.current.open)actionsRef.current.showModal();
     else if(!actionsOpen&&actionsRef.current.open)actionsRef.current.close();
   },[actionsOpen]);
   const player=state.players[view], moves=!decider.isAI&&!state.pending?legalCommands(state).filter(c=>c.type==='move'):[];
-  const welfare=player.depts.terziario.sustainableWelfare||0;
+  const tokens=tokenWelfare(state),welfare=tokens?(player.welfareTokens||0):(player.depts.terziario.sustainableWelfare||0);
+  const welfareLabel=`${welfare} ${tokens?'gettoni welfare':'welfare'}`;
   const actionTitle={activate:'Produzione',repress:'Repressione',investWelfare:'Welfare'}[actionType];
   const nodeCommands=!p.isAI&&!state.pending?legalCommands(state).filter(c=>c.type===actionType):[];
   const runNodeAction=cmd=>{setActionsOpen(false);dispatch(cmd);};
@@ -65,7 +67,7 @@ export default function PlayTable({state,dispatch,undo,paused,setPaused,onClose,
         <div className="play-player-tabs" aria-label="Plance dei giocatori">{state.players.map(x=><button key={x.id} aria-pressed={view===x.id} onClick={()=>setView(x.id)}>{x.name}{x.isAI?' · IA':''} <small><Amount kind="pv" value={scorePlayer(state,x).total}/></small></button>)}</div>
         <section className="lab-card play-factory">
           <div className="play-factory-heading"><div><p className="lab-eyebrow">{player.isAI?'FABBRICA AVVERSARIA':'LA TUA FABBRICA'}</p><h2>{player.name}</h2></div><span>📍 {rowNodeLabel(state,player.node)}</span></div>
-          <div className="play-wallet"><Amount kind="coin" value={player.coins}/>{Object.entries(player.resources).map(([r,n])=><Amount key={r} kind={r} value={n}/>)}<span title={`${welfare} welfare`} aria-label={`${welfare} welfare`}>🌿 <b>{welfare}</b></span></div>
+          <div className="play-wallet"><Amount kind="coin" value={player.coins}/>{Object.entries(player.resources).map(([r,n])=><Amount key={r} kind={r} value={n}/>)}<span title={welfareLabel} aria-label={welfareLabel}>🌿 <b>{welfare}</b>{tokens&&' gettoni'}</span></div>
           <div className="play-departments">{ROLES.map(role=><Department key={role} state={state} player={player} role={role} onInspect={setInspected}/>)}</div>
           <div className="play-direction"><p className="lab-muted">Commesse completate: {player.contractsWon.length} · Repressioni: {player.industrialStats.repressions}</p></div>
         </section>
@@ -82,7 +84,7 @@ export default function PlayTable({state,dispatch,undo,paused,setPaused,onClose,
           {moves.length>0?<><p className="lab-eyebrow">1 / POSIZIONAMENTO</p><h2>Scegli un nodo sulla stella</h2><p>Sposta il procuratore su uno dei nodi illuminati. Poi scegli l’azione o la carta da acquistare.</p><button className="star-return" onClick={()=>setActionsOpen(false)}>Torna alla stella</button><p className="lab-muted">Ogni nodo permette di acquistare una delle due carte adiacenti.</p></>:<ActionPanel state={state} dispatch={dispatch} renderHireCard={props=><HireCard {...props}/>}/>}
           {paused&&p.isAI&&<p className="lab-callout">Premi «Riprendi IA» per far giocare l’avversario.</p>}
         </section>
-        <details className="play-help"><summary>Promemoria delle regole</summary><p>Spostati e svolgi un’azione nel nodo. Puoi acquistare una delle due carte adiacenti. In Città puoi consegnare una sola commessa: incassi il premio e il turno termina automaticamente. Rivendica eventuali obiettivi prima di consegnare. Sopra: il valore stampato sviluppa il reparto. Sotto: il macchinario si attiva quando produci.</p><p>Ogni welfare sconta di 1 M gli operai (minimo 1 M) e permette una riga sostenibile in più nei tre reparti. La produzione sostenibile riduce sempre di 1 la tensione; comprare welfare non la riduce subito.</p><p>La repressione recupera 2 tensione, con un prezzo crescente. Entrambe le produzioni attivano i macchinari una volta.</p></details>
+        <details className="play-help"><summary>Promemoria delle regole</summary><p>Spostati e svolgi un’azione nel nodo. Puoi acquistare una delle due carte adiacenti. In Città puoi consegnare una sola commessa: incassi il premio e il turno termina automaticamente. Rivendica eventuali obiettivi prima di consegnare. Sopra: il valore stampato sviluppa il reparto. Sotto: il macchinario si attiva quando produci.</p>{tokens?<><p>Il welfare compra 3 gettoni per {state.rowEconomy.welfareCost} marchi, utilizzabili dal turno successivo, massimo uno per turno. Produzione protetta: tutte le righe accessibili e i macchinari, senza aumentare la tensione. Oppure, alla fine della tua azione, spendi un gettone per abbassare di 1 la tensione di un reparto che non ha prodotto. Nessuno sconto sulle assunzioni.</p><p>La repressione costa sempre {state.rowEconomy.repressionBase} marchi: azzera un reparto e aumenta di 1 la tensione degli altri due, fino al limite del tracciato.</p></>:<><p>Ogni welfare sconta di 1 M gli operai (minimo 1 M) e permette una riga sostenibile in più nei tre reparti. La produzione sostenibile riduce sempre di 1 la tensione; comprare welfare non la riduce subito.</p><p>La repressione recupera 2 tensione, con un prezzo crescente. Entrambe le produzioni attivano i macchinari una volta.</p></>}</details>
       </aside>}
     </dialog></TableOverlay>
     {inspected&&<CardPreview worker={WORKER_BY_ID[inspected]} state={state} dispatch={dispatch} onClose={()=>setInspected(null)}/>}

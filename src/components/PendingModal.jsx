@@ -2,6 +2,7 @@ import React from 'react';
 import { effectChoiceAmounts, effectChoiceLabel } from './effect-choice.js';
 import { SECTORS, RESOURCE_OF, SECTOR_COLORS, NATION_FLAGS } from '../game/data.js';
 import { legalCommands, WORKER_BY_ID, describeTileEffect } from '../game/engine.js';
+import { rowActionPreview } from './row-action-preview.js';
 
 export default function PendingModal({ state, dispatch, renderResource=()=>null }) {
   const pend = state.pending;
@@ -10,7 +11,7 @@ export default function PendingModal({ state, dispatch, renderResource=()=>null 
 
   return (
     <div className="modal-back">
-      <div className="modal" role="dialog" aria-modal="true" aria-label="Scelta effetto">
+      <div className="modal" role="dialog" aria-modal="true" aria-label={pend.type==='welfareToken'?'Recupero welfare':'Scelta effetto'}>
         {pend.type === 'sciopero' ? (
           <>
             <h3>✊ SCIOPERO — {owner.name}</h3>
@@ -27,6 +28,8 @@ export default function PendingModal({ state, dispatch, renderResource=()=>null 
               })}
             </div>
           </>
+        ) : pend.type === 'welfareToken' ? (
+          <WelfareTokenChoice state={state} owner={owner} legal={legal} dispatch={dispatch}/>
         ) : pend.type === 'trackTile' ? (
           <TrackTileChoice state={state} pend={pend} owner={owner} legal={legal} dispatch={dispatch} />
         ) : (
@@ -35,6 +38,24 @@ export default function PendingModal({ state, dispatch, renderResource=()=>null 
       </div>
     </div>
   );
+}
+
+function WelfareTokenChoice({state,owner,legal,dispatch}) {
+  return <>
+    <h3>🌿 Recupero welfare</h3>
+    <p>Hai <b>{owner.welfareTokens} gettoni</b>. Puoi usarne uno in un reparto che non ha prodotto, senza spendere un’altra azione.</p>
+    <div className="btn-row col">
+      {legal.filter(c=>c.type==='spendWelfareToken').map(command=>{
+        const {before,after}=rowActionPreview(state,command).departments[0];
+        return <button key={command.role} className="production-choice" onClick={()=>dispatch(command)}>
+          <strong>{before.sector} · 1 gettone</strong>
+          <span className="production-yield">Tensione <b>{before.tension} → {after.tension}</b></span>
+          <small>Righe utilizzabili: <b>{before.available} → {after.available}</b></small>
+        </button>;
+      })}
+      <button className="ghost" onClick={()=>dispatch({type:'skipWelfareToken'})}>Conserva i gettoni</button>
+    </div>
+  </>;
 }
 
 // Scelta della tile nel momento in cui si raggiunge la milestone che apre il mercato (non più alla Borsa).

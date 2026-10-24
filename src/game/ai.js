@@ -318,6 +318,18 @@ function tileScore(state, owner, role, tile) {
 
 // ----- pending: sciopero, tile tracciato e effetti opzionali -----
 function resolvePending(state) {
+  if (state.pending.type === 'welfareToken') {
+    const owner = state.pending.playerId, legal = legalCommands(state);
+    // shortcut: recovery is greedy like other pending choices; revisit before drawing balance conclusions.
+    // Use the same state evaluation as other actions; ties keep the consumable token.
+    let best = legal.find(c => c.type === 'skipWelfareToken');
+    let value = evaluate(timedApply(state, best), owner);
+    for (const command of legal.filter(c => c.type === 'spendWelfareToken')) {
+      const candidate = evaluate(timedApply(state, command), owner);
+      if (candidate > value) { best = command; value = candidate; }
+    }
+    return best;
+  }
   const choice = resolvePendingHeuristic(state);
   if (!state.industrial?.enabled) return choice;
   const legal = legalCommands(state);
@@ -588,7 +600,8 @@ function bestActionAtRollout(state, { depth, rollouts }) {
 // in quel punto, non solo il risultato finale. Strumento permanente di debug (vedi scripts/decisionlog.js).
 function labelCmd(cmd) {
   if (cmd.type === 'hire') return `Assumi ${cmd.cardId}`;
-  if (cmd.type === 'activate') return `Produci ${cmd.sector} ×${cmd.intensity ?? 1}`;
+  if (cmd.type === 'activate') return `Produci ${cmd.sector}${cmd.welfareToken ? ' · protetta' : ` ×${cmd.intensity ?? 1}`}`;
+  if (cmd.type === 'spendWelfareToken') return `Gettone welfare (${cmd.role})`;
   if (cmd.type === 'buyPolicy') return `Welfare ${cmd.policyId} (${cmd.role})`;
   if (cmd.type === 'restartDepartment') return `Riapri ${cmd.role}`;
   if (cmd.type === 'buyWelfare') return (cmd.side === 'sotto' ? 'Macchinario ' : 'Welfare ') + cmd.cardId;

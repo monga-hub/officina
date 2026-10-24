@@ -1,4 +1,4 @@
-import { rowNodeLabel } from '../game/row-economy.js';
+import { rowNodeLabel, tokenWelfare } from '../game/row-economy.js';
 import IndustrialActions from './IndustrialActions.jsx';
 import { productionChoices, productionPreview } from './production-choices.js';
 import { Amount } from './Amount.jsx';
@@ -321,10 +321,11 @@ export function ProductionActions({state,p,activations,dispatch}) {
             const I = state.industrial;
             if(state.rowEconomy?.enabled&&state.rowTrack){
               const sustainable=c.sustainableRow!==undefined;
+              const protectedProduction=!!c.welfareToken;
               const preview=productionPreview(state,c);
               const resources=Object.entries(preview.resources).filter(([resource,amount])=>amount!==0||resource===RESOURCE_OF[c.sector]);
-              return <button key={`${c.sector}-${sustainable?'sustainable':'intense'}`} className="primary production-choice" onClick={()=>dispatch(c)}>
-                <strong>{sustainable?'Sostenibile':'Intensa'}</strong>
+              return <button key={`${c.sector}-${protectedProduction?'protected':sustainable?'sustainable':'intense'}`} className="primary production-choice" onClick={()=>dispatch(c)}>
+                <strong>{protectedProduction?'Protetta · 1 gettone':sustainable?'Sostenibile':'Intensa'}</strong>
                 <span className="production-yield">
                   {resources.map(([resource,amount])=><Amount key={resource} kind={resource} value={amount}/>)}
                   <Amount kind="coin" value={preview.coins}/>
@@ -350,6 +351,19 @@ export function RowEconomyActions({state,legal,dispatch}) {
         {legal.filter(c => c.type === 'investWelfare'||c.type === 'repress').map(c => {
           const welfare=c.type==='investWelfare',preview=rowActionPreview(state,c);
           const first=preview.departments[0];
+          if(tokenWelfare(state))return <button key={`${c.type}-${c.role||c.scope}`} className="production-choice" onClick={()=>dispatch(c)}>
+            <strong>{welfare?'Welfare':`Repressione — ${first.before.sector}`}</strong>
+            <span className="production-yield">Paghi <Amount kind="coin" value={preview.cost}/>
+              {welfare?<span>🌿 <b>+{preview.welfareTokens.after-preview.welfareTokens.before} gettoni</b></span>:<span>Tensione <b>{first.before.tension} → {first.after.tension}</b></span>}
+            </span>
+            {welfare?<>
+              <small>Gettoni: <b>{preview.welfareTokens.before} → {preview.welfareTokens.after}</b> · i nuovi dal prossimo turno.</small>
+              <small>Uno per turno: proteggi una produzione oppure recuperi −1 tensione in un reparto che non produce.</small>
+            </>:<>
+              <small>Righe utilizzabili: <b>{first.before.available} → {first.after.available}</b>.</small>
+              {preview.departments.slice(1).map(({before,after})=><small key={before.sector}>{before.sector}: tensione <b>{before.tension} → {after.tension}</b> · righe <b>{before.available} → {after.available}</b></small>)}
+            </>}
+          </button>;
           const uniform=preview.departments.every(d=>d.before.welfare===first.before.welfare&&d.after.welfare===first.after.welfare);
           const benefits=uniform?[first]:preview.departments;
           return <button key={`${c.type}-${c.role||c.scope}`} className="production-choice" onClick={()=>dispatch(c)}>

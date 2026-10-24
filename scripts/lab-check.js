@@ -1,7 +1,7 @@
 import { effectChoiceLabel } from '../src/components/effect-choice.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { defaults, validate, parseConfig, gameConfig, playableConfig } from '../src/lab/config.js';
+import { defaults, validate, parseConfig, gameConfig, playableConfig, RULES_REVISION } from '../src/lab/config.js';
 import { initGame, applyCommand, scorePlayer, legalCommands } from '../src/game/engine.js';
 import { chooseCommand } from '../src/game/ai.js';
 import { runGame, summarize } from '../src/lab/run.js';
@@ -16,6 +16,10 @@ assert.equal(missingResources(contractNeeds(['Chimica'],{Coloranti:1})), '');
 assert.equal(missingResources(contractNeeds([])), '');
 const reference=JSON.parse(fs.readFileSync(new URL('../src/lab/reference.json',import.meta.url)));
 const c=defaults(),cfg=gameConfig(c);
+assert.equal(c.rulesRevision,RULES_REVISION);
+assert.equal(c.welfareCost,9);assert.equal(c.repressionBase,2);assert.equal(c.repressionStep,0);
+assert.equal(cfg.rowEconomy.welfareMode,'tokens');assert.equal(cfg.rowEconomy.welfareScope,'factory');
+assert.equal(cfg.rowEconomy.welfareHireDiscount,false);
 // The pending UI must describe the exact formula and quantities used by the engine.
 const swapCard={id:'test-swap',sector:'Chimica',effect:{verbo:'scambia',f1:{q:2,tipo:'risorsa',settore:'scelta'},f2:{q:2,tipo:'risorsa',settore:'scelta'}}};
 assert.equal(effectChoiceLabel(swapCard),'2 risorse a scelta → 2 risorse a scelta');
@@ -51,6 +55,7 @@ assert.equal(machineText({sector:'Tessile',effect:{verbo:'prendi',f1:{q:2,tipo:'
 const historicalConfig={...reference,seed:1907,headless:true,players:cfg.players};
 const expected=initGame({...historicalConfig, workers:reference.workers.filter(w=>!w.power),
   nodeBanks:structuredClone(STAR_NODE_BANKS), singleContractVisit:true,
+  rowEconomy:cfg.rowEconomy,
   slots:{...reference.slots,direzione:{sopra:0,sotto:0}}});
 assert.deepEqual(initGame(cfg),expected,'Lab rules: no employees, adjacent markets and one contract per visit');
 const adjacent={Tessile:['A','E'],Metallurgica:['A','B'],Chimica:['B','C'],Servizi:['C','D'],Sindacato:['D','E']};
@@ -104,9 +109,22 @@ assert.equal(finalResult.players[0].contractsWon.length,1);
 console.log('OK: City purchases forbidden; single delivery pays once, hands off play and ends the final round.');
 assert.deepEqual(parseConfig(JSON.stringify(c)),c,'Configuration round trip');
 const oldSave={...structuredClone(c),directionSlots:7,welfareCost:5,workers:structuredClone(reference.workers)};
+delete oldSave.rulesRevision;oldSave.repressionStep=1;
 oldSave.workers.find(w=>!w.power).v=7;
 const migrated=parseConfig(JSON.stringify(oldSave));
 assert.equal(migrated.welfareCost,5);assert.equal(migrated.workers[0].v,7);
+assert.equal(migrated.rulesRevision,RULES_REVISION);assert.equal(migrated.repressionStep,0);
+assert.deepEqual(parseConfig(JSON.stringify(migrated)),migrated,'Migrated configurations retain edits after reload');
+const oldDefaults={...structuredClone(c),welfareCost:3,repressionStep:1};delete oldDefaults.rulesRevision;
+const upgradedDefaults=parseConfig(JSON.stringify(oldDefaults));
+assert.equal(upgradedDefaults.welfareCost,9,'The old default price must not silently remain after an update');
+assert.equal(upgradedDefaults.repressionBase,2);assert.equal(upgradedDefaults.repressionStep,0);
+const revisedPrice={...structuredClone(c),welfareCost:3};
+assert.equal(parseConfig(JSON.stringify(revisedPrice)).welfareCost,3,'A price deliberately edited under the new rules survives reload');
+assert.equal(oldSave.repressionStep,1);assert.equal(oldDefaults.welfareCost,3,'Migration must not mutate the source');
+const legacyState=initGame(historicalConfig);
+assert.notEqual(legacyState.rowEconomy.welfareMode,'tokens','Original game configurations keep their historical rules');
+assert.equal(legacyState.rowEconomy.welfareCost,3);assert.equal(legacyState.rowEconomy.repressionStep,1);
 assert.ok(!('directionSlots' in migrated));assert.ok(migrated.workers.every(w=>!w.power&&w.deck!=='Impiegati'));
 assert.ok(oldSave.workers.some(w=>w.power),'Migration must not mutate the source');
 assert.throws(()=>validate(oldSave),'Unmigrated employee cards cannot enter a new game');
@@ -123,14 +141,14 @@ assert.deepEqual({...fastManual,aiRollout:manual.aiRollout},manual,'Rapid play o
 assert.equal(fastManual.aiRollout.depth,2);assert.equal(c.simulation.depth,6,'Playing must not mutate batch settings');
 assert.ok(playableConfig(c,2).players.every(p=>!p.isAI));
 assert.throws(()=>playableConfig(c,3));assert.throws(()=>playableConfig(c,1,'unknown'));
-for(const mutate of [x=>x.players=1,x=>x.track.pop(),x=>x.simulation.ai='forcedWelfare',x=>x.workers[1].id=x.workers[0].id,x=>x.contracts.small[0].reqs=[[]],x=>x.race.incentive=20,x=>x.contractCount[2].small=0]){
+for(const mutate of [x=>x.players=1,x=>x.track.pop(),x=>x.simulation.ai='forcedWelfare',x=>x.workers[1].id=x.workers[0].id,x=>x.contracts.small[0].reqs=[[]],x=>x.race.incentive=20,x=>x.contractCount[2].small=0,x=>x.rulesRevision=999,x=>x.repressionStep=1]){
   const bad=structuredClone(c);mutate(bad);assert.throws(()=>validate(bad));
 }
-const edit=structuredClone(c);edit.welfareCost=5;edit.repressionBase=3;edit.repressionStep=2;edit.startingCoins[0]=23;edit.machineSlots[0]=1;edit.contractCoins.small=7;edit.cityIncome=4;edit.race.podium[0]=11;
+const edit=structuredClone(c);edit.welfareCost=5;edit.repressionBase=3;edit.startingCoins[0]=23;edit.machineSlots[0]=1;edit.contractCoins.small=7;edit.cityIncome=4;edit.race.podium[0]=11;
 edit.contracts.small.forEach(x=>x.pv[0]=23);
 edit.track[2]={coins:3};edit.workers[0].effect={verbo:'prendi',f1:{q:9,tipo:'moneta'}};
 const changed=initGame(gameConfig(edit));
-assert.equal(changed.players[0].coins,23);assert.equal(changed.rowEconomy.welfareCost,5);assert.equal(changed.rowEconomy.repressionBase,3);assert.equal(changed.rowEconomy.repressionStep,2);
+assert.equal(changed.players[0].coins,23);assert.equal(changed.rowEconomy.welfareCost,5);assert.equal(changed.rowEconomy.repressionBase,3);assert.equal(changed.rowEconomy.repressionStep,0);
 assert.equal(changed.rowEconomy.contractCoins.small,7);assert.deepEqual(changed.tracks.terziario[2],{coins:3});
 for(const slot of changed.contracts.small.active)assert.equal(slot.card.pv[0],23,'Per-card points must not be overwritten by legacy global PV');
 const rapid=defaults();rapid.simulation.ai='greedy';const rapidCfg=gameConfig(rapid);

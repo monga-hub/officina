@@ -11,7 +11,7 @@ import {
 
 import { industrialForTrack, activeWorkers, wellbeing, policiesOf, welfareEfficiency, resourcePayments } from './industrial.js';
 
-import { normalizeRowEconomy, rowEconomyConfig, rowMachineCard, repressionCost } from './row-economy.js';
+import { normalizeRowEconomy, rowEconomyConfig, rowMachineCard, repressionCost, tokenWelfare, availableWelfareTokens } from './row-economy.js';
 
 const STRIKE_PENALTY_PV = 3; // penalità PV di default per ogni carta bloccata (Sciopero) a fine partita
 
@@ -415,7 +415,7 @@ export function initGame(config) {
     const tile = pianoEnabled ? drawnTile : { ...drawnTile, objectives: [] }; // Piano OFF → tessera senza obiettivi privati
     return {
       id: i, name: pc.name || `Giocatore ${i + 1}`, isAI: !!pc.isAI,
-      aiRecovery: pc.aiRecovery || 'free', repressions: 0,
+      aiRecovery: pc.aiRecovery || 'free', repressions: 0, welfareTokens: 0,
       aiEvaluation: pc.aiEvaluation || 'baseline', // versione euristica, non una regola; consente confronti a posti invertiti
       aiContinuation: pc.aiContinuation || config.aiContinuation || 'greedy',
       personality: pc.personality || 'neutro', // profilo AI (vedi PROFILES in ai.js)
@@ -428,7 +428,7 @@ export function initGame(config) {
       coinsGainedBy: { ...Object.fromEntries(SECTORS.map(s => [s, 0])), tracciati: 0, lavFisso: 0, lavNazioni: 0, lavIcone: 0, lavTensione: 0, lavFabbrica: 0, scambio: 0, trackTile: 0, commessa: 0 },
       coinsSpentBy: { lavoratori: 0, direzione: 0, sindacato: 0, borsa: 0, movimento: 0, azioni: 0, welfare: 0, repressione: 0 }, // dove sono finiti i marchi
       pvWelfare: 0, welfareLog: [],
-      industrialStats: { tensionProduction: 0, tensionExternal: 0, welfareBuys: 0, shutdowns: 0, restarts: 0, sustainableProductions: 0, repressions: 0, welfareSpent: 0, repressionSpent: 0 },
+      industrialStats: { tensionProduction: 0, tensionExternal: 0, welfareBuys: 0, shutdowns: 0, restarts: 0, sustainableProductions: 0, protectedProductions: 0, welfareTokensUsed: 0, welfareRecoveries: 0, repressions: 0, welfareSpent: 0, repressionSpent: 0 },
       shares: {},      // Borsa a indici: { [indice]: true } per il quadrimestre CORRENTE (azzerato a ogni chiusura)
       // Borsa a fabbriche: credito per settore (una milestone = una fabbrica di quel settore) + fabbriche possedute
       factoryCredits: { ...Object.fromEntries(SECTORS.map(s => [s, 0])) },
@@ -707,7 +707,7 @@ export function maxIntensity(state, d) {
 export function hireCost(state, p, w, role, side) {
   const d = p.depts[role];
   const surcharge = state.industrial?.enabled && state.industrial.progressive && d && d.tension >= state.industrial.hireThreshold ? state.industrial.hireSurcharge : 0;
-  const welfareDiscount = state.rowEconomy?.enabled && state.rowEconomy.welfareHireDiscount && d?.sustainableWelfare && side === 'sopra' && !w.power ? d.sustainableWelfare : 0;
+  const welfareDiscount = state.rowEconomy?.enabled && !tokenWelfare(state) && state.rowEconomy.welfareHireDiscount && d?.sustainableWelfare && side === 'sopra' && !w.power ? d.sustainableWelfare : 0;
   return Math.max(state.rowEconomy?.enabled ? 1 : 0, w.v - structHireDiscount(p, p.node) - welfareDiscount) + surcharge;
 }
 
@@ -1402,6 +1402,7 @@ function endGame(state) {
 // ---------- Turni ----------
 function startTurn(state) {
   const p = currentPlayer(state);
+  state.turnFlags = { welfareTokensPurchased: 0, welfareTokenUsed: false, producedRole: null, welfareTokenResolved: false };
   state.phase = 'move';
   state.contractsThisVisit = 0;
   state.racesThisVisit = 0;
@@ -1454,6 +1455,15 @@ function contractDecksEmpty(state) {
 
 function finishTurn(state) {
   const p = currentPlayer(state);
+  // Un gettone recupera un reparto fermo mentre si svolge l'azione del turno.
+  if (availableWelfareTokens(state, p) > 0 && !state.turnFlags?.welfareTokenResolved) {
+    const options = DEPT_ROLES.filter(role => role !== state.turnFlags?.producedRole && p.depts[role].tension > 0);
+    if (options.length) {
+      state.phase = 'resolving';
+      state.pending = { type: 'welfareToken', playerId: p.id, options };
+      return;
+    }
+  }
   trimToCap(state, p); // tetto risorse: prodotto tutto nel turno, ora scarta il surplus fino al tetto (tenendo il carburante utile)
   p.coinsHistory.push(p.coins);
   p.resHistory.push(totalResources(p));
@@ -1554,7 +1564,13 @@ export function legalCommands(state) {
 
   if (state.pending) {
     const pend = state.pending;
-    if (pend.type === 'sciopero') {
+    if (pend.type === 'welfareToken') {
+      if (pend.playerId === p.id && availableWelfareTokens(state, p) > 0) {
+        for (const role of DEPT_ROLES)
+          if (role !== state.turnFlags?.producedRole && p.depts[role].tension > 0) cmds.push({ type: 'spendWelfareToken', role });
+      }
+      cmds.push({ type: 'skipWelfareToken' });
+    } else if (pend.type === 'sciopero') {
       for (const id of pend.options) cmds.push({ type: 'strikeBlock', cardId: id });
     } else if (pend.type === 'trackTile') {
       // Scelta obbligatoria (decisione autore 28/07/2026): raggiunta la milestone, il giocatore
@@ -1617,7 +1633,9 @@ export function legalCommands(state) {
       const max = maxIntensity(state, deptOfSector(p, node));
       for (let intensity = 1; intensity <= max; intensity++) cmds.push(state.industrial.enabled ? { type: 'activate', sector: node, intensity } : { type: 'activate', sector: node });
       const d = deptOfSector(p, node);
-      if (state.rowEconomy?.enabled && d.sustainableWelfare && max) {
+      if (tokenWelfare(state) && availableWelfareTokens(state, p) > 0 && max) {
+        cmds.push({ type: 'activate', sector: node, intensity: 1, welfareToken: true });
+      } else if (state.rowEconomy?.enabled && !tokenWelfare(state) && d.sustainableWelfare && max) {
         const rows = activeTrackEnd(d.prod, d.tension, state.trackModel, true) / rowTrackModel(state.trackModel).columns;
         const count = Math.min(rows, d.sustainableWelfare);
         const select = (chosen, start) => {
@@ -1632,7 +1650,7 @@ export function legalCommands(state) {
       }
     } else if (node === 'Servizi' && state.rowEconomy?.enabled) {
       if (p.coins >= state.rowEconomy.welfareCost) {
-        if (state.rowEconomy.welfareScope === 'factory') {
+        if (tokenWelfare(state) || state.rowEconomy.welfareScope === 'factory') {
           cmds.push({ type: 'investWelfare', scope: 'factory' });
         } else for (const role of DEPT_ROLES) if (!p.depts[role].sustainableWelfare) cmds.push({ type: 'investWelfare', role });
       }
@@ -1864,23 +1882,50 @@ export function applyCommand(prev, cmd) {
   const p = currentPlayer(state);
 
   // Le nuove varianti hanno più requisiti: UI e agenti non possono aggirarli con un comando obsoleto.
-  if (state.industrial.enabled && !legalCommands(prev).some(c => Object.keys(c).every(k => JSON.stringify(c[k]) === JSON.stringify(cmd[k])) && (!state.rowEconomy?.enabled || cmd.type !== 'activate' || JSON.stringify(c.sustainableRow) === JSON.stringify(cmd.sustainableRow)))) throw new Error('Azione non disponibile');
+  if ((state.industrial.enabled || tokenWelfare(state)) && !legalCommands(prev).some(c => Object.keys(c).every(k => JSON.stringify(c[k]) === JSON.stringify(cmd[k])) && (!state.rowEconomy?.enabled || cmd.type !== 'activate' || (JSON.stringify(c.sustainableRow) === JSON.stringify(cmd.sustainableRow) && JSON.stringify(c.welfareToken) === JSON.stringify(cmd.welfareToken))))) throw new Error('Azione non disponibile');
   switch (cmd.type) {
+    case 'spendWelfareToken':
+    case 'skipWelfareToken': {
+      state.turnFlags ||= {};
+      state.turnFlags.welfareTokenResolved = true;
+      if (cmd.type === 'spendWelfareToken') {
+        const d = p.depts[cmd.role];
+        p.welfareTokens--;
+        state.turnFlags.welfareTokenUsed = true;
+        d.tension = Math.max(0, d.tension - 1);
+        p.industrialStats.welfareTokensUsed = (p.industrialStats.welfareTokensUsed || 0) + 1;
+        p.industrialStats.welfareRecoveries = (p.industrialStats.welfareRecoveries || 0) + 1;
+        log(state, `${p.name}: usa un gettone welfare, tensione ${d.sector} a ${d.tension}.`);
+      }
+      state.pending = null;
+      finishTurn(state);
+      return state;
+    }
     case 'investWelfare': {
       const cost = state.rowEconomy.welfareCost;
       spendCoins(p, 'welfare', cost);
       const factory = state.rowEconomy.welfareScope === 'factory';
-      for (const role of factory ? DEPT_ROLES : [cmd.role]) p.depts[role].sustainableWelfare = (p.depts[role].sustainableWelfare || 0) + 1;
+      if (tokenWelfare(state)) {
+        p.welfareTokens = (p.welfareTokens || 0) + 3;
+        state.turnFlags ||= {};
+        state.turnFlags.welfareTokensPurchased = (state.turnFlags.welfareTokensPurchased || 0) + 3;
+      } else for (const role of factory ? DEPT_ROLES : [cmd.role]) p.depts[role].sustainableWelfare = (p.depts[role].sustainableWelfare || 0) + 1;
       p.industrialStats.welfareBuys++; p.industrialStats.welfareSpent += cost;
-      log(state, `${p.name}: investe ${cost} marchi in welfare, ${factory ? 'tutti e tre i reparti' : p.depts[cmd.role].sector}.`);
+      log(state, `${p.name}: investe ${cost} marchi in welfare, ${tokenWelfare(state) ? '3 gettoni utilizzabili dal prossimo turno' : factory ? 'tutti e tre i reparti' : p.depts[cmd.role].sector}.`);
       finishTurn(state); return state;
     }
     case 'repress': {
       const cost = repressionCost(state, p), d = p.depts[cmd.role];
       spendCoins(p, 'repressione', cost);
-      d.tension = Math.max(0, d.tension - 2);
+      d.tension = tokenWelfare(state) ? 0 : Math.max(0, d.tension - 2);
+      if (tokenWelfare(state)) for (const role of DEPT_ROLES) {
+        if (role === cmd.role) continue;
+        const other = p.depts[role], before = other.tension;
+        other.tension = Math.min(tensionLimit(state), before + 1);
+        p.industrialStats.tensionExternal += other.tension - before;
+      }
       p.repressions++; p.industrialStats.repressions++; p.industrialStats.repressionSpent += cost;
-      log(state, `${p.name}: repressione ${d.sector}, paga ${cost} marchi, tensione a ${d.tension}.`);
+      log(state, `${p.name}: repressione ${d.sector}, paga ${cost} marchi, tensione a ${d.tension}${tokenWelfare(state) ? '; altri reparti: ' + DEPT_ROLES.filter(role => role !== cmd.role).map(role => `${p.depts[role].sector} ${p.depts[role].tension}`).join(', ') : ''}.`);
       finishTurn(state); return state;
     }
     case 'buyPolicy': return doBuyPolicy(state, p, cmd);
@@ -1962,7 +2007,7 @@ export function applyCommand(prev, cmd) {
     case 'hire':
       return doHire(state, p, cmd);
     case 'activate':
-      return doActivate(state, p, cmd.sector, cmd.intensity ?? 1, cmd.sustainableRow ?? null);
+      return doActivate(state, p, cmd.sector, cmd.intensity ?? 1, cmd.sustainableRow ?? null, cmd.welfareToken === true);
     case 'buyWelfare':
       return doBuyWelfare(state, p, cmd);
     case 'buyStruttura':
@@ -2091,8 +2136,17 @@ function doHire(state, p, cmd) {
   return state;
 }
 
-function doActivate(state, p, sector, intensity = 1, sustainableRow = null) {
+function doActivate(state, p, sector, intensity = 1, sustainableRow = null, welfareToken = false) {
   const dept = deptOfSector(p, sector);
+  if (tokenWelfare(state)) {
+    state.turnFlags ||= {};
+    state.turnFlags.producedRole = dept.role;
+    if (welfareToken) {
+      p.welfareTokens--;
+      state.turnFlags.welfareTokenUsed = true;
+      p.industrialStats.welfareTokensUsed = (p.industrialStats.welfareTokensUsed || 0) + 1;
+    }
+  }
   p.activations += 1;
   p.activationTurns.push(state.turn);
   p.activationsBySector[sector] = (p.activationsBySector[sector] || 0) + 1;
@@ -2101,7 +2155,7 @@ function doActivate(state, p, sector, intensity = 1, sustainableRow = null) {
   log(state, `${p.name} attiva il reparto ${sector}.`);
   // 1. Tensione +1 (se il reparto non è vuoto)
   const tensionBefore = dept.tension;
-  if (!state.rowTrack) raiseTension(state, p, dept, state.industrial.enabled ? intensity : 1, 'attivazione');
+  if (!state.rowTrack && !welfareToken) raiseTension(state, p, dept, state.industrial.enabled ? intensity : 1, 'attivazione');
   // 2. Risorse dal tracciato (misuro la resa per la telemetria "potenza di produzione")
   const ct0 = p.coins, rt0 = totalResources(p);
   const compact = state.industrial.enabled && state.industrial.productionMode === 'compact';
@@ -2146,8 +2200,11 @@ function doActivate(state, p, sector, intensity = 1, sustainableRow = null) {
   if (sustainableRow !== null) {
     dept.tension = Math.max(0, dept.tension - 1);
     p.industrialStats.sustainableProductions++;
+  } else if (welfareToken) {
+    p.industrialStats.protectedProductions = (p.industrialStats.protectedProductions || 0) + 1;
+    log(state, `${p.name}: usa un gettone welfare, tensione ${sector} invariata a ${dept.tension}.`);
   } else if (state.rowTrack) raiseTension(state, p, dept, 1, 'attivazione');
-  state.activationLog.push({ turn: state.turn, seat: p.id, sector, sustainableRow, track: trackAmt, sotto: sottoAmt, mult: sottoTimes, total: trackAmt + sottoAmt, ...(state.industrial.enabled ? { intensity, tensionBefore, tensionAfter: dept.tension, welfareResources, resources: totalResources(p) - rt0 } : {}) });
+  state.activationLog.push({ turn: state.turn, seat: p.id, sector, sustainableRow, ...(welfareToken ? { welfareToken: true } : {}), track: trackAmt, sotto: sottoAmt, mult: sottoTimes, total: trackAmt + sottoAmt, ...(state.industrial.enabled ? { intensity, tensionBefore, tensionAfter: dept.tension, welfareResources, resources: totalResources(p) - rt0 } : {}) });
   // 4. Sciopero (dopo aver incassato)
   state.phase = 'resolving';
   if (state.industrial.enabled) industrialConsequences(state, p, dept, tensionBefore);

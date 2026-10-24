@@ -7,11 +7,12 @@ export const SIZE_NAMES = { small: 'Piccole', medium: 'Medie', large: 'Grandi' }
 export const MODELS = ['righe4corte', 'righe4', 'righe3'];
 export const AI_NAMES = { forecast2: 'Nuova IA · valuta gli utilizzi futuri', beam2: 'IA precedente · confronto', greedy: 'Rapida · controllo tecnico' };
 export const STORAGE_KEY = 'officina1907-laboratorio-v1';
+export const RULES_REVISION = 2;
 export function defaults() {
-  return structuredClone({ schema: 'officina-lab-1', name: 'Prova di riferimento',
+  return structuredClone({ schema: 'officina-lab-1', rulesRevision: RULES_REVISION, name: 'Prova di riferimento',
     players: 2, turns: 28, startingCoins: [15, 15, 15, 15],
     trackModel: 'righe4corte', track: reference.tracks.terziario,
-    welfareCost: 3, repressionBase: 2, repressionStep: 1,
+    welfareCost: 9, repressionBase: 2, repressionStep: 0,
     contractCoins: reference.rowEconomy.contractCoins,
     machineSlots: [2, 2, 2],
     workers: reference.workers.filter(w => !w.power && w.deck !== 'Impiegati'), contracts: reference.contracts,
@@ -25,6 +26,7 @@ const check = (ok, message) => { if (!ok) throw new Error(message); };
 const integer = (v, lo, hi, name) => check(Number.isInteger(v) && v >= lo && v <= hi, `${name}: serve un intero fra ${lo} e ${hi}.`);
 export function validate(c) {
   check(c && c.schema === 'officina-lab-1', 'Importa una configurazione del nuovo Laboratorio, non un report o una configurazione del vecchio simulatore.');
+  check(c.rulesRevision === RULES_REVISION, 'Versione delle regole non supportata: riapri la configurazione dal Laboratorio aggiornato.');
   check(typeof c.name === 'string' && c.name.length <= 100, 'Nome della prova non valido.');
   integer(c.players, 2, 4, 'Giocatori'); integer(c.turns, 1, 60, 'Turni');
   check(Array.isArray(c.startingCoins) && c.startingCoins.length === 4, 'Servono i marchi iniziali dei quattro posti.');
@@ -36,6 +38,7 @@ export function validate(c) {
     Object.values(cell).forEach(v => integer(v, 0, 20, 'Bonus casella'));
   }
   for (const key of ['welfareCost', 'repressionBase', 'repressionStep']) integer(c[key], 0, 30, key);
+  check(c.repressionStep === 0, 'La repressione ha un costo fisso, senza rincari.');
   check(Array.isArray(c.machineSlots) && c.machineSlots.length === 3, 'Spazi macchinari non validi.');
   c.machineSlots.forEach(v => integer(v, 0, 10, 'Spazi macchinari'));
   integer(c.cityIncome, 0, 20, 'Marchi all’uscita dalla città'); check(typeof c.cityRefresh === 'boolean', 'Ricambio commesse non valido.');
@@ -86,7 +89,8 @@ export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
     nodeBanks: structuredClone(STAR_NODE_BANKS),
     workers: structuredClone(c.workers), contracts: structuredClone(c.contracts), contractPV: undefined,
     contractCount: structuredClone(c.contractCount), contractMarket: c.contractMarket,
-    rowEconomy: { ...reference.rowEconomy, welfareCost: c.welfareCost, repressionBase: c.repressionBase, repressionStep: c.repressionStep, contractCoins: { ...c.contractCoins } },
+    rowEconomy: { ...reference.rowEconomy, welfareMode: 'tokens', welfareScope: 'factory', welfareHireDiscount: false,
+      welfareCost: c.welfareCost, repressionBase: c.repressionBase, repressionStep: 0, contractCoins: { ...c.contractCoins } },
     slots: { ...Object.fromEntries(ROLES.map((r,i) => [r, { sopra: 3, sotto: c.machineSlots[i] }])), direzione: { sopra: 0, sotto: 0 } },
     borsaExit: { enabled: true, coins: c.cityIncome }, borsaRefresh: { enabled: c.cityRefresh },
     conversions: { ...c.conversions }, raceObjectives: structuredClone(c.race),
@@ -97,9 +101,15 @@ export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
 }
 export function parseConfig(raw) {
   const c = JSON.parse(raw);
-  // Migrate saved Lab configurations: preserve edits, remove the retired employee deck.
-  if (c?.schema === 'officina-lab-1' && Array.isArray(c.workers))
-    c.workers = c.workers.filter(w => !w?.power && w?.deck !== 'Impiegati');
+  // Only editor configurations migrate; saved matches retain their original rules and state.
+  if (c?.schema === 'officina-lab-1') {
+    if (c.rulesRevision == null || c.rulesRevision === 1) {
+      if (c.welfareCost === 3) c.welfareCost = 9;
+      c.repressionStep = 0;
+      c.rulesRevision = RULES_REVISION;
+    }
+    if (Array.isArray(c.workers)) c.workers = c.workers.filter(w => !w?.power && w?.deck !== 'Impiegati');
+  }
   validate(c);
   // Only the current schema is persisted; imported legacy knobs cannot alter rules.
   return Object.fromEntries(Object.keys(defaults()).map(k => [k, structuredClone(c[k])]));

@@ -3,6 +3,7 @@ import { defaults, playableConfig } from '../src/lab/config.js';
 import { initGame, legalCommands, applyCommand, WORKER_BY_ID } from '../src/game/engine.js';
 import { productionChoices, productionPreview } from '../src/components/production-choices.js';
 const config=playableConfig(defaults(),2);
+config.rowEconomy={...config.rowEconomy,welfareMode:'permanent',welfareCost:3,welfareHireDiscount:true,repressionStep:1};
 const initial=initGame(config),role='terziario',p=initial.players[0],d=p.depts[role];
 const worker=Object.values(WORKER_BY_ID).find(w=>w.sector===d.sector);
 const machine=Object.values(WORKER_BY_ID).find(w=>w.effect?.verbo==='prendi'&&w.effect.f1.tipo==='moneta');
@@ -78,4 +79,26 @@ finalDept.sopra=[worker.id];finalDept.sotto=['preview-cash'];finalDept.prod=5;fi
 const finalCommand=legalCommands(final).find(c=>c.type==='activate');
 assert.ok(applyCommand(final,finalCommand).gameOver);
 checkPreview(final,finalCommand,{resources:yields(2),coins:4,tension:2,conversions:[]});
-console.log('OK: two production modes; exact preview yields, welfare/tension caps, blocked machines, mandatory/optional conversions, final turn and immutable state/card registry.');
+
+// Token protection keeps all accessible rows and stays a separate choice.
+const tokens=initGame(playableConfig(defaults(),2));
+tokens.phase='action';tokens.players[0].node=d.sector;tokens.players[0].welfareTokens=3;
+Object.assign(tokens.players[0].depts[role],{sopra:[worker.id],sotto:[machine.id],prod:13,tension:2});
+tokens.players[0].depts.secondario.tension=1;
+const tokenChoices=productionChoices(tokens,legalCommands(tokens).filter(c=>c.type==='activate'));
+assert.equal(tokenChoices.length,2,'Intense and protected are both visible');
+const protectedCommand=tokenChoices.find(c=>c.welfareToken);
+checkPreview(tokens,protectedCommand,{resources:yields(2),coins:machine.effect.f1.q,tension:2,conversions:[]});
+assert.equal(applyCommand(tokens,protectedCommand).players[0].welfareTokens,2);
+const tokenIntense=tokenChoices.find(c=>!c.welfareToken);
+checkPreview(tokens,tokenIntense,{resources:yields(2),coins:machine.effect.f1.q,tension:3,conversions:[]});
+assert.equal(applyCommand(tokens,tokenIntense).pending.type,'welfareToken','Recovery choice is not a machine conversion');
+const fullWarehouse=structuredClone(tokens);
+fullWarehouse.players[0].resources.Tessuti=9;
+for(const command of tokenChoices) {
+  const result=productionPreview(fullWarehouse,command);
+  assert.equal(Object.values(result.resources).reduce((a,b)=>a+b,0),1,'Optional welfare recovery must not bypass the warehouse limit in previews');
+}
+tokens.turnFlags.welfareTokensPurchased=3;
+assert.equal(productionChoices(tokens,legalCommands(tokens).filter(c=>c.type==='activate')).length,1,'Newly purchased tokens do not offer protection');
+console.log('OK: legacy and token production choices; exact immutable previews, once-only machines, conversions, final actor and fresh-token availability.');

@@ -1,5 +1,6 @@
 import { activeTrackEnd, rowTrackModel } from './data.js';
 import { hireCost, WORKER_BY_ID } from './engine.js';
+import { tokenWelfare } from './row-economy.js';
 
 const roles = ['terziario', 'secondario', 'primario'];
 export function rowPressureState(state, d) {
@@ -17,7 +18,7 @@ export function newRowPressure(state) {
   // Solo con questa distribuzione una riga persa equivale esattamente a una risorsa.
   const unitRows = roles.every(role => state.tracks[role].slice(1).every((cell, i) =>
     i % layout.columns === 0 ? cell?.res === 1 && Object.keys(cell).length === 1 : cell == null));
-  return { unitRows, starts: [], productions: [], recoveries: [], contacts: [], actions: [], lastStart: null };
+  return { unitRows, welfareMode: tokenWelfare(state) ? 'tokens' : 'permanent', starts: [], productions: [], recoveries: [], contacts: [], actions: [], lastStart: null };
 }
 export function sampleRowPressureStart(out, state) {
   if (state.phase !== 'move' || state.pending) return;
@@ -52,15 +53,15 @@ export function observeRowPressure(out, before, cmd, after) {
     const sustainable = cmd.sustainableRow !== undefined;
     const potential = sustainable ? Math.min(b.welfare, b.developed) : b.developed;
     const actual = sustainable ? Math.min(b.welfare, b.available) : b.available;
-    out.productions.push({ seq, turn: before.turn, seat, role, sustainable, before: b, after: a,
+    out.productions.push({ seq, turn: before.turn, seat, role, sustainable, protected: cmd.welfareToken === true, before: b, after: a,
       modePotentialRows: potential, actualRows: actual, modeLostRows: potential - actual,
       voluntaryUnusedRows: sustainable ? Math.max(0, b.available - actual) : 0,
     });
   }
-  if (cmd.type === 'repress' || (cmd.type === 'activate' && cmd.sustainableRow !== undefined)) {
+  if (cmd.type === 'repress' || cmd.type === 'spendWelfareToken' || (cmd.type === 'activate' && cmd.sustainableRow !== undefined)) {
     const role = cmd.role || roles.find(r => player.depts[r].sector === cmd.sector);
     const b = rowPressureState(before, player.depts[role]), a = rowPressureState(after, next.depts[role]);
-    out.recoveries.push({ seq, turn: before.turn, seat, role, type: cmd.type === 'repress' ? 'repression' : 'sustainable',
+    out.recoveries.push({ seq, turn: before.turn, seat, role, type: cmd.type === 'repress' ? 'repression' : cmd.type === 'spendWelfareToken' ? 'welfare' : 'sustainable',
       reduction: b.tension - a.tension, reopened: a.available - b.available, before: b, after: a });
   }
 }
@@ -82,7 +83,7 @@ export function summarizeRowPressure(samples) {
     starts: { n: starts.length, blocked: starts.filter(x=>x.blocked>0).length },
     phases: [1,8,15,22].map(from=>({ from, to:from+6, ...summarize(productions.filter(x=>x.turn>=from && x.turn<=from+6)) })),
     byDevelopment: [1,2,3,4,5,6].map(rows=>({ rows, ...summarize(productions.filter(x=>x.before.developed===rows)) })),
-    recoveries: ['sustainable','repression'].map(type=>{
+    recoveries: ['sustainable','repression', ...(samples.some(s=>s.welfareMode==='tokens')?['welfare']:[])].map(type=>{
       const xs=recoveries.filter(x=>x.type===type);
       return { type, n:xs.length, effective:xs.filter(x=>x.reduction>0).length,
         beforeAnyBlock:xs.filter(x=>x.reduction>0 && x.before.blocked===0).length,
@@ -103,7 +104,7 @@ export function formatRowPressure(samples) {
     `Righe accessibili non utilizzate scegliendo sostenibile: ${a.voluntaryUnused}; sono una rinuncia volontaria, non righe bloccate.`,
     `Righe bloccate a inizio turno nei reparti con operai: ${s.starts.blocked}/${s.starts.n} osservazioni (${rate(s.starts.blocked,s.starts.n)}).`,
     ...s.phases.map(p=>`Turni ${p.from}–${p.to}: ${p.blockedBefore}/${p.n} produzioni con blocco; perdita diretta ${p.lost}/${p.potential}.`),
-    ...s.recoveries.map(r=>`${r.type === 'sustainable' ? 'Sostenibile' : 'Repressione'}: ${r.n} usi; ${r.effective} riducono tensione; ${r.beforeAnyBlock} di questi avvengono senza righe ancora bloccate; ${r.reopened} righe riaperte.`),
+    ...s.recoveries.map(r=>`${r.type === 'sustainable' ? 'Sostenibile' : r.type === 'welfare' ? 'Gettone welfare' : 'Repressione'}: ${r.n} usi; ${r.effective} riducono tensione; ${r.beforeAnyBlock} di questi avvengono senza righe ancora bloccate; ${r.reopened} righe riaperte.`),
     'Confronto locale a parità di sviluppo e modalità scelta, non partita controfattuale senza tensione. Basso danno osservato può riflettere prevenzione o rinuncia a produrre.',
   ];
 }

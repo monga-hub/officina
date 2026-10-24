@@ -1,8 +1,9 @@
-import { repressionCost, rowNodeLabel } from '../game/row-economy.js';
+import { rowNodeLabel } from '../game/row-economy.js';
 import IndustrialActions from './IndustrialActions.jsx';
 import { productionChoices, productionPreview } from './production-choices.js';
 import { Amount } from './Amount.jsx';
 import { effectChoiceLabel } from './effect-choice.js';
+import { rowActionPreview } from './row-action-preview.js';
 import { policiesOf, welfareEfficiency } from '../game/industrial.js';
 import { hireCost, deptOfSector, describeTileEffect } from '../game/engine.js';
 import React, { useState } from 'react';
@@ -344,9 +345,26 @@ export function ProductionActions({state,p,activations,dispatch}) {
       );
 }
 
-export function RowEconomyActions({state,p,legal,dispatch}) {
+export function RowEconomyActions({state,legal,dispatch}) {
   return (state.rowEconomy?.enabled && <div>
-        {legal.filter(c => c.type === 'investWelfare').map(c => <button key={c.role || c.scope} onClick={() => dispatch(c)}>Welfare — {c.scope === 'factory' ? 'tutti e tre i reparti' : p.depts[c.role].sector} · {state.rowEconomy.welfareCost} marchi{state.rowEconomy.welfareHireDiscount ? " · ulteriore −1 sulle assunzioni Sopra" : ""}</button>)}
-        {legal.filter(c => c.type === 'repress').map(c => <button key={c.role} onClick={() => dispatch(c)}>Repressione — {p.depts[c.role].sector} · −2 tensione · {repressionCost(state, p)} marchi</button>)}
+        {legal.filter(c => c.type === 'investWelfare'||c.type === 'repress').map(c => {
+          const welfare=c.type==='investWelfare',preview=rowActionPreview(state,c);
+          const first=preview.departments[0];
+          const uniform=preview.departments.every(d=>d.before.welfare===first.before.welfare&&d.after.welfare===first.after.welfare);
+          const benefits=uniform?[first]:preview.departments;
+          return <button key={`${c.type}-${c.role||c.scope}`} className="production-choice" onClick={()=>dispatch(c)}>
+            <strong>{welfare?'Welfare':'Repressione'} — {preview.departments.length===3?'tutti e tre i reparti':first.before.sector}</strong>
+            <span className="production-yield">Paghi <Amount kind="coin" value={preview.cost}/>
+              {!welfare&&<span>Tensione <b>{first.before.tension} → {first.after.tension}</b></span>}
+            </span>
+            {welfare?<>
+              {benefits.map(({before,after})=><React.Fragment key={before.sector}>
+                <small>{!uniform&&`${before.sector} · `}Sostenibile: fino a <b>{before.sustainableLimit} → {after.sustainableLimit} righe</b>{uniform&&preview.departments.length===3?' per reparto':''}, entro quelle utilizzabili.</small>
+                {state.rowEconomy.welfareHireDiscount&&<small>Sconto operai: <b>{before.hireDiscount} → {after.hireDiscount} marchi</b> · paghi almeno 1.</small>}
+              </React.Fragment>)}
+              <small>Tensione invariata ora; −1 quando produci sostenibile (minimo 0).</small>
+            </>:<small>Righe utilizzabili: <b>{first.before.available} → {first.after.available}</b>.</small>}
+          </button>;
+        })}
       </div>);
 }

@@ -64,7 +64,7 @@
 .table-history{max-width:none;margin:12px 0}.table-history>summary{font-size:13px}.table-history .play-events{margin-top:12px}
 .lab-shell .star-instructions button{font-size:12px;padding:4px 8px;margin-left:6px;color:#275a36;background:#f7f5e9;border-color:#8d9a78}
 .department-cards .installed-cards{margin:8px 0}.lab-shell .department-cards{padding-top:5px;margin:4px 0 0}.lab-shell .department-cards>summary{font-size:12px;margin:0}
-@media(min-width:1254px){
+@container tableCanvas (min-width:1254px){
 .lab-shell.table-overview{padding:0 12px 10px}
 .table-overview .play-header{max-width:none;padding:8px 0;gap:18px;min-height:48px}.table-overview .play-header h1{font-size:23px}.table-overview .play-header .lab-eyebrow{display:none}.table-overview .play-header button{padding:7px 10px}.table-overview .play-turn{display:flex;gap:10px;align-items:center}
 .table-overview .play-jumps{position:static;max-width:none;padding:5px 0;gap:8px}.table-overview .play-jumps a,.table-overview .play-jumps button{padding:5px 10px;font-size:12px}
@@ -73,9 +73,9 @@
 .table-overview .play-layout>.star-board{grid-column:2;grid-row:1;min-width:0}
 .table-overview .play-layout>.play-contracts-side{grid-column:3;grid-row:1;padding:10px}
 .table-overview .star-caption{padding:10px 12px 0}.table-overview .star-caption h2{font-size:16px}.table-overview .star-caption>span{display:none}.table-overview .star-instructions{font-size:12px;margin:5px 12px 9px;min-height:18px}
-.table-overview .star-stage{min-width:0;min-height:480px;height:calc(100dvh - 210px);max-height:740px;aspect-ratio:auto}
+.table-overview .star-stage{min-width:0;min-height:480px;height:calc(var(--table-height,100dvh) - 210px);max-height:740px;aspect-ratio:auto}
 .table-overview .star-market-label{height:26px;font-size:11px;margin-bottom:3px}.table-overview .star-market-label small{font-size:10px}
-.table-overview .star-market .paper-card{height:clamp(164px,calc((100dvh - 210px)*.34),250px);font-size:13px!important}
+.table-overview .star-market .paper-card{height:clamp(164px,calc((var(--table-height,100dvh) - 210px)*.34),250px);font-size:13px!important}
 .table-overview .star-market .paper-card-top{font-size:11px;padding:3px;min-height:25px;gap:2px}.table-overview .star-market .card-value{font-size:14px}.table-overview .star-market .card-nationality{font-size:11px;padding:3px 5px}.table-overview .star-market .card-half{padding:4px 5px;gap:2px}.table-overview .star-market .card-half small{font-size:9px}.table-overview .star-market .card-half strong{font-size:13px}
 .table-overview .star-destination{font-size:15px;min-height:0;padding:6px 3px;gap:3px}.table-overview .star-destination small{font-size:11px}.table-overview .star-seat{width:23px;height:25px}
 .table-overview .star-legend{padding:5px 10px;gap:4px 10px;font-size:11px}.table-overview .star-legend small{display:none}.table-overview .star-legend .star-meeple{width:18px;height:22px}
@@ -90,18 +90,18 @@
 .table-overview .orders-table h2{font-size:16px}.table-overview .orders-instructions{font-size:11px;margin-bottom:7px}.table-overview .orders-inventory{padding:6px;font-size:11px;margin-bottom:8px}.table-overview .orders-grid{gap:6px}.table-overview .order-card{padding:7px}.table-overview .order-card h4{font-size:12px}.table-overview .order-prize{font-size:11px;gap:5px}.table-overview .order-prize b{font-size:13px}.table-overview .order-resources{gap:2px 7px;margin-top:5px}.table-overview .order-resources li{font-size:12px}.table-overview .order-status{font-size:10px;margin-top:4px}
 }
 
-@media(min-width:1254px){
+@container tableCanvas (min-width:1254px){
 .table-overview .opposed-cell{flex-direction:row;height:22px;min-height:22px;line-height:1;padding:1px;gap:2px}.table-overview .opposed-cell small{margin:0;font-size:8px;line-height:1}.table-overview .row-tension-step{height:22px;min-height:22px;line-height:1;padding:1px}.table-overview .opposed-track-row{margin:2px 0}.table-overview .opposed-track-head{margin:0;line-height:1.2}.table-overview .opposed-track-foot{margin-top:2px;line-height:1.2}.table-overview .opposed-track-foot .row-tension-step{height:18px;min-height:18px}.table-overview .play-departments{gap:7px}.table-overview .play-wallet{padding:5px 0;gap:2px 9px}.table-overview .play-factory-heading h2{font-size:15px}.table-overview .orders-inventory{display:none}
 }
 
 .overview-available{display:none}
-@media(min-width:1254px){
+@container tableCanvas (min-width:1254px){
 .table-overview .overview-available{display:inline;font-weight:500}.table-overview .play-row-count{display:none}.table-overview .play-department>header{margin-bottom:4px;line-height:1.2}.table-overview .play-department>header h3{font-size:13px}.table-overview .play-department>header>span{font-size:10px;white-space:nowrap}
 .table-overview .opposed-track{padding:3px}.table-overview .opposed-cell,.table-overview .row-tension-step{height:18px;min-height:18px}.table-overview .opposed-track-row{margin:2px 0}.table-overview .opposed-track-foot .row-tension-step{height:16px;min-height:16px}.table-overview .opposed-track-head,.table-overview .opposed-track-foot{font-size:9px;line-height:1.1}.table-overview .department-cards{padding-top:2px;margin-top:2px;line-height:1.2}.table-overview .department-cards>summary{line-height:1.2}
 .table-overview .play-factory-heading{line-height:1.2}.table-overview .play-wallet{line-height:1.25;padding:3px 0;margin-bottom:6px}.table-overview .play-wallet b{font-size:14px}.table-overview .play-direction{display:none}
 .table-overview .order-card>header{line-height:1.2}.table-overview .order-resources li{line-height:1.2}.table-overview .order-resources{margin-top:4px}.table-overview .order-status{margin-top:3px}
 }
-@media(min-width:1500px){.table-overview .play-layout{grid-template-columns:320px minmax(700px,1fr) 300px}.table-overview .play-department>header h3{font-size:15px}.table-overview .play-department>header>span{font-size:12px}.table-overview .star-market .paper-card{font-size:15px!important}.table-overview .star-market .card-half strong{font-size:15px}.table-overview .star-market .paper-card-top{font-size:13px}.table-overview .star-market .card-half small{font-size:10px}.table-overview .star-destination{font-size:18px}.table-overview .star-destination small{font-size:12px}}
+@container tableCanvas (min-width:1500px){.table-overview .play-layout{grid-template-columns:320px minmax(700px,1fr) 300px}.table-overview .play-department>header h3{font-size:15px}.table-overview .play-department>header>span{font-size:12px}.table-overview .star-market .paper-card{font-size:15px!important}.table-overview .star-market .card-half strong{font-size:15px}.table-overview .star-market .paper-card-top{font-size:13px}.table-overview .star-market .card-half small{font-size:10px}.table-overview .star-destination{font-size:18px}.table-overview .star-destination small{font-size:12px}}
 @media(min-width:1500px) and (min-height:850px){.table-overview .opposed-cell,.table-overview .row-tension-step{height:24px;min-height:24px;font-size:14px}.table-overview .opposed-cell small{font-size:10px}.table-overview .opposed-track-head,.table-overview .opposed-track-foot{font-size:11px}.table-overview .play-departments{gap:12px}.table-overview .department-cards>summary{font-size:12px}}
 
 .lab-shell .star-instructions .node-action-shortcut{background:#244c39;color:white;border-color:#244c39;font-weight:700;padding:5px 12px}.lab-shell .star-instructions .node-action-shortcut:disabled{opacity:.5}.node-action-choices h4{display:none}.lab-shell .node-action-choices button{display:block;width:100%;padding:14px;text-align:left;margin:10px 0;font-size:14px;background:#e8efdf;border-color:#8ba17a;line-height:1.5}
@@ -113,3 +113,22 @@
 .play-table .modal .btn-row button{padding:10px 12px;line-height:1.5}.play-table .modal .resource-mark{margin:0 3px}
 
 .game-save-state{margin-left:auto;align-self:center;font-size:12px;color:#4d6c49}
+
+/* Scale the complete table, while keeping choices and dialogs at screen size. */
+.table-fit-host{width:100%;background:#f5f5ed;min-height:100dvh}
+.table-fit-scroll{overflow:auto;width:100%}
+.table-fit-space{position:relative;margin:0 auto;overflow:clip}
+.table-fit-canvas{container:tableCanvas / inline-size;transform-origin:top left;display:flow-root}
+.table-fit-canvas .lab-shell.play-table{min-height:0}
+.table-fit-controls{display:flex;align-items:center;gap:12px;padding:6px 10px;font:12px/1.3 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#536654}
+.table-fit-controls[hidden]{display:none}
+.table-fit-controls button{min-height:44px;padding:8px 14px;flex-shrink:0;background:#244c39;color:#fff;border:0;border-radius:6px;font:inherit;font-size:14px}
+.lab-shell.play-table.table-overlay{display:contents;min-height:0;padding:0}
+.table-overlay .modal-back{z-index:100}
+@container tableCanvas (min-width:1254px){
+.table-overview .play-header{flex-wrap:nowrap;justify-content:initial}
+.table-overview .play-header .lab-actions{width:auto;margin-left:auto;flex-wrap:nowrap}
+.table-overview .orders-grid{grid-template-columns:1fr}
+.table-overview .star-caption{display:flex}
+.table-overview .play-jumps{justify-content:initial}
+}

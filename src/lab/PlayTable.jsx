@@ -13,6 +13,7 @@ import StarBoard, { CardPreview } from './StarBoard.jsx';
 import WorkerCard, { HireCard } from './WorkerCard.jsx';
 
 import ResourceIcon from './ResourceIcon.jsx';
+import TableViewport, { TableOverlay } from './TableViewport.jsx';
 function Department({state,player,role,onInspect}) {
   const d=player.depts[role], p=rowPressureState(state,d);
   const cellLabel=pos=>{
@@ -52,7 +53,7 @@ export default function PlayTable({state,dispatch,undo,paused,setPaused,onClose,
   const actionTitle={activate:'Produzione',repress:'Repressione',investWelfare:'Welfare'}[actionType];
   const nodeCommands=!p.isAI&&!state.pending?legalCommands(state).filter(c=>c.type===actionType):[];
   const runNodeAction=cmd=>{setActionsOpen(false);dispatch(cmd);};
-  return <div className="lab-shell play-table table-overview">
+  return <TableViewport><div className="lab-shell play-table table-overview">
     <header className="play-header"><div><p className="lab-eyebrow">OFFICINA 1907 / AL TAVOLO</p><h1>Turno {state.turn}<small> / {state.roundLimit}</small></h1></div><div className="play-turn" role="status"><b>{p.name}{p.isAI?' · IA':''}</b><span>{thinking?'Sta valutando le alternative…':paused?'IA in pausa':state.pending?'Completa la scelta':state.phase==='move'?'Scegli dove andare':`Sei a ${rowNodeLabel(state,p.node)}`}</span></div><div className="lab-actions"><button onClick={undo} disabled={!undo}>↶ Annulla mossa</button><button onClick={()=>setPaused(!paused)}>{paused?'Riprendi IA':'Pausa IA'}</button><button onClick={onClose}>Torna al laboratorio</button></div></header>
     {error&&<p className="lab-error" role="alert">{error}</p>}{saveError&&<p className="lab-error" role="alert">{saveError}</p>}
     <nav className="play-jumps" aria-label="Comandi del tavolo"><button onClick={()=>{setActionType(null);setActionsOpen(true);}}>Azioni del nodo</button><a href="#registro">Registro e obiettivi</a><span className="game-save-state">{saved?'✓ Partita salvata':'Salvataggio non disponibile'}</span></nav>
@@ -72,7 +73,7 @@ export default function PlayTable({state,dispatch,undo,paused,setPaused,onClose,
     </main>
     <details id="registro" className="table-history"><summary>Registro e obiettivi di gara</summary>        <section className="lab-card play-events" aria-label="Ultime mosse"><h2>Cosa è successo</h2><ol aria-live="polite">{state.log.slice(-4).reverse().map((l,i)=><li key={i}><small>T{l.turn}</small> {l.text}</li>)}</ol><details><summary>Registro completo</summary><ol>{[...state.log].reverse().map((l,i)=><li key={i}><small>T{l.turn}</small> {l.text}</li>)}</ol></details></section>
         <section className="lab-card play-contracts">{state.raceObjectives.enabled&&<div className="play-objectives"><h3>Obiettivi di gara</h3><p className="lab-muted">Da rivendicare quando visiti la Città. Podio: {state.raceObjectives.podium.join(' / ')} PV.</p>{state.raceObjectives.list.map(r=><div className="play-installed" key={r.id}><b>{describeRace(r)}</b><span>Già rivendicato: {r.claims.map(id=>state.players[id].name).join(', ')||'nessuno'}</span></div>)}</div>}</section></details>
-    <dialog ref={actionsRef} className="table-action-dialog" aria-label={actionTitle||'Azioni del nodo'} onCancel={()=>setActionsOpen(false)} onClick={e=>{if(e.target===e.currentTarget)setActionsOpen(false);}}>
+    <TableOverlay><dialog ref={actionsRef} className="table-action-dialog" aria-label={actionTitle||'Azioni del nodo'} onCancel={()=>setActionsOpen(false)} onClick={e=>{if(e.target===e.currentTarget)setActionsOpen(false);}}>
       <button className="dialog-close" onClick={()=>setActionsOpen(false)}>Torna al tabellone ×</button>
       {actionType?<section className="node-action-choices"><h2>{actionTitle}{actionType==='activate'?` · ${p.node}`:''}</h2>{actionType==='activate'?<ProductionActions state={state} p={p} activations={nodeCommands} dispatch={runNodeAction}/>:<RowEconomyActions state={state} p={p} legal={nodeCommands} dispatch={runNodeAction}/>}</section>:<aside id="azioni" className="play-action-column" aria-label="Le tue azioni">
         <section className="lab-card play-action-card">
@@ -81,8 +82,8 @@ export default function PlayTable({state,dispatch,undo,paused,setPaused,onClose,
         </section>
         <details className="play-help"><summary>Promemoria delle regole</summary><p>Spostati e svolgi un’azione nel nodo. Puoi acquistare una delle due carte adiacenti. In Città puoi consegnare una sola commessa: incassi il premio e il turno termina automaticamente. Rivendica eventuali obiettivi prima di consegnare. Sopra: il valore stampato sviluppa il reparto. Sotto: il macchinario si attiva quando produci.</p><p>Ogni welfare sconta di 1 M gli operai (minimo 1 M) e permette una riga sostenibile in più nei tre reparti. La produzione sostenibile riduce sempre di 1 la tensione; comprare welfare non la riduce subito.</p><p>La repressione recupera 2 tensione, con un prezzo crescente. Entrambe le produzioni attivano i macchinari una volta.</p></details>
       </aside>}
-    </dialog>
+    </dialog></TableOverlay>
     {inspected&&<CardPreview worker={WORKER_BY_ID[inspected]} state={state} dispatch={dispatch} onClose={()=>setInspected(null)}/>}
-    {state.pending&&!decider.isAI&&<PendingModal state={state} dispatch={dispatch} renderResource={resource=><ResourceIcon resource={resource} decorative/>}/>}
-  </div>;
+    {state.pending&&!decider.isAI&&<TableOverlay><PendingModal state={state} dispatch={dispatch} renderResource={resource=><ResourceIcon resource={resource} decorative/>}/></TableOverlay>}
+  </div></TableViewport>;
 }

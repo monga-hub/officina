@@ -4,6 +4,7 @@ import { rowNodeLabel } from '../game/row-economy.js';
 import { SECTORS } from '../game/data.js';
 import { STAR_MARKETS } from './markets.js';
 import ResourceIcon from './ResourceIcon.jsx';
+import { TableOverlay } from './TableViewport.jsx';
 import WorkerCard, { HireChoices } from './WorkerCard.jsx';
 
 // Orientamento della plancia fisica: metallurgia in alto, tessile a sinistra.
@@ -23,13 +24,13 @@ export function CardPreview({worker,node,bank,state,dispatch,onClose}) {
   const options=legal.filter(c=>c.type==='hire'&&c.cardId===worker.id);
   const nodes=bank?Object.keys(state.nodeBanks).filter(n=>state.nodeBanks[n].includes(bank)):node?[node]:[];
   const moves=legal.filter(c=>c.type==='move'&&nodes.includes(c.node));
-  return <dialog ref={ref} className="card-preview" onCancel={onClose} onClick={e=>{if(e.target===e.currentTarget)onClose();}} aria-label="Dettaglio carta">
+  return <TableOverlay><dialog ref={ref} className="card-preview" onCancel={onClose} onClick={e=>{if(e.target===e.currentTarget)onClose();}} aria-label="Dettaglio carta">
     <button className="card-preview-close" autoFocus onClick={onClose} aria-label="Chiudi carta">×</button>
     <WorkerCard worker={worker}/>
     {options.length>0?<HireChoices worker={worker} options={options} state={state} player={p} dispatch={cmd=>{dispatch(cmd);onClose();}}/>:
       moves.length?<div className="card-install-options">{moves.map(move=><button key={move.node} className="lab-primary" onClick={()=>{dispatch(move);onClose();}}>Vai a {rowNodeLabel(state,move.node)} · {move.cost?`${move.cost} M`:'gratis'}</button>)}</div>:
       <p className="lab-muted">{state.phase==='borsa'?'In Città puoi consultare le carte, ma non acquistarle.':nodes.length?`Carta acquistabile da ${nodes.map(n=>rowNodeLabel(state,n)).join(' o ')}. Servono marchi sufficienti.`:'Carta già installata nella fabbrica.'}</p>}
-  </dialog>;
+  </dialog></TableOverlay>;
 }
 export default function StarBoard({state,dispatch,onActions,onNodeAction}) {
   const p=currentPlayer(state), [selected,setSelected]=useState(null);

@@ -7,6 +7,7 @@ import Simulation from './Simulation.jsx';
 import LiveGame from './LiveGame.jsx';
 import PlaySetup from './PlaySetup.jsx';
 import { loadGame } from './saved-game.js';
+import useVersionCheck, { RELEASE } from './useVersionCheck.js';
 import '../styles.css';
 import './styles.css';
 const NAV=[['play','01','Gioca'],['sim','02','Simulazione'],['board','03','Plancia produttiva'],['economy','04','Welfare e denaro'],['cards','05','Carte'],['contracts','06','Commesse e obiettivi'],['files','07','Salva e apri']];
@@ -35,11 +36,13 @@ function App() {
     if(!dirty||invalid)return;
     try{localStorage.setItem(STORAGE_KEY,JSON.stringify(c));setStorageError('');}catch(e){setStorageError('Il browser non consente il salvataggio automatico. Scarica la configurazione per conservare le modifiche.');}
   },[c,dirty,invalid]);
+  const version=useVersionCheck(!!live||locked||!!invalid||!!storageError);
   const importFile=async e=>{
     const file=e.target.files?.[0];e.target.value='';if(!file)return;
     try{if(file.size>1500000)throw new Error('File troppo grande: scegli una configurazione, non i dati di tutte le partite.');const next=parseConfig(await file.text());setC(next);setDirty(true);setMessage(`Configurazione «${next.name}» caricata.`);}catch(err){setMessage(err.message);}
   };
   const model=TRACK_MODELS[c.trackModel];
+  if(!version.ready)return <div className="version-start" role="status">Controllo aggiornamenti…</div>;
   return <>
     <div className="lab-shell" hidden={!!live}>
       <aside className="lab-sidebar"><div className="lab-brand"><span className="lab-monogram">O/07</span><strong>OFFICINA <span>1907</span></strong><small>Laboratorio di sviluppo</small></div>
@@ -47,6 +50,7 @@ function App() {
         <div className="lab-sidebar-note"><b>Tre reparti. Scelte diverse.</b><p>Produzione, tensione e investimenti nella stessa fabbrica.</p><span>Regole di riferimento · ottobre 2026</span></div>
       </aside>
       <main className="lab-content"><header className="lab-top"><div><p className="lab-eyebrow">OFFICINA 1907 / LABORATORIO</p><h1>{NAV.find(x=>x[0]===tab)[2]}</h1></div><span className="lab-save-state">{locked?'Simulazione in corso':invalid?'Configurazione da completare':storageError?'Salvataggio non disponibile':'Salvataggio locale'}</span></header>
+        <div className="version-status" role="status"><span>{RELEASE?`Versione ${new Date(RELEASE.builtAt).toLocaleString('it-IT')} · ${RELEASE.version.slice(0,8)}`:'Anteprima locale'} · {version.result.status==='current'?'aggiornata':version.result.status==='unavailable'?'controllo non disponibile: puoi continuare':version.result.status==='update'?'aggiornamento disponibile':'sviluppo'}</span><button onClick={version.check}>Controlla aggiornamenti</button>{version.result.status==='update'&&version.result.attempted&&<><span>Il browser ha riaperto la versione precedente.</span><button onClick={()=>window.location.replace(version.result.url)}>Riprova aggiornamento</button></>}</div>
         <div className="lab-strip"><span><b>{model.rows} × {model.columns}</b> tracciato</span><span><b>{c.turns}</b> turni</span><span><b>{c.welfareCost} M</b> welfare</span><span><b>−2</b> repressione</span><span><b>{c.players}</b> giocatori</span></div>
         {storageError&&<p className="lab-error" role="alert">{storageError}</p>}{invalid&&<p className="lab-error" role="alert">{invalid}</p>}
         {pendingGame&&<Card title="Sostituire la partita salvata?"><p>Iniziando una nuova partita sostituirai il salvataggio precedente.</p><div className="lab-actions"><button onClick={()=>setPendingGame(null)}>Annulla</button><button className="lab-primary" onClick={()=>{setLive({config:pendingGame,resume:null});setPendingGame(null);setMatchError('');}}>Inizia nuova partita</button></div></Card>}
@@ -61,6 +65,7 @@ function App() {
         <footer className="lab-footer">Officina 1907 · Strumento di prova. I risultati dell’IA descrivono le partite simulate, non certificano il bilanciamento.</footer>
       </main>
     </div>
+    {live&&version.result.status==='update'&&<div className="version-notice" role="status">Nuova versione disponibile. Torna al laboratorio per aggiornarla dopo il salvataggio.</div>}
     {live&&<LiveGame config={live.config} resume={live.resume} onSaved={setSavedGame} onClose={()=>setLive(null)}/>}
   </>;
 }

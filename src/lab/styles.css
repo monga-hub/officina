@@ -189,3 +189,7 @@
 .table-overview .opposed-track-head,.table-overview .opposed-track-foot{font-size:11px}
 .table-overview .play-department .opposed-cell .amount-token{width:18px;min-width:18px;height:18px;font-size:12px}
 }
+
+.version-start{padding:30px;font:16px system-ui;color:#244c39;background:#f5f5ed;min-height:100vh}
+.version-status{display:flex;align-items:center;flex-wrap:wrap;gap:8px 15px;font-size:12px;margin-bottom:15px;color:#536654}
+.version-notice{position:fixed;bottom:6px;left:50%;transform:translateX(-50%);z-index:90;max-width:95vw;padding:8px 12px;border-radius:6px;background:#244c39;color:white;font:13px/1.4 system-ui;box-shadow:0 2px 10px #0003}

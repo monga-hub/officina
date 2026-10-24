@@ -53,3 +53,8 @@ I salvataggi online restano nel browser del dispositivo: non sono condivisi con 
 - `dist-lab/lab.html`: versione compilata autonoma.
 
 Le regole sono in sviluppo. I risultati dell’IA aiutano a confrontare configurazioni; non sostituiscono le prove con giocatori.
+
+### Aggiornamenti dalla Home del telefono
+All’apertura e al ritorno in primo piano il simulatore controlla `version.json` senza usare la cache. Ogni pubblicazione genera automaticamente un identificatore di versione e la data della compilazione, visibili nel laboratorio. Una nuova versione si apre con un indirizzo aggiornato, sullo stesso dominio e percorso: configurazione e partita in localStorage rimangono disponibili. Durante una partita o simulazione l’aggiornamento viene rinviato al ritorno al laboratorio. Senza connessione o dopo quattro secondi di attesa si può comunque usare la versione già caricata; il laboratorio consente di riprovare il controllo.
+
+Per ricevere questo controllo, le versioni precedenti devono essere ricaricate manualmente una prima volta. Nessun service worker è installato; il controllo non aggiunge il download offline dell’app. `version.json` va pubblicato insieme al file HTML compilato.

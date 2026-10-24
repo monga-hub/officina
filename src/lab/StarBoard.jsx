@@ -4,6 +4,7 @@ import { rowNodeLabel } from '../game/row-economy.js';
 import { SECTORS } from '../game/data.js';
 import { STAR_MARKETS } from './markets.js';
 import ResourceIcon from './ResourceIcon.jsx';
+import { Amount } from './GameSymbols.jsx';
 import { TableOverlay } from './TableViewport.jsx';
 import WorkerCard, { HireChoices } from './WorkerCard.jsx';
 
@@ -28,7 +29,7 @@ export function CardPreview({worker,node,bank,state,dispatch,onClose}) {
     <button className="card-preview-close" autoFocus onClick={onClose} aria-label="Chiudi carta">×</button>
     <WorkerCard worker={worker}/>
     {options.length>0?<HireChoices worker={worker} options={options} state={state} player={p} dispatch={cmd=>{dispatch(cmd);onClose();}}/>:
-      moves.length?<div className="card-install-options">{moves.map(move=><button key={move.node} className="lab-primary" onClick={()=>{dispatch(move);onClose();}}>Vai a {rowNodeLabel(state,move.node)} · {move.cost?`${move.cost} M`:'gratis'}</button>)}</div>:
+      moves.length?<div className="card-install-options">{moves.map(move=><button key={move.node} className="lab-primary" onClick={()=>{dispatch(move);onClose();}}>Vai a {rowNodeLabel(state,move.node)} · <Amount kind="coin" value={move.cost}/></button>)}</div>:
       <p className="lab-muted">{state.phase==='borsa'?'In Città puoi consultare le carte, ma non acquistarle.':nodes.length?`Carta acquistabile da ${nodes.map(n=>rowNodeLabel(state,n)).join(' o ')}. Servono marchi sufficienti.`:'Carta già installata nella fabbrica.'}</p>}
   </dialog></TableOverlay>;
 }
@@ -44,8 +45,8 @@ export default function StarBoard({state,dispatch,onActions,onNodeAction}) {
   const canAct=nodeAction&&commands.some(c=>c.type===nodeAction.type);
   const edges=[['Metallurgica','Servizi'],['Servizi','Tessile'],['Tessile','Chimica'],['Chimica','Sindacato'],['Sindacato','Metallurgica']];
   return <section id="stella" className="star-board" aria-label="Plancia a stella">
-    <div className="star-caption"><div><p className="lab-eyebrow">LA CITTÀ INDUSTRIALE</p><h2>{canMove?'Posiziona il tuo procuratore':canChoose?(isDepartment?'Assumi o produci':'Scegli una delle due carte'):inCity?'Consegna in Città':'La plancia comune'}</h2></div><span>{canMove?'Tocca un nodo illuminato':canChoose?'Tocca una carta evidenziata':'Puoi sempre ingrandire le carte'}</span></div>
-    <p className="star-instructions">{inCity?<>Una commessa per visita. La consegna termina il turno. <button onClick={onActions}>Consegna commessa</button> <button className="node-action-shortcut" onClick={()=>dispatch(commands.find(c=>c.type==='endTurn'))}>Termina turno</button></>:canChoose?<>Sei a <b>{rowNodeLabel(state,p.node)}</b>: clicca una delle due carte verdi e scegli <b>Sopra</b> o <b>Sotto</b>. <button className={nodeAction?"node-action-shortcut":undefined} onClick={nodeAction?()=>onNodeAction(nodeAction.type):onActions} disabled={!!nodeAction&&!canAct} title={nodeAction&&!canAct?nodeAction.unavailable:undefined}>{nodeAction?nodeAction.label:"Altre azioni"}</button></>:'Ogni nodo dà accesso alle due carte adiacenti.'}</p>
+    <div className="star-caption"><div><p className="lab-eyebrow">LA CITTÀ INDUSTRIALE</p><h2>{canMove?'Scegli un nodo':canChoose?(isDepartment?'Assumi o produci':'Scegli una delle due carte'):inCity?'Consegna in Città':'La plancia comune'}</h2></div><span>{canMove?'Tocca un nodo illuminato':canChoose?'Tocca una carta evidenziata':'Puoi sempre ingrandire le carte'}</span></div>
+    <p className="star-instructions">{inCity?<>Una commessa per visita. La consegna termina il turno. <button onClick={onActions}>Consegna commessa</button> <button className="node-action-shortcut" onClick={()=>dispatch(commands.find(c=>c.type==='endTurn'))}>Termina turno</button></>:canChoose?<><button className={nodeAction?"node-action-shortcut":undefined} onClick={nodeAction?()=>onNodeAction(nodeAction.type):onActions} disabled={!!nodeAction&&!canAct} title={nodeAction&&!canAct?nodeAction.unavailable:undefined}>{nodeAction?nodeAction.label:"Altre azioni"}</button></>:null}</p>
     <div className="star-viewport"><div className="star-stage">
       <svg className="star-drawing" viewBox="0 0 1000 800" preserveAspectRatio="none" aria-hidden="true">
         <defs><radialGradient id="star-brass"><stop stopColor="#efd8a6"/><stop offset="1" stopColor="#916c41"/></radialGradient></defs>
@@ -60,11 +61,11 @@ export default function StarBoard({state,dispatch,onActions,onNodeAction}) {
         return <button key={node} data-node={node} className={`star-destination ${command?'star-available':''} ${p.node===node?'star-current':''}`} style={{left:`${pos.x}%`,top:`${pos.y}%`}} disabled={!command} onClick={()=>dispatch(command)} aria-label={`Vai a ${rowNodeLabel(state,node)}${command?` · ${command.cost?`${command.cost} M`:'gratis'}`:''}`}>
           <span className="star-node-name">{SECTORS.includes(node)?<ResourceIcon resource={node} decorative/>:<span>{pos.icon}</span>} {rowNodeLabel(state,node)}</span>
           <span className="star-seats">{Array.from({length:node==='Borsa'?Math.max(2,here.length):2},(_,i)=><span className="star-seat" key={i}>{here[i]?<Meeple player={here[i]}/>:<i>○</i>}</span>)}</span>
-          <small>{p.node===node?'Sei qui':command?command.cost?`${command.cost} M per entrare`:'Ingresso gratuito':here.length>=2&&node!=='Borsa'?'Posti occupati':' '}</small>
+          <small className="node-entry">{p.node===node?<span role="img" aria-label="Sei qui" title="Sei qui">●</span>:command?<Amount kind="coin" value={command.cost} label={`Ingresso: ${command.cost} marchi`}/>:here.length>=2&&node!=='Borsa'?<span role="img" aria-label="Posti occupati" title="Posti occupati">×</span>:null}</small>
         </button>;
       })}
       {STAR_MARKETS.map(({bank,nodes,x,y})=><div key={bank} className={`star-market ${canChoose&&state.nodeBanks[p.node]?.includes(bank)?'star-market-active':''}`} style={{left:`${x}%`,top:`${y}%`}}>
-        <div className="star-market-label">{nodes.map(n=>rowNodeLabel(state,n)).join(' / ')}<small>{state.banks[bank].length} carte</small></div>
+        <div className="star-market-label" title={nodes.map(n=>rowNodeLabel(state,n)).join(' / ')}><span aria-label={`${state.banks[bank].length} carte nel mazzo`}>▤ {state.banks[bank].length}</span></div>
         {bankMarket(state,bank).map(id=><WorkerCard key={id} worker={WORKER_BY_ID[id]} onInspect={()=>setSelected({id,bank})}/>)}
         {!bankMarket(state,bank).length&&<span className="empty-card">Mazzo esaurito</span>}
       </div>)}

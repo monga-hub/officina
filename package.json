@@ -12,7 +12,7 @@
     "tile-check": "node scripts/tile-check.js",
     "decisionlog": "node scripts/decisionlog.js",
     "build:lab": "vite build --config vite.lab.config.js",
-    "check:lab": "node scripts/lab-check.js && node scripts/saved-game-check.js"
+    "check:lab": "node scripts/lab-check.js && node scripts/saved-game-check.js && node scripts/symbols-check.js"
   },
   "dependencies": {
     "react": "^18.3.1",

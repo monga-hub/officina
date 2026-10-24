@@ -12,6 +12,8 @@ La partita si salva automaticamente dopo ogni mossa. Alla riapertura premi **Rip
 
 Sul telefono il tavolo si ridimensiona per mostrare insieme fabbrica, stella e commesse. La vista usa automaticamente lo spazio disponibile, senza barre di zoom aggiuntive. Puoi ruotare lo schermo o usare lo zoom del browser. Carte e finestre delle azioni si aprono a dimensione normale.
 
+Il tavolo usa cerchi dorati per i marchi e quadrati verde chiaro per i PV, con il numero all’interno. Le risorse restano quadrati rossi, blu e gialli. Operaio, ingranaggio e freccia indicano sviluppo, macchinario e conversione: la legenda **Simboli** è disponibile sotto il tavolo.
+
 ## Avvio locale dai sorgenti
 
 Richiede Node.js 22 e npm.

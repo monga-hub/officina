@@ -13,17 +13,18 @@ import StarBoard, { CardPreview } from './StarBoard.jsx';
 import WorkerCard, { HireCard } from './WorkerCard.jsx';
 
 import ResourceIcon from './ResourceIcon.jsx';
+import { Amount, SymbolKey } from './GameSymbols.jsx';
 import TableViewport, { TableOverlay } from './TableViewport.jsx';
 function Department({state,player,role,onInspect}) {
   const d=player.depts[role], p=rowPressureState(state,d);
   const cellLabel=pos=>{
     const c=state.tracks[role][pos];
-    return c?[c.res&&`${c.res} ${RESOURCE_OF[d.sector]}`,c.coins&&`${c.coins} M`,c.pv&&`${c.pv} PV`].filter(Boolean).join(' + ')||'—':'—';
+    return c?[c.res&&`${c.res} ${RESOURCE_OF[d.sector]}`,c.coins&&`${c.coins} marchi`,c.pv&&`${c.pv} PV`].filter(Boolean).join(' + ')||'—':'—';
   };
   const renderCell=pos=>{
     const c=state.tracks[role][pos];
     if(!c||!(c.res||c.coins||c.pv))return '—';
-    return <>{c.res>0&&<>{c.res}<ResourceIcon resource={d.sector}/></>}{c.coins>0&&<>{c.res>0?' + ':''}{c.coins} M</>}{c.pv>0&&<>{c.res>0||c.coins>0?' + ':''}{c.pv} PV</>}</>;
+    return <>{c.res>0&&<><Amount kind={d.sector} value={c.res}/></>}{c.coins>0&&<>{c.res>0?' + ':''}<Amount kind="coin" value={c.coins}/></>}{c.pv>0&&<>{c.res>0||c.coins>0?' + ':''}<Amount kind="pv" value={c.pv}/></>}</>;
   };
   return <section className="play-department" aria-label={`Reparto ${d.sector}`}>
     <header><h3><ResourceIcon resource={d.sector} decorative/> {d.sector}</h3><span><b className="overview-available">{p.available}/{p.developed} righe · </b>Tensione <b>{d.tension}</b></span></header>
@@ -61,16 +62,17 @@ export default function PlayTable({state,dispatch,undo,paused,setPaused,onClose,
       <StarBoard state={state} dispatch={dispatch} onActions={()=>{setActionType(null);setActionsOpen(true);}} onNodeAction={type=>{setActionType(type);setActionsOpen(true);}}/>
       <section id="commesse" className="lab-card play-contracts play-contracts-side" aria-label="Commesse disponibili"><ContractsPanel state={state} player={player}/></section>
       <div id="fabbrica" className="play-factory-column">
-        <div className="play-player-tabs" aria-label="Plance dei giocatori">{state.players.map(x=><button key={x.id} aria-pressed={view===x.id} onClick={()=>setView(x.id)}>{x.name}{x.isAI?' · IA':''} <small>{scorePlayer(state,x).total} PV attuali</small></button>)}</div>
+        <div className="play-player-tabs" aria-label="Plance dei giocatori">{state.players.map(x=><button key={x.id} aria-pressed={view===x.id} onClick={()=>setView(x.id)}>{x.name}{x.isAI?' · IA':''} <small><Amount kind="pv" value={scorePlayer(state,x).total}/></small></button>)}</div>
         <section className="lab-card play-factory">
           <div className="play-factory-heading"><div><p className="lab-eyebrow">{player.isAI?'FABBRICA AVVERSARIA':'LA TUA FABBRICA'}</p><h2>{player.name}</h2></div><span>📍 {rowNodeLabel(state,player.node)}</span></div>
-          <div className="play-wallet"><span><b>{player.coins}</b> marchi</span>{Object.entries(player.resources).map(([r,n])=><span key={r}><ResourceIcon resource={r} decorative/> <b>{n}</b> {r.toLowerCase()}</span>)}<span>🌿 <b>{welfare}</b> welfare</span></div>
+          <div className="play-wallet"><Amount kind="coin" value={player.coins}/>{Object.entries(player.resources).map(([r,n])=><Amount key={r} kind={r} value={n}/>)}<span title={`${welfare} welfare`} aria-label={`${welfare} welfare`}>🌿 <b>{welfare}</b></span></div>
           <div className="play-departments">{ROLES.map(role=><Department key={role} state={state} player={player} role={role} onInspect={setInspected}/>)}</div>
           <div className="play-direction"><p className="lab-muted">Commesse completate: {player.contractsWon.length} · Repressioni: {player.industrialStats.repressions}</p></div>
         </section>
 
       </div>
     </main>
+    <SymbolKey/>
     <details id="registro" className="table-history"><summary>Registro e obiettivi di gara</summary>        <section className="lab-card play-events" aria-label="Ultime mosse"><h2>Cosa è successo</h2><ol aria-live="polite">{state.log.slice(-4).reverse().map((l,i)=><li key={i}><small>T{l.turn}</small> {l.text}</li>)}</ol><details><summary>Registro completo</summary><ol>{[...state.log].reverse().map((l,i)=><li key={i}><small>T{l.turn}</small> {l.text}</li>)}</ol></details></section>
         <section className="lab-card play-contracts">{state.raceObjectives.enabled&&<div className="play-objectives"><h3>Obiettivi di gara</h3><p className="lab-muted">Da rivendicare quando visiti la Città. Podio: {state.raceObjectives.podium.join(' / ')} PV.</p>{state.raceObjectives.list.map(r=><div className="play-installed" key={r.id}><b>{describeRace(r)}</b><span>Già rivendicato: {r.claims.map(id=>state.players[id].name).join(', ')||'nessuno'}</span></div>)}</div>}</section></details>
     <TableOverlay><dialog ref={actionsRef} className="table-action-dialog" aria-label={actionTitle||'Azioni del nodo'} onCancel={()=>setActionsOpen(false)} onClick={e=>{if(e.target===e.currentTarget)setActionsOpen(false);}}>

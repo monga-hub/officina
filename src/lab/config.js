@@ -1,13 +1,14 @@
 import reference from './reference.json' with { type: 'json' };
 import { TRACK_MODELS, SECTORS, NATIONS_NUOVO } from '../game/data.js';
 import { STAR_NODE_BANKS } from './markets.js';
+import { tensionMachineCard } from '../game/row-economy.js';
 export const ROLES = ['terziario', 'secondario', 'primario'];
 export const SIZES = ['small', 'medium', 'large'];
 export const SIZE_NAMES = { small: 'Piccole', medium: 'Medie', large: 'Grandi' };
 export const MODELS = ['righe4corte', 'righe4', 'righe3'];
 export const AI_NAMES = { forecast2: 'Nuova IA · valuta gli utilizzi futuri', beam2: 'IA precedente · confronto', greedy: 'Rapida · controllo tecnico' };
 export const STORAGE_KEY = 'officina1907-laboratorio-v1';
-export const RULES_REVISION = 3;
+export const RULES_REVISION = 4;
 const PRESET_REVISION = 1;
 export function withoutTrackPoints(track) {
   return track.map(cell => {
@@ -23,7 +24,7 @@ export function defaults() {
     welfareCost: 4, repressionBase: 2, repressionStep: 0,
     contractCoins: reference.rowEconomy.contractCoins,
     machineSlots: [2, 2, 2],
-    workers: reference.workers.filter(w => !w.power && w.deck !== 'Impiegati'), contracts: reference.contracts,
+    workers: reference.workers.filter(w => !w.power && w.deck !== 'Impiegati').map(tensionMachineCard), contracts: reference.contracts,
     contractCount: reference.contractCount, contractMarket: 2,
     cityIncome: reference.borsaExit.coins, cityRefresh: true,
     simulation: { games: 3, seed: 1907, ai: 'forecast2', depth: 6, rollouts: 1 },
@@ -93,7 +94,7 @@ export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
     nodeBanks: structuredClone(STAR_NODE_BANKS),
     workers: structuredClone(c.workers), contracts: structuredClone(c.contracts), contractPV: undefined,
     contractCount: structuredClone(c.contractCount), contractMarket: c.contractMarket,
-    rowEconomy: { ...reference.rowEconomy, welfareMode: 'tokens', welfareScope: 'factory', welfareHireDiscount: false, sameNationHireDiscount: true,
+    rowEconomy: { ...reference.rowEconomy, welfareMode: 'tokens', welfareScope: 'factory', welfareHireDiscount: false, sameNationHireDiscount: true, tensionMachineCash: true,
       welfareCost: c.welfareCost, repressionBase: c.repressionBase, repressionStep: 0, contractCoins: { ...c.contractCoins } },
     slots: { ...Object.fromEntries(ROLES.map((r,i) => [r, { sopra: 3, sotto: c.machineSlots[i] }])), direzione: { sopra: 0, sotto: 0 } },
     borsaExit: { enabled: true, coins: c.cityIncome }, borsaRefresh: { enabled: c.cityRefresh },
@@ -107,6 +108,7 @@ export function parseConfig(raw) {
   const c = JSON.parse(raw);
   // Editor migrations preserve custom prices; current rules apply to all lab configurations.
   if (c?.schema === 'officina-lab-1') {
+    const migrateMachines = c.rulesRevision == null || [1, 2, 3].includes(c.rulesRevision);
     c.contractsOnly = true;
     if (c.rulesRevision == null || c.rulesRevision === 1) {
       if (c.welfareCost === 3) c.welfareCost = 4;
@@ -114,13 +116,14 @@ export function parseConfig(raw) {
       c.rulesRevision = RULES_REVISION;
       c.presetRevision = PRESET_REVISION;
     }
-    if (c.rulesRevision === 2) c.rulesRevision = RULES_REVISION;
+    if (c.rulesRevision === 2 || c.rulesRevision === 3) c.rulesRevision = RULES_REVISION;
     // Update the former default once; later custom prices (including 9) survive reload.
     if (c.presetRevision == null) {
       if (c.welfareCost === 9) c.welfareCost = 4;
       c.presetRevision = PRESET_REVISION;
     }
     if (Array.isArray(c.workers)) c.workers = c.workers.filter(w => !w?.power && w?.deck !== 'Impiegati');
+    if (migrateMachines && Array.isArray(c.workers)) c.workers = c.workers.map(tensionMachineCard);
     if (Array.isArray(c.track)) c.track = withoutTrackPoints(c.track);
   }
   validate(c);

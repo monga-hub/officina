@@ -42,6 +42,7 @@ export function textReport(config, games, status) {
   return [`OFFICINA 1907 — ${config.name}`,`Esito: ${status}. ${games.length}/${config.simulation.games} partite completate; ${s.players} giocatori-partita.`,
     ...(config.contractsOnly ? ['Punteggio: solo PV delle commesse; nessuna gara o bonus finale. Pareggi: marchi, poi numero di commesse.'] : []),
     ...(config.rulesRevision>=3 ? ['Assunzioni: −1 marco per ogni operaio già presente della stessa nazionalità nello stesso reparto, minimo 1. Sviluppo sul valore stampato; macchinari esclusi.'] : []),
+    ...(config.rulesRevision>=4 ? ['Macchinari da tensione: ciascuno rende marchi pari alla tensione del reparto prima della produzione, anche a righe bloccate. Due macchinari sommano le rendite.'] : []),
     `IA ${config.simulation.ai} · d${config.simulation.depth} r${config.simulation.rollouts}; semi completati: ${games.map(g=>g.seed).join(', ')}.`,
     `Medie per giocatore: ${f(s.pv)} PV; ${f(s.welfare)} acquisti welfare; ${f(s.repression)} repressioni; ${f(tokens?s.protected:s.sustainable)} produzioni ${tokens?'protette':'sostenibili'}; ${f(s.contracts)} commesse.`,
     ...(tokens?[`Gettoni welfare: ${f(s.welfareRecoveries)} recuperi e ${f(s.tokensRemaining)} gettoni rimasti per giocatore. Repressione a costo fisso ${config.repressionBase}: azzera un reparto, +1 agli altri due (entro il massimo).`]:[]),

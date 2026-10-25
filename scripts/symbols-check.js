@@ -14,6 +14,9 @@ try {
   assert.match(render(Development,{value:4}),/sviluppo \+4/);
   const cards=defaults().workers;
   for(const worker of cards){const html=render(MachineEffect,{worker});assert.ok(!/undefined|NaN/.test(html),worker.id);}
+  const tensionCard=cards.find(w=>w.effect.verbo==='perOgni'&&w.effect.f2?.conta==='tensione');
+  const tensionHtml=render(MachineEffect,{worker:tensionCard});
+  assert.match(tensionHtml,/>T<\/span>/);assert.match(tensionHtml,/tensione prima della produzione/);
   const conversion={sector:'Chimica',effect:{verbo:'scambia',f1:{q:2,tipo:'risorsa',settore:'scelta'},f2:{q:3,tipo:'moneta'}}};
   const html=render(MachineEffect,{worker:conversion});
   assert.match(html,/2 risorse a scelta → 3 marchi/);

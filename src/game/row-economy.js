@@ -3,7 +3,7 @@ import { rowTrackModel, inferTrackModel } from './data.js';
 // Variante ottobre: valori sperimentali, separati dai salvataggi precedenti.
 export const ROW_ECONOMY_DEFAULT = {
   enabled: false, welfareMode: 'permanent', welfareCost: 3, welfareScope: 'department', welfareHireDiscount: false, sameNationHireDiscount: false, repressionBase: 2, repressionStep: 1,
-  contractCoins: { small: 2, medium: 3, large: 4 }, machineCash: true,
+  contractCoins: { small: 2, medium: 3, large: 4 }, machineCash: true, tensionMachineCash: false,
 };
 export function normalizeRowEconomy(raw = {}) {
   const x = { ...ROW_ECONOMY_DEFAULT, ...(raw || {}) };
@@ -13,6 +13,7 @@ export function normalizeRowEconomy(raw = {}) {
   x.welfareScope = x.welfareScope === 'factory' ? 'factory' : 'department';
   x.welfareHireDiscount = x.welfareMode !== 'tokens' && x.welfareHireDiscount === true;
   x.sameNationHireDiscount = x.sameNationHireDiscount === true;
+  x.tensionMachineCash = x.tensionMachineCash === true;
   for (const k of ['welfareCost', 'repressionBase', 'repressionStep'])
     x[k] = Number.isFinite(Number(x[k])) ? Math.max(0, Math.min(30, Math.round(Number(x[k])))) : ROW_ECONOMY_DEFAULT[k];
   x.contractCoins = Object.fromEntries(['small', 'medium', 'large'].map(k => {
@@ -44,11 +45,20 @@ export function rowEconomyConfig(config) {
   };
 }
 
-// Il mazzo originale resta intatto: la variante rende fisse le rendite e conserva gli scambi.
+// Il mazzo storico resta intatto; solo il Laboratorio conserva la nuova rendita da tensione.
 export function rowMachineCard(w, options) {
   if (w.power || !w.effect?.verbo) return w;
   const f = w.effect;
+  if (options.tensionMachineCash && f.verbo === 'perOgni' && f.f2?.conta === 'tensione' && f.f1?.tipo === 'moneta') return w;
   if (!['prendi', 'perOgni'].includes(f.verbo)) return w;
   const f1 = { ...f.f1, ...(options.machineCash ? { tipo: 'moneta' } : {}) };
   return { ...w, effect: { verbo: 'prendi', f1 }, effectText: `Prendi ${f1.q} ${f1.tipo === 'moneta' ? 'marchi' : 'risorse'} (rendimento fisso)` };
+}
+
+export function tensionMachineCard(w) {
+  if (w.power) return w;
+  const current = rowMachineCard(w, { machineCash: true });
+  if (![3, 4].includes(w.v) || current.effect?.verbo !== 'prendi' || current.effect.f1?.tipo !== 'moneta' || current.effect.f1.q !== 1) return w;
+  return { ...w, effect: { verbo: 'perOgni', f1: { q: 1, tipo: 'moneta' }, f2: { conta: 'tensione' } },
+    effectText: 'Incassa marchi pari alla tensione del reparto prima della produzione.' };
 }

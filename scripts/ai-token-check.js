@@ -5,7 +5,9 @@ import { chooseCommand, continuationValue, evaluate, resetRolloutStats, rolloutS
 
 function fixture({ node = 'Tessile', tension = [3, 0, 0], turn = 26, coins = 0, tokens = 3, prod = [13, 1, 1], contractsOnly = true } = {}) {
   const config = defaults(); config.simulation.seed = 73121;
-  const s = initGame({ ...gameConfig(config), contractsOnly }), p = s.players[0];
+  const rules = gameConfig(config);
+  // Historical scoring checks keep the former fixed machine income throughout their search.
+  const s = initGame({ ...rules, contractsOnly, rowEconomy: { ...rules.rowEconomy, tensionMachineCash: contractsOnly } }), p = s.players[0];
   s.phase = 'action'; s.turn = turn; p.node = node; p.coins = coins; p.welfareTokens = tokens;
   ROLES.forEach((r, i) => {
     const d = p.depts[r]; d.prod = prod[i]; d.tension = tension[i];

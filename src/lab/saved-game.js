@@ -1,5 +1,6 @@
 import { initGame, scorePlayer } from '../game/engine.js';
 import { withoutTrackPoints } from './config.js';
+import { tensionMachineCard } from '../game/row-economy.js';
 
 export const GAME_SAVE_KEY='officina1907-partita-v1';
 export const SAVED_UNDO_LIMIT=10;
@@ -20,10 +21,11 @@ export function validateGameSave(save) {
   return save;
 }
 function contractsOnlySave(save) {
-  if ([save.config, save.state, ...save.history].every(rules => rules.contractsOnly && rules.rowEconomy?.sameNationHireDiscount === true)) return save;
+  if ([save.config, save.state, ...save.history].every(rules => rules.contractsOnly && rules.rowEconomy?.sameNationHireDiscount === true && rules.rowEconomy?.tensionMachineCash === true)) return save;
   const next = structuredClone(save), states = [next.state, ...next.history];
+  if (!next.config.rowEconomy?.tensionMachineCash) next.config.workers = next.config.workers.map(tensionMachineCard);
   for (const rules of [next.config, ...states]) {
-    rules.rowEconomy = { ...rules.rowEconomy, sameNationHireDiscount: true };
+    rules.rowEconomy = { ...rules.rowEconomy, sameNationHireDiscount: true, tensionMachineCash: true };
     rules.contractsOnly = true;
     rules.pianoEnabled = false;
     rules.raceObjectives = { enabled: false, list: [] };

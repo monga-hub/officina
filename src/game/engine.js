@@ -1,5 +1,5 @@
 // Engine di Officina 1907 — regole dal regolamento giocatore + plance 26.
-// Stato immutabile: ogni comando restituisce un nuovo stato (clone profondo).
+// Stato immutabile: ogni comando restituisce un nuovo stato senza modificare il precedente.
 import {
   SECTORS, RESOURCE_OF, NATIONS, NODES, NODE_BANKS, BOARDS, ROLE_SLOTS_SOPRA,
   TRACK_MODELS, inferTrackModel, rowTrackModel, activeTrackEnd, SETUP, STARTING_COINS, TENSION_LIMIT,
@@ -1882,20 +1882,51 @@ function deepClone(o) {
   for (const k in o) r[k] = deepClone(o[k]);
   return r;
 }
-function cloneState(prev) {
-  const s = {};
-  for (const k in prev) s[k] = STATIC_KEYS.has(k) ? prev[k] : deepClone(prev[k]);
+// With contract-only row rules, turn changes cannot pay or alter another player.
+// Legacy modes and pending choices for another owner keep the complete deep copy.
+function localPlayerTransition(state) {
+  return state.rowEconomy?.enabled && state.contractsOnly && !state.contractEngine
+    && !state.borsaFabbriche.enabled && !state.borsaIndici.enabled && !state.raceObjectives?.enabled
+    && !state.industrial.opponentPressure && state.industrial.welfareScoring !== 'quarter'
+    && state.players.every(p => p.direzione.sotto.length === 0)
+    && (!state.pending || state.pending.playerId == null || state.pending.playerId === state.current);
+}
+// These records are appended, never edited after insertion.
+const APPEND_ONLY_PLAYER_ARRAYS = new Set(['contractsWon', 'coinsHistory', 'resHistory', 'activationTurns', 'welfareLog']);
+function cloneActingPlayer(player) {
+  const copy = {};
+  for (const key in player) copy[key] = key === 'tile' ? player[key]
+    : APPEND_ONLY_PLAYER_ARRAYS.has(key) ? player[key].slice() : deepClone(player[key]);
+  return copy;
+}
+function cloneState(prev, cmd) {
+  const s = {}, local = localPlayerTransition(prev);
+  for (const k in prev) {
+    if (STATIC_KEYS.has(k)) s[k] = prev[k];
+    else if (local && k === 'players') s[k] = prev.players.map((p, i) => i === prev.current ? cloneActingPlayer(p) : p);
+    else if (local && k === 'banks' && cmd.type !== 'hire' && cmd.type !== 'refreshMarket') s[k] = prev[k];
+    else if (local && k === 'contracts' && cmd.type !== 'completeContract') s[k] = prev[k];
+    else if (local && k === 'activationLog') s[k] = cmd.type === 'activate' ? prev[k].slice() : prev[k];
+    else s[k] = deepClone(prev[k]);
+  }
   return s;
+}
+
+function commandValueMatches(a, b) {
+  if (a === b) return true;
+  if (typeof a === 'string' && typeof b === 'string') return false;
+  if (typeof a === 'number' && typeof b === 'number' && Number.isFinite(a) && Number.isFinite(b)) return false;
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 export function applyCommand(prev, cmd) {
   // Le scelte salvate prima delle quantità indicavano implicitamente un gettone.
   if (cmd.type === 'spendWelfareToken' && cmd.count === undefined) cmd = { ...cmd, count: 1 };
-  const state = cloneState(prev);
+  const state = cloneState(prev, cmd);
   const p = currentPlayer(state);
 
   // Le nuove varianti hanno più requisiti: UI e agenti non possono aggirarli con un comando obsoleto.
-  if ((state.industrial.enabled || tokenWelfare(state)) && !legalCommands(prev).some(c => Object.keys(c).every(k => JSON.stringify(c[k]) === JSON.stringify(cmd[k])) && (!state.rowEconomy?.enabled || cmd.type !== 'activate' || (JSON.stringify(c.sustainableRow) === JSON.stringify(cmd.sustainableRow) && JSON.stringify(c.welfareToken) === JSON.stringify(cmd.welfareToken))))) throw new Error('Azione non disponibile');
+  if ((state.industrial.enabled || tokenWelfare(state)) && !legalCommands(prev).some(c => Object.keys(c).every(k => commandValueMatches(c[k], cmd[k])) && (!state.rowEconomy?.enabled || cmd.type !== 'activate' || (commandValueMatches(c.sustainableRow, cmd.sustainableRow) && commandValueMatches(c.welfareToken, cmd.welfareToken))))) throw new Error('Azione non disponibile');
   switch (cmd.type) {
     case 'spendWelfareToken':
     case 'skipWelfareToken': {

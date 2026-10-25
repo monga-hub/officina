@@ -142,7 +142,7 @@ cleaned.raceObjectives.enabled=false;cleaned.tracks.terziario[1]=null;
 assert.equal(evaluate(scoreFixture,0),evaluate(cleaned,0),'AI ignores removed point sources');
 const richer=structuredClone(cleaned);richer.players[0].coins+=5;
 assert.ok(evaluate(richer,0)>evaluate(cleaned,0),'Money retains its value for future actions');
-scoreFixture.gameOver=true;assert.equal(evaluate(scoreFixture,0),140,'Terminal AI uses only contract points');
+scoreFixture.gameOver=true;assert.ok(evaluate(scoreFixture,0)>=140 && evaluate(scoreFixture,0)<141,'Terminal AI uses contract points, then the real tie-break');
 const oldScored=structuredClone(scoreFixture);oldScored.contractsOnly=false;
 assert.ok(scorePlayer(oldScored,oldScored.players[0]).total>14,'Historical scoring remains available');
 const oldSave={...structuredClone(c),directionSlots:7,welfareCost:5,workers:structuredClone(reference.workers)};

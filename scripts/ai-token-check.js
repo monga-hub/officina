@@ -63,7 +63,9 @@ assert.deepEqual(decide(recovery(fixture({ tokens: 3, contractsOnly: false }))),
 for (const development of [5, 9, 13]) {
   const s = recovery(fixture({ prod: [development, 1, 1] }));
   assert.deepEqual(decide(s), skip);
-  for (const command of legalCommands(s)) assert.equal(continuationValue(applyCommand(s, command), 6, 0), 0);
+  const baseline = continuationValue(applyCommand(s, skip), 6, 0);
+  assert.ok(baseline >= 0 && baseline < 1, 'Only the money tie-break remains');
+  for (const command of legalCommands(s)) assert.equal(continuationValue(applyCommand(s, command), 6, 0), baseline);
 }
 
 // One turn earlier, recovering one row permits 2 Tessuti on turn 27 and a 5-PV delivery on turn 28.
@@ -79,8 +81,10 @@ delivery.contracts.small.active = [{
 }];
 const deliverable = recovery(delivery);
 assert.deepEqual(decide(deliverable), heal(1), 'Recover the one row that enables a contract delivery');
-for (const count of [1, 2, 3]) assert.equal(continuationValue(applyCommand(deliverable, heal(count)), 6, 0), 50);
-assert.equal(continuationValue(applyCommand(deliverable, skip), 6, 0), 0, 'Without recovery the contract cannot be paid');
+const deliveryValue = continuationValue(applyCommand(deliverable, heal(1)), 6, 0);
+assert.ok(deliveryValue >= 50 && deliveryValue < 51, 'Five PV plus the real tie-break');
+for (const count of [1, 2, 3]) assert.equal(continuationValue(applyCommand(deliverable, heal(count)), 6, 0), deliveryValue);
+assert.ok(continuationValue(applyCommand(deliverable, skip), 6, 0) < 1, 'Without recovery the contract cannot be paid');
 
 // Tokens have no artificial score, and neither weights nor gameplay settings vary with the search.
 const s = fixture(), base = evaluate(s, 0), rules = structuredClone(s.rowEconomy);

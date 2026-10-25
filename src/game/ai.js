@@ -86,7 +86,19 @@ export function evaluate(state, playerId, rolloutLeaf = false) {
 function evaluateInner(state, playerId, rolloutLeaf) {
   const p = state.players[playerId];
   const w = profileOf(p);
-  if ((state.contractsOnly || state.industrial?.enabled) && state.gameOver) return scorePlayer(state, p).total * 10;
+  const finiteFactory = state.contractsOnly && state.rowEconomy?.enabled && state.endMode === 'rounds';
+  const order = state.snakeOrder
+    ? (state.dir === -1 ? state.nPlayers - 1 - playerId : playerId)
+    : (playerId - state.roundStart + state.nPlayers) % state.nPlayers;
+  const turnsLeft = Math.max(0, state.roundLimit - state.turn + Number(order >= state.roundTurns));
+  // Capacità e tensione valgono solo per gli utilizzi rimasti; chi ha finito usa già il punteggio finale.
+  const futureEngine = finiteFactory ? Math.min(1, turnsLeft / 6) : 1;
+  if ((state.contractsOnly || state.industrial?.enabled) && (state.gameOver || (finiteFactory && turnsLeft === 0))) {
+    const score = scorePlayer(state, p);
+    // Spareggi reali: marchi, poi commesse. Il bonus resta < 1, senza scavalcare un PV.
+    const tie = score.coins + score.nContracts / (score.nContracts + 1);
+    return score.total * 10 + (state.contractsOnly ? tie / (tie + 1) : 0);
+  }
   let v = 0;
   v += p.contractsWon.reduce((a, c) => a + c.pv, 0) * 10 * w.wContract;
   if (!state.contractsOnly) v += p.tile.objectives.reduce((a, o, i) => a + (p.achieved[i] ? o.pv : 0), 0) * 9 * w.wObjective;
@@ -143,22 +155,22 @@ function evaluateInner(state, playerId, rolloutLeaf) {
   for (const role of DEPT_ROLES) {
     const d = p.depts[role];
     // prod/sopra/sotto = motore industriale del tableau → pesati come i tracciati
-    v += (d.prod * 0.6 + (d.prod >= state.milestonePos[role] ? 2 : 0)) * w.wTrack;
+    v += (d.prod * 0.6 + (d.prod >= state.milestonePos[role] ? 2 : 0)) * w.wTrack * futureEngine;
     if (state.rowTrack) {
       const developed = activeTrackEnd(d.prod, 0, state.trackModel, state.rowEconomy?.enabled, state.rowEconomy?.productionThresholds);
-      v -= (developed - activeTrackEnd(d.prod, d.tension, state.trackModel, state.rowEconomy?.enabled, state.rowEconomy?.productionThresholds)) * 0.6 * w.wTrack;
+      v -= (developed - activeTrackEnd(d.prod, d.tension, state.trackModel, state.rowEconomy?.enabled, state.rowEconomy?.productionThresholds)) * 0.6 * w.wTrack * futureEngine;
     }
     if (!state.rowEconomy?.enabled) v += d.sopra.length * 1.2 * w.wTrack;
     // carte Sotto: valore = qualità dell'effetto × attivazioni future attese
     for (const id of d.sotto) {
-      if (!d.blocked.includes(id)) v += (state.industrial?.enabled && state.industrial.productionMode === 'compact' ? Math.min(1.5, sottoValue(WORKER_BY_ID[id])) : sottoValue(WORKER_BY_ID[id])) * 2.2 * w.wTrack;
+      if (!d.blocked.includes(id)) v += (state.industrial?.enabled && state.industrial.productionMode === 'compact' ? Math.min(1.5, sottoValue(WORKER_BY_ID[id])) : sottoValue(WORKER_BY_ID[id])) * 2.2 * w.wTrack * futureEngine;
     }
     v -= d.blocked.length * 2.2;
     // tensione = budget consumabile prima dello sciopero: penalità graduata (non solo al limite),
     // così ridurla vale sempre qualcosa (0.4/punto) e l'AI usa l'abbassa-tensione al Sindacato.
     // K basso: un'attivazione (che alza la tensione ma produce risorse ~1.5) resta comunque conveniente.
     if (d.sopra.length + d.sotto.length > 0) {
-      v -= (d.tension * 0.4 + (d.tension >= tensionLimit(state) - 1 ? 1.0 : 0)) * w.tensionAv;
+      v -= (d.tension * 0.4 + (d.tension >= tensionLimit(state) - 1 ? 1.0 : 0)) * w.tensionAv * futureEngine;
     }
   }
   if (state.industrial?.enabled) {
@@ -301,7 +313,7 @@ export function chooseCommand(state) {
   if (state.gameOver) return null;
   if (state.pending) return resolvePending(state);
   const p = currentPlayer(state);
-  if (state.phase === 'move') return chooseMove(state, p);
+  if (state.phase === 'move') return chooseMove(state, p).cmd;
   if (state.phase === 'action') return chooseAction(state, p);
   if (state.phase === 'borsa') return chooseBorsa(state, p);
   return null;
@@ -461,28 +473,30 @@ function chooseMove(state, p) {
       const score = (c.sector === want ? 100 : 0) + gap - (p.resources[RESOURCE_OF[c.sector]] || 0) * 0.1 + noise(state, p.id, 'prod-' + c.sector) * 0.3;
       if (!best || score > best.score) best = { cmd: c, score };
     }
-    return best.cmd;
+    return { cmd: best.cmd };
   }
   const moves = legalCommands(state).filter(c => c.type === 'move');
   const moveCost = profileOf(p).moveCost;
   let best = null;
   for (const mv of moves) {
     const s2 = applyCommand(state, mv);
-    let score;
+    let score, action;
     if (state.industrial?.enabled && state.aiRollout) {
       // Il lookahead deve scegliere anche il nodo: altrimenti non visita mai una produzione che il greedy scarta.
       const act = bestActionAtRollout(s2, state.aiRollout);
+      action = act?.cmd;
       score = act ? act.score : -Infinity;
     } else if (mv.node === 'Borsa') {
       score = borsaEstimate(s2, s2.players[p.id]) - mv.cost * 0.45 * moveCost;
     } else {
       const act = bestActionAt(s2);
+      action = act?.cmd;
       score = (act ? act.score : -5) - mv.cost * 0.45 * moveCost;
     }
     score += noise(state, p.id, mv.node) * 0.3; // rompe le simmetrie
-    if (!best || score > best.score) best = { cmd: mv, score };
+    if (!best || score > best.score) best = { cmd: mv, score, action };
   }
-  return best.cmd;
+  return best;
 }
 
 // ----- fase azione -----
@@ -495,6 +509,19 @@ function chooseAction(state, p) {
 
 // rollout: invece di valutare subito dopo 1 mossa, gioca `depth` turni in self-play greedy
 // (chooseCommand su tutti i giocatori) e valuta lì — media su `rollouts` run. Costoso: vedi state.aiRollout.
+function forwardStep(state) {
+  const plan = !state.pending && state.phase === 'move' ? chooseMove(state, currentPlayer(state)) : null;
+  const cmd = plan?.cmd ?? chooseCommand(state);
+  if (!cmd) return state;
+  let after = timedApply(state, cmd);
+  rolloutStats.stepsSimulated++;
+  // Movimento e azione consecutivi: stesso stato deterministico, nessuna cache fra partite.
+  if (plan?.action && !after.pending && after.phase === 'action') {
+    after = timedApply(after, plan.action);
+    rolloutStats.stepsSimulated++;
+  }
+  return after;
+}
 function playForward(state, turns) {
   rolloutStats.playForwardCalls++;
   const startTurn = state.turn;
@@ -503,10 +530,9 @@ function playForward(state, turns) {
   let s = state.aiRollout ? { ...state, aiRollout: null } : state;
   let guard = 0;
   while (!s.gameOver && (s.turn - startTurn) < turns && guard++ < 4000) {
-    const cmd = chooseCommand(s);
-    if (!cmd) break;
-    s = timedApply(s, cmd);
-    rolloutStats.stepsSimulated++;
+    const after = forwardStep(s);
+    if (after === s) break;
+    s = after;
     if (s.aiRollout) s = { ...s, aiRollout: null };
   }
   return s;
@@ -518,10 +544,9 @@ function advanceToOwnMove(state, playerId, endTurn) {
   let s = state, guard = 0;
   while (!s.gameOver && s.turn < endTurn && guard++ < 4000) {
     if (!s.pending && s.current === playerId && s.phase === 'move') return s;
-    const cmd = chooseCommand(s);
-    if (!cmd) return s;
-    s = timedApply(s, cmd);
-    rolloutStats.stepsSimulated++;
+    const after = forwardStep(s);
+    if (after === s) return s;
+    s = after;
   }
   return s;
 }
@@ -529,10 +554,9 @@ function advanceToOwnMove(state, playerId, endTurn) {
 function finishOwnTurn(state, playerId, endTurn) {
   let s = state, guard = 0;
   while (!s.gameOver && s.turn < endTurn && (s.current === playerId || s.pending) && guard++ < 4000) {
-    const cmd = chooseCommand(s);
-    if (!cmd) break;
-    s = timedApply(s, cmd);
-    rolloutStats.stepsSimulated++;
+    const after = forwardStep(s);
+    if (after === s) break;
+    s = after;
   }
   return s;
 }
@@ -721,6 +745,8 @@ function actionCandidates(state, p) {
   const out = [];
   const legal = legalCommands(state).filter(c => {
     if (c.welfareToken && defersToken(state, p.id)) return false;
+    // A tensione massima la protezione consuma un gettone senza cambiare la produzione.
+    if (c.welfareToken && tokenWelfare(state) && deptOfSector(p, c.sector).tension >= tensionLimit(state)) return false;
     if (!state.rowEconomy?.enabled) return true;
     // Vincoli sperimentali dell'agente, non regole: il tavolo libero resta il riferimento.
     if (p.aiRecovery === 'repression' && c.type === 'investWelfare') return false;

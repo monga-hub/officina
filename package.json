@@ -12,7 +12,7 @@
     "tile-check": "node scripts/tile-check.js",
     "decisionlog": "node scripts/decisionlog.js",
     "build:lab": "vite build --config vite.lab.config.js",
-    "check:lab": "node scripts/lab-check.js && node scripts/state-copy-check.js && node scripts/saved-game-check.js && node scripts/symbols-check.js && node scripts/version-check.js && node scripts/production-choices-check.js && node scripts/row-action-preview-check.js && node scripts/welfare-tokens-check.js && node scripts/ai-token-check.js && node scripts/nationality-discount-check.js && node scripts/tension-machine-check.js && node scripts/lab-experiments-check.js && node scripts/run-status-check.js"
+    "check:lab": "node scripts/lab-check.js && node scripts/state-copy-check.js && node scripts/saved-game-check.js && node scripts/symbols-check.js && node scripts/version-check.js && node scripts/production-choices-check.js && node scripts/row-action-preview-check.js && node scripts/welfare-tokens-check.js && node scripts/ai-token-check.js && node scripts/ai-endgame-check.js && node scripts/nationality-discount-check.js && node scripts/tension-machine-check.js && node scripts/lab-experiments-check.js && node scripts/run-status-check.js"
   },
   "dependencies": {
     "react": "^18.3.1",

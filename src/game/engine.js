@@ -709,7 +709,9 @@ export function hireCost(state, p, w, role, side) {
   const d = p.depts[role];
   const surcharge = state.industrial?.enabled && state.industrial.progressive && d && d.tension >= state.industrial.hireThreshold ? state.industrial.hireSurcharge : 0;
   const welfareDiscount = state.rowEconomy?.enabled && !tokenWelfare(state) && state.rowEconomy.welfareHireDiscount && d?.sustainableWelfare && side === 'sopra' && !w.power ? d.sustainableWelfare : 0;
-  return Math.max(state.rowEconomy?.enabled ? 1 : 0, w.v - structHireDiscount(p, p.node) - welfareDiscount) + surcharge;
+  const nationDiscount = state.rowEconomy?.enabled && state.rowEconomy.sameNationHireDiscount && side === 'sopra' && !w.power
+    ? (d?.sopra || []).filter(id => WORKER_BY_ID[id]?.nation === w.nation).length : 0;
+  return Math.max(state.rowEconomy?.enabled ? 1 : 0, w.v - structHireDiscount(p, p.node) - welfareDiscount - nationDiscount) + surcharge;
 }
 
 export function welfarePoints(state, p) {

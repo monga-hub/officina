@@ -7,7 +7,7 @@ export const SIZE_NAMES = { small: 'Piccole', medium: 'Medie', large: 'Grandi' }
 export const MODELS = ['righe4corte', 'righe4', 'righe3'];
 export const AI_NAMES = { forecast2: 'Nuova IA · valuta gli utilizzi futuri', beam2: 'IA precedente · confronto', greedy: 'Rapida · controllo tecnico' };
 export const STORAGE_KEY = 'officina1907-laboratorio-v1';
-export const RULES_REVISION = 2;
+export const RULES_REVISION = 3;
 const PRESET_REVISION = 1;
 export function withoutTrackPoints(track) {
   return track.map(cell => {
@@ -93,7 +93,7 @@ export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
     nodeBanks: structuredClone(STAR_NODE_BANKS),
     workers: structuredClone(c.workers), contracts: structuredClone(c.contracts), contractPV: undefined,
     contractCount: structuredClone(c.contractCount), contractMarket: c.contractMarket,
-    rowEconomy: { ...reference.rowEconomy, welfareMode: 'tokens', welfareScope: 'factory', welfareHireDiscount: false,
+    rowEconomy: { ...reference.rowEconomy, welfareMode: 'tokens', welfareScope: 'factory', welfareHireDiscount: false, sameNationHireDiscount: true,
       welfareCost: c.welfareCost, repressionBase: c.repressionBase, repressionStep: 0, contractCoins: { ...c.contractCoins } },
     slots: { ...Object.fromEntries(ROLES.map((r,i) => [r, { sopra: 3, sotto: c.machineSlots[i] }])), direzione: { sopra: 0, sotto: 0 } },
     borsaExit: { enabled: true, coins: c.cityIncome }, borsaRefresh: { enabled: c.cityRefresh },
@@ -105,7 +105,7 @@ export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
 }
 export function parseConfig(raw) {
   const c = JSON.parse(raw);
-  // Editor migrations preserve custom prices; scoring is now limited to contracts.
+  // Editor migrations preserve custom prices; current rules apply to all lab configurations.
   if (c?.schema === 'officina-lab-1') {
     c.contractsOnly = true;
     if (c.rulesRevision == null || c.rulesRevision === 1) {
@@ -114,6 +114,7 @@ export function parseConfig(raw) {
       c.rulesRevision = RULES_REVISION;
       c.presetRevision = PRESET_REVISION;
     }
+    if (c.rulesRevision === 2) c.rulesRevision = RULES_REVISION;
     // Update the former default once; later custom prices (including 9) survive reload.
     if (c.presetRevision == null) {
       if (c.welfareCost === 9) c.welfareCost = 4;

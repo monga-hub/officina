@@ -20,9 +20,10 @@ export function validateGameSave(save) {
   return save;
 }
 function contractsOnlySave(save) {
-  if (save.config.contractsOnly && [save.state, ...save.history].every(state => state.contractsOnly)) return save;
+  if ([save.config, save.state, ...save.history].every(rules => rules.contractsOnly && rules.rowEconomy?.sameNationHireDiscount === true)) return save;
   const next = structuredClone(save), states = [next.state, ...next.history];
   for (const rules of [next.config, ...states]) {
+    rules.rowEconomy = { ...rules.rowEconomy, sameNationHireDiscount: true };
     rules.contractsOnly = true;
     rules.pianoEnabled = false;
     rules.raceObjectives = { enabled: false, list: [] };
@@ -52,7 +53,7 @@ export function saveGame(config,session,storage=localStorage) {
 }
 export function gameSession(config,resume) {
   if(resume)resume=contractsOnlySave(validateGameSave(resume));
-  // Preserve the match and its prices while applying the current contracts-only scoring.
+  // Preserve the match and its prices while applying current scoring and hiring rules.
   const initial=initGame({...(resume?.config || config),headless:false});
   return resume?{state:resume.state,history:resume.history,paused:resume.paused}:{state:initial,history:[],paused:false};
 }

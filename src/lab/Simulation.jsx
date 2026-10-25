@@ -43,7 +43,7 @@ export default function Simulation({c,set,locked,setLocked,onPlay}) {
     }catch(e){fail(e.message);}
   };
   const summary=run?.games.length?summarize(run.games):null;
-  const tokens=run?.config.rulesRevision===2;
+  const tokens=run?.config.rulesRevision>=2;
   return <>
     <Card title="La prossima prova"><fieldset disabled={locked}><div className="lab-fields">
       <label className="lab-field"><span>Nome della prova</span><input value={c.name} maxLength={100} onChange={e=>set({name:e.target.value})}/></label>
@@ -55,7 +55,7 @@ export default function Simulation({c,set,locked,setLocked,onPlay}) {
     <p className="lab-muted">Il seme identifica la distribuzione iniziale. Le partite successive usano semi consecutivi: stessi semi e stesse impostazioni rendono ripetibile il confronto.</p>
     {c.simulation.ai!=='greedy'&&<details><summary>Profondità di ricerca · d{c.simulation.depth} r{c.simulation.rollouts}</summary><div className="lab-fields"><NumberField label="Profondità (d)" value={c.simulation.depth} min={1} max={12} onChange={depth=>simSet({depth})}/><NumberField label="Rollout per scelta (r)" value={c.simulation.rollouts} min={1} max={5} onChange={rollouts=>simSet({rollouts})}/></div></details>}
     <p className="lab-muted">La nuova IA d6 richiede diversi minuti per partita. Nessun acquisto di welfare viene imposto e i pesi di valutazione restano quelli delle prove.</p>
-    {c.rulesRevision===2&&<p className="lab-muted">La nuova IA confronta l’uso immediato dei gettoni con il rinvio ai turni successivi, senza bonus al welfare. La ricerca è limitata alla profondità scelta.</p>}
+    {c.rulesRevision>=2&&<p className="lab-muted">La nuova IA confronta l’uso immediato dei gettoni con il rinvio ai turni successivi, senza bonus al welfare. La ricerca è limitata alla profondità scelta.</p>}
     </fieldset><div className="lab-actions"><button className="lab-primary" disabled={locked} onClick={start}>Avvia {c.simulation.games} {c.simulation.games===1?'partita':'partite'}</button>{locked&&<button onClick={()=>stop()}>Ferma e conserva le partite finite</button>}</div>
     {error&&<p className="lab-error" role="alert">{error}</p>}
     </Card>

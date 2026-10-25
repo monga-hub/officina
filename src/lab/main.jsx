@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { TRACK_MODELS } from '../game/data.js';
-import { defaults, parseConfig, gameConfig, validate, STORAGE_KEY, download } from './config.js';
+import { defaults, parseConfig, gameConfig, newMatchConfig, validate, STORAGE_KEY, download } from './config.js';
 import { BoardEditor, EconomyEditor, CardsEditor, ContractsEditor, Card } from './Editors.jsx';
 import Simulation from './Simulation.jsx';
 import LiveGame from './LiveGame.jsx';
@@ -23,8 +23,9 @@ function App() {
   const [initial]=useState(load),[c,setC]=useState(initial.config),[tab,setTab]=useState('play'),[locked,setLocked]=useState(false),[storageError,setStorageError]=useState(initial.error),[message,setMessage]=useState(''),[live,setLive]=useState(null),[dirty,setDirty]=useState(false);
   const [initialMatch]=useState(loadMatch),[savedGame,setSavedGame]=useState(initialMatch.saved),[matchError,setMatchError]=useState(initialMatch.error),[pendingGame,setPendingGame]=useState(null);
   const startGame=config=>{
-    if(savedGame||matchError){setPendingGame(config);return;}
-    setMatchError('');setLive({config,resume:null});
+    const matchConfig=newMatchConfig(config);
+    if(savedGame||matchError){setPendingGame(matchConfig);return;}
+    setMatchError('');setLive({config:matchConfig,resume:null});
   };
   const resumeGame=()=>{
     try{const saved=loadGame();if(!saved)throw new Error('Nessuna partita salvata in questo browser.');setSavedGame(saved);setPendingGame(null);setMatchError('');setLive({config:saved.config,resume:saved});}

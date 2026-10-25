@@ -135,6 +135,9 @@ export function playableConfig(c, humans = 1, pace = 'rapid') {
   check(['rapid', 'study'].includes(pace), 'Modalità IA non valida.');
   return gameConfig({ ...c, simulation: { ...c.simulation, ai: 'forecast2', depth: pace === 'study' ? 6 : 2, rollouts: 1 } }, { humans });
 }
+export function newMatchConfig(config) {
+  return { ...config, seed: Math.floor(Math.random() * 2 ** 31) };
+}
 export function download(name, text, type = 'application/json') {
   const url = URL.createObjectURL(new Blob([text], { type }));
   const a = document.createElement('a'); a.href = url; a.download = name; a.click();

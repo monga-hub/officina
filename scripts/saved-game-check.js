@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { defaults, playableConfig } from '../src/lab/config.js';
+import { defaults, playableConfig, gameConfig, newMatchConfig } from '../src/lab/config.js';
 import { initGame, applyCommand, legalCommands, scorePlayer, WORKER_BY_ID } from '../src/game/engine.js';
 import { GAME_SAVE_KEY, SAVED_UNDO_LIMIT, gameSession, loadGame, saveGame } from '../src/lab/saved-game.js';
 const data=new Map(),storage={getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value)};
@@ -97,3 +97,33 @@ assert.equal(JSON.stringify(legacySave),legacyRaw,'Migration must not mutate its
 saveGame(updated.config,directResume,storage);
 assert.deepEqual(plain(loadGame(storage).state),plain(updated.state),'Migration is idempotent');
 console.log('OK: automatic game saves restore rules, registry, decks, choices, undo, pause and results; invalid saves and write failures preserve stored data.');
+
+// New table matches draw once; save/resume and undo preserve that exact seed.
+const settings=defaults(),settingsBefore=structuredClone(settings),baseConfig=playableConfig(settings,2);
+const baseBefore=structuredClone(baseConfig),random=Math.random;
+let firstMatch,secondMatch,observedMatch;
+try {
+  const draws=[0,0.5,1-Number.EPSILON];
+  Math.random=()=>{assert.ok(draws.length);return draws.shift();};
+  firstMatch=newMatchConfig(baseConfig);secondMatch=newMatchConfig(baseConfig);
+  observedMatch=newMatchConfig(gameConfig(settings));
+  assert.equal(draws.length,0);
+} finally {Math.random=random;}
+assert.equal(firstMatch.seed,0);assert.equal(secondMatch.seed,1073741824);
+assert.equal(observedMatch.seed,2147483647,'AI-only matches opened at the table also receive a fresh seed');
+assert.deepEqual(baseConfig,baseBefore);assert.deepEqual(settings,settingsBefore);
+assert.equal(gameConfig(settings).seed,settings.simulation.seed,'Simulation seed remains configurable and deterministic');
+for(const match of [firstMatch,secondMatch,observedMatch]) {
+  const fresh=gameSession(match),snapshot=structuredClone(fresh.state);
+  assert.equal(fresh.state.seed,match.seed);
+  const move=legalCommands(fresh.state).find(c=>c.type==='move');
+  fresh.state=applyCommand(fresh.state,move);fresh.history=[snapshot];
+  saveGame(match,fresh,storage);const saved=loadGame(storage);
+  assert.equal(saved.config.seed,match.seed);assert.equal(saved.state.seed,match.seed);
+  assert.equal(saved.history[0].seed,match.seed);
+  const resumed=gameSession(secondMatch,saved);
+  assert.deepEqual(plain(resumed),plain(fresh),'Resume uses the saved configuration, never a new seed');
+  assert.deepEqual(plain(initGame({...saved.config,headless:false})),plain(snapshot),'Saved seed reproduces the original setup');
+}
+assert.notDeepEqual(initGame(firstMatch).banks,initGame(secondMatch).banks,'Different seeds change the initial decks');
+console.log('OK: fresh seeds for all table entry points, stable save/resume/undo and reproducible setups; simulation seed unchanged.');

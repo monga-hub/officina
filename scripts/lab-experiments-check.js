@@ -74,3 +74,17 @@ for(const players of [2,3,4]) {
   const report=textReport(editor,[g],'Parziale');assert.ok(report.startsWith('# OFFICINA'));assert.ok(report.includes('Configurazione completa'));assert.ok(!report.includes('NaN'));assert.ok(!report.includes('undefined'));
 }
 console.log('OK: optional milestones, one-time rewards, tension, second machine, conversion choices, save/undo, 2/3/4-player replays, exact per-machine income and Markdown reports.');
+
+// Large-contract preset changes reach the engine and migrate once without overwriting later edits.
+const reduced=defaults();assert.ok(reduced.contracts.large.every(card=>card.pv[0]===13));
+assert.ok(reduced.contracts.small.every(card=>card.pv[0]===5));assert.ok(reduced.contracts.medium.every(card=>card.pv[0]===9));
+const former=structuredClone(reduced);former.presetRevision=1;former.contracts.large.forEach(card=>card.pv[0]=15);former.contracts.large[0].pv[0]=12;
+const migrated=parseConfig(JSON.stringify(former));assert.equal(migrated.contracts.large[0].pv[0],12);assert.ok(migrated.contracts.large.slice(1).every(card=>card.pv[0]===13));
+assert.equal(former.contracts.large[1].pv[0],15);
+const edited=structuredClone(migrated);edited.contracts.large[1].pv[0]=15;assert.deepEqual(parseConfig(JSON.stringify(edited)),edited);
+const delivery=initGame(gameConfig(reduced));delivery.phase='borsa';delivery.players[0].node='Borsa';
+for(const d of Object.values(delivery.players[0].depts))d.prod=16;
+for(const key of Object.keys(delivery.players[0].resources))delivery.players[0].resources[key]=20;
+const large=legalCommands(delivery).find(cmd=>cmd.type==='completeContract'&&cmd.size==='large');assert.ok(large);
+assert.equal(applyCommand(delivery,large).players[0].contractsWon.at(-1).pv,13);
+console.log('OK: large contracts award 13 PV, small/medium unchanged, old defaults migrate once and custom values survive.');

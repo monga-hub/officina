@@ -27,6 +27,8 @@ Apri **http://127.0.0.1:5199/lab.html**. Se la porta è occupata, usa l’indiri
 
 Il Laboratorio aggiornato è `lab.html`; `/` conserva l’interfaccia storica per compatibilità. Gli impiegati sono esclusi dal nuovo Laboratorio. In Città si consegna una sola commessa per visita, con conclusione automatica del turno; non si acquistano carte.
 
+I valori di riferimento delle commesse sono **5 PV per le piccole, 9 per le medie e 13 per le grandi**.
+
 Per ora il Laboratorio conta **solo i punti delle commesse**. Gare e premi per nazionalità, conversioni finali di marchi e risorse, soglie del tracciato e altri bonus non assegnano PV. I marchi e le risorse continuano a servire durante la partita. A parità di punti vince chi ha più marchi rimasti; se il pareggio continua, chi ha completato più commesse.
 
 Anche le partite salvate vengono ricalcolate automaticamente con questo punteggio, comprese le mosse annullabili e i risultati conclusivi. La partita riprende senza azzerare turni, carte, risorse o commesse. Gli altri costi e le regole di produzione conservano le impostazioni del salvataggio. Le configurazioni importate perdono le precedenti impostazioni dei premi extra. Le vecchie prove con punteggi diversi non sono direttamente confrontabili con quelle attuali. La modalità storica conserva le sue regole.

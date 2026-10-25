@@ -56,7 +56,7 @@ const historicalConfig={...reference,seed:1907,headless:true,players:cfg.players
 const expected=initGame({...historicalConfig, workers:reference.workers.filter(w=>!w.power),
   nodeBanks:structuredClone(STAR_NODE_BANKS), singleContractVisit:true,
   contractsOnly:true, pianoEnabled:false, raceObjectives:{enabled:false,list:[]}, raceIncentive:0,
-  rowEconomy:cfg.rowEconomy,
+  rowEconomy:cfg.rowEconomy, contracts:cfg.contracts, contractPV:undefined,
   slots:{...reference.slots,direzione:{sopra:0,sotto:0}}});
 assert.deepEqual(initGame(cfg),expected,'Lab rules: no employees, adjacent markets and one contract per visit');
 assert.equal(scorePlayer(expected,expected.players[0]).total,0,'Starting money awards no points');

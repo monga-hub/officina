@@ -1,13 +1,17 @@
 import React from 'react';
 import { Amount, Development, MachineEffect } from './GameSymbols.jsx';
 import ResourceIcon from './ResourceIcon.jsx';
-import { NATION_FLAGS, SECTOR_COLORS } from '../game/data.js';
+import { NATION_FLAGS_NUOVO, SECTOR_COLORS } from '../game/data.js';
 import { hireCost } from '../game/engine.js';
 import { cardArtKey, machineText } from './cards.js';
 
 const art=import.meta.glob('./assets/workers/*.jpg',{eager:true,query:'?url',import:'default'});
+export function NationBadge({nation,count}) {
+  return <span className="nation-badge" title={count==null?nation:`${nation}: ${count} ${count===1?'operaio':'operai'} nel reparto`}><span className="nation-flag" aria-hidden="true">{NATION_FLAGS_NUOVO[nation]}</span><span>{nation}</span>{count!=null&&<b>×{count}</b>}</span>;
+}
 export default function WorkerCard({worker:w,onInspect,side}) {
-  const content=<><div className="paper-card-top"><b className="card-value">{w.v}</b><ResourceIcon resource={w.sector}/><span title={w.nation}>{NATION_FLAGS[w.nation]||'🇬🇷'}</span></div>
+  const content=<><div className="paper-card-top"><b className="card-value">{w.v}</b><ResourceIcon resource={w.sector}/></div>
+    <div className="card-nationality"><NationBadge nation={w.nation}/></div>
     <img className="card-portrait" src={art[`./assets/workers/${cardArtKey(w)}.jpg`]} alt=""/>
     <div className={`card-half ${side==='sopra'?'card-active-half':''}`}><Development value={w.v}/></div>
     <div className={`card-half card-machine ${side==='sotto'?'card-active-half':''}`}><MachineEffect worker={w}/></div></>;

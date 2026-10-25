@@ -3,20 +3,21 @@ import { currentPlayer, legalCommands, WORKER_BY_ID, scorePlayer } from '../game
 import { deciderId } from '../game/ai.js';
 import { rowPressureState } from '../game/row-pressure.js';
 import { rowNodeLabel, tokenWelfare } from '../game/row-economy.js';
-import { RESOURCE_OF } from '../game/data.js';
+import { RESOURCE_OF, NATIONS_NUOVO } from '../game/data.js';
 import { ROLES } from './config.js';
 import RowProductionTrack from '../components/RowProductionTrack.jsx';
 import ActionPanel, { ProductionActions, RowEconomyActions } from '../components/ActionPanel.jsx';
 import PendingModal from '../components/PendingModal.jsx';
 import ContractsPanel from './ContractsTable.jsx';
 import StarBoard, { CardPreview } from './StarBoard.jsx';
-import WorkerCard, { HireCard } from './WorkerCard.jsx';
+import WorkerCard, { HireCard, NationBadge } from './WorkerCard.jsx';
 
 import ResourceIcon from './ResourceIcon.jsx';
 import { Amount, SymbolKey } from './GameSymbols.jsx';
 import TableViewport, { TableOverlay } from './TableViewport.jsx';
 function Department({state,player,role,onInspect}) {
   const d=player.depts[role], p=rowPressureState(state,d);
+  const nations=d.sopra.reduce((counts,id)=>{const nation=WORKER_BY_ID[id].nation;counts[nation]=(counts[nation]||0)+1;return counts;},{});
   const cellLabel=pos=>{
     const c=state.tracks[role][pos];
     return c?[c.res&&`${c.res} ${RESOURCE_OF[d.sector]}`,c.coins&&`${c.coins} marchi`].filter(Boolean).join(' + ')||'—':'—';
@@ -31,7 +32,7 @@ function Department({state,player,role,onInspect}) {
     <p className="play-row-count"><b>{p.available}/{p.developed}</b> righe utilizzabili{p.blocked>0&&<em> · {p.blocked} bloccate</em>}</p>
     <RowProductionTrack model={state.trackModel} prod={d.prod} tension={d.tension} wholeRows renderCell={renderCell} cellTitle={cellLabel}/>
 
-    <details className="department-cards"><summary>{d.sopra.length} operai · {d.sotto.length}/{state.slots[role].sotto} macchinari</summary>    <p className="lab-muted">{!p.staffed?'Serve un operaio per produrre.':tokenWelfare(state)?'Intensa: tutte le righe accessibili, poi tensione +1. Protetta: stessa produzione, spendi 1 gettone e la tensione resta invariata.':p.welfare?`Sostenibile: fino a ${Math.min(p.available,p.welfare)} righe, poi tensione −1.`:'Intensa: righe accessibili, poi tensione +1.'}</p><h4>Operai · {d.sopra.length}</h4><div className="installed-cards">{d.sopra.map(id=><WorkerCard key={id} worker={WORKER_BY_ID[id]} side="sopra" onInspect={()=>onInspect(id)}/>)}</div>
+    <details className="department-cards"><summary title={`${d.sopra.length} ${d.sopra.length===1?'operaio':'operai'} nel reparto`}>{d.sopra.length>0?<span className="department-nations">{NATIONS_NUOVO.filter(nation=>nations[nation]).map(nation=><NationBadge key={nation} nation={nation} count={nations[nation]}/>)}</span>:"0 operai"} · {d.sotto.length}/{state.slots[role].sotto} macchinari</summary>    <p className="lab-muted">{!p.staffed?'Serve un operaio per produrre.':tokenWelfare(state)?'Intensa: tutte le righe accessibili, poi tensione +1. Protetta: stessa produzione, spendi 1 gettone e la tensione resta invariata.':p.welfare?`Sostenibile: fino a ${Math.min(p.available,p.welfare)} righe, poi tensione −1.`:'Intensa: righe accessibili, poi tensione +1.'}</p><h4>Operai · {d.sopra.length}</h4><div className="installed-cards">{d.sopra.map(id=><WorkerCard key={id} worker={WORKER_BY_ID[id]} side="sopra" onInspect={()=>onInspect(id)}/>)}</div>
     <h4>Macchinari · {d.sotto.length}/{state.slots[role].sotto}</h4><div className="installed-cards">{d.sotto.map(id=><WorkerCard key={id} worker={WORKER_BY_ID[id]} side="sotto" onInspect={()=>onInspect(id)}/>)}</div>
     {!d.sotto.length&&<p className="lab-muted">Nessun macchinario installato.</p>}</details>
   </section>;

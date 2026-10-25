@@ -222,3 +222,15 @@
 .lab-shell .production-choice>small{color:inherit;margin-top:4px}
 .production-yield{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:6px}
 .production-yield>span:last-child{margin-left:4px}
+
+/* Nationalities stay readable on small cards and with department details closed. */
+.nation-badge{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;font-size:12px;font-weight:750;line-height:1.15;letter-spacing:0;color:#302d25}
+.nation-flag{font-size:23px;line-height:1;flex-shrink:0}
+.lab-shell .paper-card .card-nationality{display:flex;align-items:center;justify-content:center;flex-shrink:0;min-height:29px;padding:3px 4px;background:#fff8e5;border-bottom:1px solid #b4a380}
+.card-nationality .nation-badge{font-size:12px}
+.card-preview .card-nationality .nation-badge{font-size:16px;gap:8px}
+.card-preview .card-nationality .nation-flag{font-size:29px}
+.department-nations{display:inline-flex;flex-wrap:wrap;vertical-align:middle;gap:3px 5px;max-width:100%}
+.department-nations .nation-badge{padding:2px 5px;border:1px solid #c2b08a;border-radius:4px;background:#fff8e5;font-size:11px}
+.department-nations .nation-flag{font-size:20px}
+.department-nations .nation-badge b{font-size:12px;color:#243b2c}

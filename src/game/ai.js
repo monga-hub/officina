@@ -145,8 +145,8 @@ function evaluateInner(state, playerId, rolloutLeaf) {
     // prod/sopra/sotto = motore industriale del tableau → pesati come i tracciati
     v += (d.prod * 0.6 + (d.prod >= state.milestonePos[role] ? 2 : 0)) * w.wTrack;
     if (state.rowTrack) {
-      const developed = activeTrackEnd(d.prod, 0, state.trackModel, state.rowEconomy?.enabled);
-      v -= (developed - activeTrackEnd(d.prod, d.tension, state.trackModel, state.rowEconomy?.enabled)) * 0.6 * w.wTrack;
+      const developed = activeTrackEnd(d.prod, 0, state.trackModel, state.rowEconomy?.enabled, state.rowEconomy?.productionThresholds);
+      v -= (developed - activeTrackEnd(d.prod, d.tension, state.trackModel, state.rowEconomy?.enabled, state.rowEconomy?.productionThresholds)) * 0.6 * w.wTrack;
     }
     if (!state.rowEconomy?.enabled) v += d.sopra.length * 1.2 * w.wTrack;
     // carte Sotto: valore = qualità dell'effetto × attivazioni future attese

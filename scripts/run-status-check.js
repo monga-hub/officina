@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { runTiming, duration, clockTime } from '../src/lab/run-status.js';
+const run={started:1000,workerCount:2,config:{players:2,turns:28,simulation:{games:5}},games:[],progress:{0:{started:1000,turn:1,seat:0},1:{started:1000,turn:1,seat:0}}};
+assert.deepEqual(runTiming(run,2000),{elapsed:1000,remaining:null,finish:null});
+run.games=[{elapsedMs:10000}];run.progress={1:{started:1000,turn:15,seat:0},2:{started:11000,turn:1,seat:0}};
+const estimate=runTiming(run,11000);
+assert.equal(estimate.remaining,20000);assert.equal(estimate.finish,31000);
+assert.ok(runTiming(run,12000).remaining<estimate.remaining);
+assert.ok(Number.isFinite(runTiming({...run,games:[{elapsedMs:NaN}]},12000).elapsed));
+assert.equal(runTiming({...run,ended:13000,status:'Interrotta'},90000).elapsed,12000);
+assert.equal(runTiming({...run,ended:13000,status:'Completata'},90000).finish,13000);
+assert.equal(runTiming({...run,ended:13000,status:'Errore'},90000).remaining,null);
+assert.equal(duration(-1),'0m 0s');assert.equal(duration(3661000),'1h 1m 1s');
+assert.ok(clockTime(Date.UTC(2026,9,25,14,30)).includes('15:30:00'));
+console.log('OK: initial estimate unavailable, parallel queue, advancing progress, fixed completion/interruption/error times and Italian clocks.');

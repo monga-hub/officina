@@ -23,7 +23,7 @@ export function defaults() {
     trackModel: 'righe4corte', track: withoutTrackPoints(reference.tracks.terziario),
     welfareCost: 4, repressionBase: 2, repressionStep: 0,
     contractCoins: reference.rowEconomy.contractCoins,
-    machineSlots: [2, 2, 2],
+    machineSlots: [2, 2, 2], productionThresholds: [1, 5, 9, 13], milestoneResource: false, machineImmediate: false,
     workers: reference.workers.filter(w => !w.power && w.deck !== 'Impiegati').map(tensionMachineCard), contracts: reference.contracts,
     contractCount: reference.contractCount, contractMarket: 2,
     cityIncome: reference.borsaExit.coins, cityRefresh: true,
@@ -47,6 +47,10 @@ export function validate(c) {
     check(typeof cell === 'object' && !Array.isArray(cell) && Object.keys(cell).length > 0 && Object.keys(cell).every(k => ['res', 'coins'].includes(k)), 'Nel tracciato sono ammessi solo risorse e marchi.');
     Object.values(cell).forEach(v => integer(v, 0, 20, 'Bonus casella'));
   }
+  const layout = TRACK_MODELS[c.trackModel];
+  check(Array.isArray(c.productionThresholds) && c.productionThresholds.length === layout.rows, 'Serve una soglia per ogni riga.');
+  c.productionThresholds.forEach((n, i) => integer(n, i * layout.columns + 1, (i + 1) * layout.columns, `Soglia riga ${i + 1}`));
+  check(typeof c.milestoneResource === 'boolean' && typeof c.machineImmediate === 'boolean', 'Opzioni ricompense immediate non valide.');
   for (const key of ['welfareCost', 'repressionBase', 'repressionStep']) integer(c[key], 0, 30, key);
   check(c.repressionStep === 0, 'La repressione ha un costo fisso, senza rincari.');
   check(Array.isArray(c.machineSlots) && c.machineSlots.length === 3, 'Spazi macchinari non validi.');
@@ -94,7 +98,7 @@ export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
     nodeBanks: structuredClone(STAR_NODE_BANKS),
     workers: structuredClone(c.workers), contracts: structuredClone(c.contracts), contractPV: undefined,
     contractCount: structuredClone(c.contractCount), contractMarket: c.contractMarket,
-    rowEconomy: { ...reference.rowEconomy, welfareMode: 'tokens', welfareScope: 'factory', welfareHireDiscount: false, sameNationHireDiscount: true, tensionMachineCash: true,
+    rowEconomy: { ...reference.rowEconomy, welfareMode: 'tokens', welfareScope: 'factory', welfareHireDiscount: false, sameNationHireDiscount: true, tensionMachineCash: true, productionThresholds: [...c.productionThresholds], milestoneResource: c.milestoneResource, machineImmediate: c.machineImmediate,
       welfareCost: c.welfareCost, repressionBase: c.repressionBase, repressionStep: 0, contractCoins: { ...c.contractCoins } },
     slots: { ...Object.fromEntries(ROLES.map((r,i) => [r, { sopra: 3, sotto: c.machineSlots[i] }])), direzione: { sopra: 0, sotto: 0 } },
     borsaExit: { enabled: true, coins: c.cityIncome }, borsaRefresh: { enabled: c.cityRefresh },
@@ -109,6 +113,8 @@ export function parseConfig(raw) {
   // Editor migrations preserve custom prices; current rules apply to all lab configurations.
   if (c?.schema === 'officina-lab-1') {
     const migrateMachines = c.rulesRevision == null || [1, 2, 3].includes(c.rulesRevision);
+    c.productionThresholds ??= Array.from({length: TRACK_MODELS[c.trackModel]?.rows || 4}, (_, i) => i * (TRACK_MODELS[c.trackModel]?.columns || 4) + 1);
+    c.milestoneResource ??= false; c.machineImmediate ??= false;
     c.contractsOnly = true;
     if (c.rulesRevision == null || c.rulesRevision === 1) {
       if (c.welfareCost === 3) c.welfareCost = 4;

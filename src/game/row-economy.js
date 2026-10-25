@@ -3,7 +3,7 @@ import { rowTrackModel, inferTrackModel } from './data.js';
 // Variante ottobre: valori sperimentali, separati dai salvataggi precedenti.
 export const ROW_ECONOMY_DEFAULT = {
   enabled: false, welfareMode: 'permanent', welfareCost: 3, welfareScope: 'department', welfareHireDiscount: false, sameNationHireDiscount: false, repressionBase: 2, repressionStep: 1,
-  contractCoins: { small: 2, medium: 3, large: 4 }, machineCash: true, tensionMachineCash: false,
+  contractCoins: { small: 2, medium: 3, large: 4 }, machineCash: true, tensionMachineCash: false, productionThresholds: null, milestoneResource: false, machineImmediate: false,
 };
 export function normalizeRowEconomy(raw = {}) {
   const x = { ...ROW_ECONOMY_DEFAULT, ...(raw || {}) };
@@ -14,6 +14,9 @@ export function normalizeRowEconomy(raw = {}) {
   x.welfareHireDiscount = x.welfareMode !== 'tokens' && x.welfareHireDiscount === true;
   x.sameNationHireDiscount = x.sameNationHireDiscount === true;
   x.tensionMachineCash = x.tensionMachineCash === true;
+  x.milestoneResource = x.milestoneResource === true;
+  x.machineImmediate = x.machineImmediate === true;
+  x.productionThresholds = Array.isArray(x.productionThresholds) ? [...x.productionThresholds] : null;
   for (const k of ['welfareCost', 'repressionBase', 'repressionStep'])
     x[k] = Number.isFinite(Number(x[k])) ? Math.max(0, Math.min(30, Math.round(Number(x[k])))) : ROW_ECONOMY_DEFAULT[k];
   x.contractCoins = Object.fromEntries(['small', 'medium', 'large'].map(k => {
@@ -41,7 +44,7 @@ export function rowEconomyConfig(config) {
     borsaFabbriche: { ...config.borsaFabbriche, enabled: false },
     borsaIndici: { ...config.borsaIndici, enabled: false },
     welfareEnabled: false, servicesMode: 'welfare', contractEngine: false,
-    sottoInstantEffect: false, deptCompletePV: 0,
+    sottoInstantEffect: rowEconomy.machineImmediate, deptCompletePV: 0,
   };
 }
 

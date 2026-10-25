@@ -246,11 +246,12 @@ export function inferTrackModel(config) {
   return Object.keys(TRACK_MODELS).find(key => TRACK_MODELS[key].max + 1 === length) || TRACK_MODEL_DEFAULT;
 }
 // La tensione copre righe fisiche dal basso, anche se non ancora sviluppate.
-export function activeTrackEnd(prod, tension, model, wholeRows = false) {
+export function activeTrackEnd(prod, tension, model, wholeRows = false, thresholds = null) {
   const layout = rowTrackModel(model);
   if (!layout) return prod;
   const coveredRows = Math.min(layout.rows, Math.max(0, Math.floor(Number(tension) || 0)));
-  return Math.max(0, Math.min(wholeRows ? Math.ceil(prod / layout.columns) * layout.columns : prod, (layout.rows - coveredRows) * layout.columns));
+  const developed = wholeRows && thresholds ? thresholds.filter(n => prod >= n).length * layout.columns : wholeRows ? Math.ceil(prod / layout.columns) * layout.columns : prod;
+  return Math.max(0, Math.min(developed, (layout.rows - coveredRows) * layout.columns));
 }
 
 // mappa posizione → [riga, colonna] per la UI. 4 righe (0=A ... 3=D), serpentina dal basso.

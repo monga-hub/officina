@@ -31,6 +31,18 @@ Per ora il Laboratorio conta **solo i punti delle commesse**. Gare e premi per n
 
 Anche le partite salvate vengono ricalcolate automaticamente con questo punteggio, comprese le mosse annullabili e i risultati conclusivi. La partita riprende senza azzerare turni, carte, risorse o commesse. Gli altri costi e le regole di produzione conservano le impostazioni del salvataggio. Le configurazioni importate perdono le precedenti impostazioni dei premi extra. Le vecchie prove con punteggi diversi non sono direttamente confrontabili con quelle attuali. La modalità storica conserva le sue regole.
 
+## Esperimenti e lotti di partite
+
+In **Plancia produttiva** puoi spostare la soglia di sblocco all’interno di ogni riga e attivare il premio di **1 risorsa immediata** quando un avanzamento la raggiunge o la supera. Ogni soglia paga una sola volta; le righe rimangono sbloccate, ma la tensione può coprirle durante le produzioni. Le soglie già raggiunte nel setup non pagano il premio.
+
+In **Welfare e denaro** puoi attivare l’effetto del macchinario anche all’installazione. Resta poi installato e si riattiva con il reparto. Installare la seconda carta attiva subito solo quella nuova. Le due opzioni immediate sono inizialmente disattivate; le configurazioni precedenti mantengono il comportamento originario.
+
+In **Simulazione** scegli da 1 a 100 partite, giocatori, turni, IA e seme. Il lotto fotografa tutte le impostazioni all’avvio e usa semi consecutivi. Per un confronto cambia una regola e conserva IA e semi. La nuova IA resta selezionabile a d6/r1; la modalità rapida serve per i controlli tecnici.
+
+**Scarica report .md** e **Copia report per l’analisi** producono lo stesso report dettagliato: risultati, assunzioni e sconti, soglie, macchinari singoli e in coppia, rendite immediate e successive, welfare, repressione, commesse, conversioni e bilanci economici. Ogni partita completa verifica conservazione di marchi e risorse e corrispondenza delle rendite registrate con gli incassi del motore. Il report include configurazione e semi; **Scarica dati e mosse** conserva anche cronologia e stato finale.
+
+Puoi fermare il lotto conservando ed esportando le partite finite. I risultati del lotto restano nella pagina: scaricali prima di chiuderla o ricaricarla. Le differenze tra gruppi di giocatori descrivono correlazioni, non dimostrano da sole l’effetto di una regola.
+
 ## Verificare e compilare
 
 ```sh

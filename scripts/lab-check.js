@@ -215,7 +215,7 @@ let replay=initGame(rapidCfg);for(const cmd of game.commands)replay=applyCommand
 assert.ok(replay.gameOver);assert.deepEqual(replay.players.map(p=>scorePlayer(replay,p).total),game.people.map(p=>p.total));
 const summary=summarize([game]);assert.equal(summary.players,2);assert.equal(summary.welfareHistogram.reduce((n,r)=>n+r.count*r.players,0),game.people.reduce((n,p)=>n+p.stats.welfareBuys,0));
 for(const n of [3,4]){const many=defaults();many.players=n;many.simulation.ai='greedy';const g=await runGame(gameConfig(many));assert.equal(g.people.length,n);assert.equal(g.turns,28);}
-for(const model of ['righe4','righe3']){const many=defaults();const {TRACK_MODELS}=await import('../src/game/data.js');many.trackModel=model;many.track=withoutTrackPoints(TRACK_MODELS[model].track);many.simulation.ai='greedy';assert.equal((await runGame(gameConfig(many))).turns,28);}
+for(const model of ['righe4','righe3']){const many=defaults();const {TRACK_MODELS}=await import('../src/game/data.js');many.trackModel=model;many.productionThresholds=Array.from({length:TRACK_MODELS[model].rows},(_,i)=>i*TRACK_MODELS[model].columns+1);many.track=withoutTrackPoints(TRACK_MODELS[model].track);many.simulation.ai='greedy';assert.equal((await runGame(gameConfig(many))).turns,28);}
 console.log('OK: reference rules without employees; saved-config migration; no employee purchases by humans or AI; validation; full games with 2/3/4 players and each row format; replay; counters.');
 const full=new URL('../reports/laboratorio-verifica-2026-10-16-d6.json',import.meta.url);
 if(fs.existsSync(full)){

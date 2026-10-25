@@ -977,6 +977,10 @@ function advanceTrack(state, player, dept, steps, reason) {
   for (let pos = from + 1; pos <= to; pos++) {
     const cell = resolveCell(state, dept, pos);
     if (state.rowTrack) {
+      const thresholds = state.rowEconomy?.productionThresholds || Array.from({ length: rowTrackModel(state.trackModel).rows }, (_, i) => i * rowTrackModel(state.trackModel).columns + 1);
+      if (state.rowEconomy?.milestoneResource && thresholds.includes(pos)) {
+        addRes(player, dept.sector, 1, 'tracciati'); gains.push('+1 risorsa alla soglia');
+      }
       if (cell?.milestone) { gains.push('milestone Città'); noteIndexEvent(state, 'milestone', dept.sector); }
       if (cell?.pv) gains.push(`soglia ${cell.pv} PV`);
       continue;
@@ -1021,7 +1025,7 @@ function checkTileUnlocks(state, player, dept, from, to) {
 // Attivazione: le caselle raggiunte riproducono (marchi solo se rules.coinsRepeat).
 function trackProduction(state, player, dept, multiplier = 1, sustainableRow = null) {
   let coins = 0, res = 0;
-  const end = activeTrackEnd(dept.prod, dept.tension, state.trackModel, state.rowEconomy?.enabled);
+  const end = activeTrackEnd(dept.prod, dept.tension, state.trackModel, state.rowEconomy?.enabled, state.rowEconomy?.productionThresholds);
   const columns = rowTrackModel(state.trackModel)?.columns || 1;
   const selectedRows = sustainableRow === null ? null : [].concat(sustainableRow);
   for (let pos = 1; pos <= end; pos++) {
@@ -1647,7 +1651,7 @@ export function legalCommands(state) {
       if (tokenWelfare(state) && availableWelfareTokens(state, p) > 0 && max) {
         cmds.push({ type: 'activate', sector: node, intensity: 1, welfareToken: true });
       } else if (state.rowEconomy?.enabled && !tokenWelfare(state) && d.sustainableWelfare && max) {
-        const rows = activeTrackEnd(d.prod, d.tension, state.trackModel, true) / rowTrackModel(state.trackModel).columns;
+        const rows = activeTrackEnd(d.prod, d.tension, state.trackModel, true, state.rowEconomy?.productionThresholds) / rowTrackModel(state.trackModel).columns;
         const count = Math.min(rows, d.sustainableWelfare);
         const select = (chosen, start) => {
           if (chosen.length === count) {

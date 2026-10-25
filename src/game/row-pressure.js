@@ -5,8 +5,8 @@ import { tokenWelfare } from './row-economy.js';
 const roles = ['terziario', 'secondario', 'primario'];
 export function rowPressureState(state, d) {
   const layout = rowTrackModel(state.trackModel);
-  const developed = activeTrackEnd(d.prod, 0, state.trackModel, true) / layout.columns;
-  const available = activeTrackEnd(d.prod, d.tension, state.trackModel, true) / layout.columns;
+  const developed = activeTrackEnd(d.prod, 0, state.trackModel, true, state.rowEconomy?.productionThresholds) / layout.columns;
+  const available = activeTrackEnd(d.prod, d.tension, state.trackModel, true, state.rowEconomy?.productionThresholds) / layout.columns;
   return { sector: d.sector, position: d.prod, tension: d.tension,
     staffed: d.sopra.some(id => !d.blocked.includes(id)), welfare: d.sustainableWelfare || 0,
     developed, available, blocked: developed - available,

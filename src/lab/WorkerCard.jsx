@@ -7,11 +7,10 @@ import { cardArtKey, machineText } from './cards.js';
 
 const art=import.meta.glob('./assets/workers/*.jpg',{eager:true,query:'?url',import:'default'});
 export function NationBadge({nation,count}) {
-  return <span className="nation-badge" title={count==null?nation:`${nation}: ${count} ${count===1?'operaio':'operai'} nel reparto`}><span className="nation-flag" aria-hidden="true">{NATION_FLAGS_NUOVO[nation]}</span><span>{nation}</span>{count!=null&&<b>×{count}</b>}</span>;
+  return <span className="nation-badge" aria-label={count==null?nation:`${nation}: ${count} ${count===1?'operaio':'operai'}`}><span className="nation-flag" aria-hidden="true">{NATION_FLAGS_NUOVO[nation]}</span>{count!=null&&<b>×{count}</b>}</span>;
 }
 export default function WorkerCard({worker:w,onInspect,side}) {
-  const content=<><div className="paper-card-top"><b className="card-value">{w.v}</b><ResourceIcon resource={w.sector}/></div>
-    <div className="card-nationality"><NationBadge nation={w.nation}/></div>
+  const content=<><div className="paper-card-top"><b className="card-value">{w.v}</b><ResourceIcon resource={w.sector}/><NationBadge nation={w.nation}/></div>
     <img className="card-portrait" src={art[`./assets/workers/${cardArtKey(w)}.jpg`]} alt=""/>
     <div className={`card-half ${side==='sopra'?'card-active-half':''}`}><Development value={w.v}/></div>
     <div className={`card-half card-machine ${side==='sotto'?'card-active-half':''}`}><MachineEffect worker={w}/></div></>;

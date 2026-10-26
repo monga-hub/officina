@@ -1,3 +1,4 @@
+import { researchSummary } from './research.js';
 import { WELFARE_POLICIES } from '../game/welfare-rondel.js';
 import { bankMarket, hireCost, legalCommands, WORKER_BY_ID } from '../game/engine.js';
 import { rowMachineCard } from '../game/row-economy.js';
@@ -30,9 +31,14 @@ export function observeStudy(out,before,cmd,after) {
     const hires=legalCommands(before).filter(c=>c.type==='hire');
     if(hires.length){const offer=out.offers[`${p.id}:${before.turn}`]??={seat:p.id,turn:before.turn,picked:false,alternatives:[]};if(cmd.type==='hire')offer.picked=true;else if(!offer.alternatives.includes(cmd.type))offer.alternatives.push(cmd.type);}
   }
-  const event={seq,turn:before.turn,seat:p.id,type:cmd.type,role,side:cmd.side,cardId:cmd.cardId,
+  const event={seq,turn:before.turn,seat:p.id,type:cmd.type,node:p.node,protected:cmd.welfareToken===true,role,side:cmd.side,cardId:cmd.cardId,
     coinsBefore:p.coins,coinsAfter:q.coins,income:q.coinsGained-p.coinsGained,spent:total(q.coinsSpentBy)-total(p.coinsSpentBy),
     resourcesGained:total(q.resGainedBy)-total(p.resGainedBy),resourcesSpent:total(q.resSpentByCat)-total(p.resSpentByCat),tokens:cmd.type==='spendWelfareToken'?(cmd.count||1):0};
+  if(!before.pending&&['action','borsa'].includes(before.phase)) {
+    const legal=legalCommands(before);
+    event.availableActions=[...new Set(legal.map(c=>c.type))];
+    if(p.node==='Servizi')event.availablePolicies=[...new Set(legal.filter(c=>c.type==='investWelfare').map(c=>c.position).filter(Number.isInteger))];
+  }
   if(before.rowEconomy.welfareRondel) {
     event.policyBefore=p.welfarePosition; event.policyAfter=q.welfarePosition;
     if(cmd.type==='investWelfare'){event.steps=cmd.steps;event.tokensGained=q.welfareTokens-p.welfareTokens;}
@@ -94,6 +100,7 @@ export function detailedReport(config,games,status) {
   const targets=machines.filter(m=>m.kind==='tensione'),pair=prods.filter(p=>p.targets>=2),cures=events.filter(e=>e.type==='spendWelfareToken'),repressions=events.filter(e=>e.type==='repress'),N=people.length;
   const moneySources=source('coinsGainedBy'),cityIncome=sum(events,e=>e.cityIncome||0);moneySources.scambio=(moneySources.scambio||0)-cityIncome;moneySources.citta=cityIncome;
   const cohort=ps=>[ps.length,mean(ps,p=>p.total),mean(ps,p=>p.nContracts),mean(ps,p=>p.stats.welfareBuys),mean(ps,p=>p.stats.repressions)];
+  const research=researchSummary(games);
   const L=[`# OFFICINA 1907 — ${config.name}`,`\n${status}: **${games.length}/${config.simulation.games} partite**, ${N} giocatori-partita. Generato: ${new Date().toISOString()}.`,
     `\n## Esperimento riproducibile\n\nImpronta configurazione: **${fingerprint(config)}**. IA ${config.simulation.ai}, d${config.simulation.depth}/r${config.simulation.rollouts}. ${config.players} giocatori, ${config.turns} turni. Versioni del motore: ${[...new Set(games.map(g=>g.release?.version||'sviluppo locale'))].join(', ')}.`,
     `Soglie permanenti: ${config.productionThresholds.join('/')}. Risorsa immediata alla soglia: ${config.milestoneResource?'sì':'no'}. Macchinari attivi all’installazione: ${config.machineImmediate?'sì':'no'}.`,
@@ -103,6 +110,11 @@ export function detailedReport(config,games,status) {
     'Le frequenze descrivono questa IA e questo campione. Confronti tra possessori e non possessori sono correlazioni; per attribuire un effetto alla regola occorre un confronto A/B sugli stessi semi.',
     '\n## Risultati generali\n',table(['Indicatore','N','Media','Mediana','Min','Max'],[['PV','total'],['Commesse','nContracts'],['Turno prima commessa','firstContract'],['Operai Sopra','staff'],['Macchinari Sotto','machines'],['Marchi finali','coins']].map(([label,key])=>{const d=metric(key);return [label,d.n,d.mean,d.median,d.min,d.max];})),
     `\n## Posizione di turno\n\n${table(['Posto','N','Vittorie equivalenti','PV medi'],Array.from({length:config.players},(_,seat)=>{const ps=people.filter(p=>p.playerId===seat);return [seat+1,ps.length,sum(ps,p=>{const best=[...p.game.people].sort((a,b)=>b.total-a.total||b.coins-a.coins||b.nContracts-a.nContracts)[0],ties=p.game.people.filter(q=>q.total===best.total&&q.coins===best.coins&&q.nContracts===best.nContracts);return ties.some(q=>q.playerId===seat)?1/ties.length:0;}),mean(ps,p=>p.total)];}))}`,
+    '\n## Diffusione delle scelte\n',
+    'Giocatori-partita: chi esegue la scelta almeno una volta. Quota turni: turni propri con quella scelta sul totale completato. Protezioni e cure possono accompagnare altre azioni: le percentuali si sovrappongono e non vanno sommate.',
+    table(['Scelta','Giocatori','Totale','% giocatori','Eventi','% turni'],research.participation.map(r=>[r.label,r.players,r.totalPlayers,r.playerPercent,r.events,r.turnPercent])),
+    table(['Nodo','Turni osservati','Azione del nodo accessibile','Scelta azione','Scelta carta','Né azione né carta acquistabile'],research.opportunities.map(r=>[r.node==='Servizi'?'Welfare':'Repressione',r.measuredTurns,r.actionAffordable,r.choseAction,r.choseCard,r.neitherAffordable])),
+    'L’accessibilità viene misurata solo sul nodo effettivamente visitato, dopo il costo di movimento. Per risultati storici senza questa osservazione i conteggi non sono disponibili; uno zero con zero turni osservati non dimostra mancanza di opportunità.',
     '\n## Assunzioni e sviluppo\n',`Assunzioni Sopra: ${events.filter(e=>e.type==='hire'&&e.side==='sopra').length}; scontate: ${events.filter(e=>e.discount>0).length}; risparmio totale: ${f(sum(events,e=>e.discount||0))} marchi.`,
     `Turni con almeno un’assunzione legale: ${offers.length}; turni in cui viene scelta: ${offers.filter(o=>o.picked).length}. La disponibilità non dimostra che fosse la scelta migliore.`,
     'Il turno 0 indica una soglia già sbloccata nel setup: il premio immediato si paga solo attraversandola durante un avanzamento.',
@@ -122,8 +134,17 @@ export function detailedReport(config,games,status) {
       '\n## Rondella Welfare\n',
       'Un marco per passo e gettone, da 1 a 6. Primo ingresso libero; poi avanzamento in senso orario, spazi condivisi. Il bonus personale resta attivo fino allo spostamento. I valori dei benefici sono rendimenti effettivi, non una stima dei PV.',
       table(['Politica','Visite','Giocatori distinti per partita','Beneficio effettivo','Unità'],WELFARE_POLICIES.map((policy,i)=>{const visits=events.filter(e=>e.type==='investWelfare'&&e.policyAfter===i);return [policy.name,visits.length,people.filter(p=>p.final?.welfareRondelStats?.visits.some(v=>v.position===i)).length,sum(people,p=>p.final?.welfareRondelStats?.benefits[policy.id]||0),({formation:'passi extra',integration:'marchi risparmiati',innovation:'marchi risparmiati',cooperation:'marchi incassati',reliability:'marchi incassati',mutualAid:'conversioni eseguite'})[policy.id]];})),
+      `Giocatori che hanno attivato almeno un bonus: ${research.policyUsers}/${research.players}. Gettoni acquistati: ${research.purchasedTokens}; giri completi conservando la politica: ${research.fullLaps}.`,
+      table(['Politica','Offerta in turni visitati','Scelta % quando offerta','Turni propri fino a visita successiva/fine','Attesa primo beneficio','Visite senza beneficio'],research.policies.map(p=>[p.name,p.offeredTurns,p.chosenWhenOfferedPercent,p.averageFutureTurns,p.averageWait,p.unusedVisits])),
+      'Una politica è offerta se esiste almeno una destinazione raggiungibile e pagabile durante quel turno al Welfare. Ogni politica conta una volta per turno anche con più quantità di passi. Una visita senza beneficio significa nessun effetto osservato prima della visita successiva o della fine; non equivale a valore strategico nullo.',
+      table(['Passi scelti','Visite'],research.steps.map(s=>[s.steps,s.visits])),
+      table(['Seme','Posto','Turno visita','Politica','Costo','Passi/gettoni','Turni successivi','Attivazioni bonus','Valore effettivo','Ritorno diretto in marchi','Assunzioni / macchinari / produzioni / commesse'],research.spells.map(s=>[s.seed,s.seat+1,s.turn,WELFARE_POLICIES[s.position].name,s.cost,s.steps,s.futureTurns,s.triggers,s.value,s.directCoinReturn,`${s.actions.staff} / ${s.actions.machines} / ${s.actions.productions} / ${s.actions.contracts}`])),
+      'Ogni riga descrive l’intervallo fra due visite dello stesso giocatore; anche un giro completo apre un nuovo intervallo. Le unità di valore restano quelle della politica (passi, marchi, conversioni). Il ritorno diretto in marchi esclude gettoni, risorse e sviluppo: non è il valore totale dell’investimento né una conversione in PV. Le azioni associate alla politica sono una correlazione, non provano che la politica le abbia causate.',
       table(['Seme','Posto','Turno','Passi / costo / gettoni','Politica scelta'],games.flatMap(g=>(g.study?.events||[]).filter(e=>e.type==='investWelfare').map(e=>[g.seed,e.seat+1,e.turn,e.steps,WELFARE_POLICIES[e.policyAfter]?.name]))),
     ] : []),
+    '\n## Seguito di welfare e repressione\n',
+    table(['Seme','Posto','Turno','Intervento','Reparto','Costo','Gettoni','Righe subito riaperte','Produzioni successive nel reparto','Prima produzione successiva'],research.interventions.map(e=>[e.seed,e.seat+1,e.turn,e.type==='repress'?'Repressione':e.type==='spendWelfareToken'?'Cura':'Protezione',e.role,e.cost,e.tokens,e.reopened,e.followingProductions,e.firstFollowingTurn])),
+    'Le produzioni successive sono osservate fino a fine partita, anche se intervengono altre cure. Indicano un seguito possibile, non il beneficio marginale attribuibile all’intervento. Per dimostrare uno spreco o una commessa resa possibile occorre un replay controfattuale.',
     '\n## Commesse\n',table(['Taglia','Completate','PV','Turno medio'],['small','medium','large'].map(size=>{const cs=people.flatMap(p=>p.final?.contractsWon||[]).filter(c=>c.size===size);return [size,cs.length,sum(cs,c=>c.pv),mean(cs,c=>c.turn)];})),
     `Giocatori senza commesse: ${people.filter(p=>!p.nContracts).length}/${N}.`,
     '\n## Conversioni\n',table(['Tipo','Disponibili','Eseguite'],Object.keys(source('convAttempts')).map(key=>[key,source('convAttempts')[key],source('convCount')[key]||0])),

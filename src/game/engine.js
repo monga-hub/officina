@@ -15,6 +15,7 @@ import { normalizeRowEconomy, rowEconomyConfig, rowMachineCard, repressionCost, 
 
 import { WELFARE_POLICIES, rondelEnabled, welfarePolicy, welfareRondelCommands, recordWelfareBenefit } from './welfare-rondel.js';
 
+const SEARCH_ONLY = Symbol('search-only');
 const STRIKE_PENALTY_PV = 3; // penalità PV di default per ogni carta bloccata (Sciopero) a fine partita
 
 // Azioni della Trattativa. resetOwn + attackOther sono un blocco unico sempre attivo; unblock è opzionale.
@@ -673,7 +674,7 @@ function drawContract(entry, index = 0) {
 }
 
 function log(state, text) {
-  if (state.headless) return; // batch: niente log → cloni molto più leggeri
+  if (state.headless || state[SEARCH_ONLY]) return; // batch: niente log → cloni molto più leggeri
   state.log.push({ turn: state.turn, text });
   if (state.log.length > 400) state.log.splice(0, state.log.length - 400);
 }
@@ -1488,8 +1489,7 @@ function finishTurn(state) {
     return;
   }
   trimToCap(state, p); // tetto risorse: prodotto tutto nel turno, ora scarta il surplus fino al tetto (tenendo il carburante utile)
-  p.coinsHistory.push(p.coins);
-  p.resHistory.push(totalResources(p));
+  if (!state[SEARCH_ONLY]) { p.coinsHistory.push(p.coins); p.resHistory.push(totalResources(p)); }
   checkObjectivesAll(state);
   // Pool di competizione delle race: registra ogni giocatore che è qualificato ORA per un obiettivo (anche se
   // non lo rivendica — potrebbe non passare in Città, o il podio riempirsi prima). Serve alla metrica #4.
@@ -1884,12 +1884,14 @@ function canPay(p, req) {
 // borsaFabbriche/factoryMap/factoryHexById/factoryHexes/hexResource: geometria+config, scritte solo in
 // initGame (verificato: nessun write nel path di applyCommand) → condivise per riferimento invece di clonate.
 // L'occupazione delle fabbriche vive in hexFactory (mutabile), non qui.
-const STATIC_KEYS = new Set(['industrial', 'tracks', 'milestonePos', 'marketUnlockPos', 'tileSlotPos', 'welfareById', 'trackTileById', 'rules', 'nations', 'nodeBanks', 'bankIds', 'borsaFabbriche', 'factoryMap', 'factoryHexById', 'factoryHexes', 'hexResource']);
+// Anche prezzi, soglie e opzioni IA restano configurazioni immutabili durante una transizione.
+const STATIC_KEYS = new Set(['industrial', 'tracks', 'milestonePos', 'marketUnlockPos', 'tileSlotPos', 'welfareById', 'trackTileById', 'rules', 'nations', 'nodeBanks', 'bankIds', 'borsaFabbriche', 'factoryMap', 'factoryHexById', 'factoryHexes', 'hexResource', 'rowEconomy', 'slots', 'trattativa', 'borsa', 'borsaExit', 'borsaRefresh', 'borsaIndici', 'trackTileCap', 'contractMilestoneReq', 'aiRollout', 'aiTokenPlan', 'strutturaCards']);
 function deepClone(o) {
   if (o === null || typeof o !== 'object') return o;
   if (Array.isArray(o)) { const n = o.length, a = new Array(n); for (let i = 0; i < n; i++) a[i] = deepClone(o[i]); return a; }
-  const r = {};
-  for (const k in o) r[k] = deepClone(o[k]);
+  // Copia nativa dei campi scalari; ricorsione solo sui figli mutabili.
+  const r = { ...o };
+  for (const k in o) if (o[k] !== null && typeof o[k] === 'object') r[k] = deepClone(o[k]);
   return r;
 }
 // With contract-only row rules, turn changes cannot pay or alter another player.
@@ -1903,21 +1905,93 @@ function localPlayerTransition(state) {
 }
 // These records are appended, never edited after insertion.
 const APPEND_ONLY_PLAYER_ARRAYS = new Set(['contractsWon', 'coinsHistory', 'resHistory', 'activationTurns', 'welfareLog']);
-function cloneActingPlayer(player) {
-  const copy = {};
-  for (const key in player) copy[key] = key === 'tile' ? player[key]
-    : APPEND_ONLY_PLAYER_ARRAYS.has(key) ? player[key].slice() : deepClone(player[key]);
+// Le previsioni non esportano la telemetria: copiano i dati di gioco e condividono solo contatori isolati.
+function cloneSearchDept(dept, side) {
+  const copy = { ...dept };
+  if (side && Array.isArray(dept[side])) {
+    copy[side] = dept[side].slice();
+    copy.slotTurn = { ...dept.slotTurn, [side]: dept.slotTurn[side].slice() };
+  }
   return copy;
 }
+function cloneSearchPlayer(player, cmd) {
+  const copy = { ...player, resources: { ...player.resources } };
+  if (cmd.type === 'completeContract') copy.contractsWon = player.contractsWon.slice();
+  if (cmd.type === 'activate') copy.tileGains = deepClone(player.tileGains);
+  // Collezioni delle varianti disattivate e obiettivi privati non cambiano in questo percorso.
+  if (cmd.type === 'repress' || cmd.type === 'investWelfare' || (cmd.type === 'hire' && WORKER_BY_ID[cmd.cardId]?.power)) {
+    copy.depts = Object.fromEntries(DEPT_ROLES.map(role => [role, cloneSearchDept(player.depts[role])]));
+    if (cmd.type === 'hire') copy.direzione = deepClone(player.direzione);
+  }
+  else if (['hire','activate','spendWelfareToken'].includes(cmd.type)) {
+    const role = cmd.type === 'activate' ? DEPT_ROLES.find(r => player.depts[r].sector === cmd.sector) : cmd.role;
+    copy.depts = { ...player.depts };
+    if (player.depts[role]) copy.depts[role] = cloneSearchDept(player.depts[role], cmd.type === 'hire' ? cmd.side : null);
+  }
+  return copy;
+}
+export function forkForSearch(state) {
+  if (state[SEARCH_ONLY] || !localPlayerTransition(state) || !state.rowTrack) return state;
+  // Isola tutti i contatori dalla partita reale prima di consentirne il riuso interno.
+  return { ...state, [SEARCH_ONLY]: true, players: state.players.map(p => deepClone(p)) };
+}
+function cloneActingPlayer(player) {
+  const copy = { ...player };
+  for (const key in player) {
+    const value = player[key];
+    if (value === null || typeof value !== 'object' || key === 'tile') continue;
+    copy[key] = APPEND_ONLY_PLAYER_ARRAYS.has(key) ? value.slice() : deepClone(value);
+  }
+  return copy;
+}
+// Nel regolamento a righe queste azioni toccano solo il giocatore e le collezioni elencate.
+// Gli altri comandi e le modalità storiche mantengono la copia generale.
+const LOCAL_ROW_COMMANDS = new Set(['move','hire','activate','investWelfare','repress','spendWelfareToken','skipWelfareToken','resolveEffect','refreshMarket','completeContract','endTurn','pass','borsaExit','exchange']);
+function cloneLocalRows(prev, cmd) {
+  const players = prev.players.slice(), p = prev.players[prev.current];
+  const s = { ...prev, players, log: prev.headless || prev[SEARCH_ONLY] ? prev.log : prev.log.slice() };
+  if (cmd.type === 'move') {
+    players[prev.current] = prev[SEARCH_ONLY] ? { ...p } : { ...p, coinsSpentBy: { ...p.coinsSpentBy }, nodeVisits: { ...p.nodeVisits } };
+    return s;
+  }
+  players[prev.current] = prev[SEARCH_ONLY] ? cloneSearchPlayer(p, cmd) : cloneActingPlayer(p);
+  s.turnFlags = { ...prev.turnFlags };
+  // I comandi locali consumano o accodano scelte; non modificano i record già presenti.
+  s.pending = prev[SEARCH_ONLY] ? prev.pending : deepClone(prev.pending);
+  s.pendingQueue = prev[SEARCH_ONLY] ? prev.pendingQueue.slice() : deepClone(prev.pendingQueue);
+  s.strikeLog = prev[SEARCH_ONLY] ? prev.strikeLog.slice() : deepClone(prev.strikeLog);
+  if (cmd.type === 'hire') {
+    s.banks = { ...prev.banks };
+    if (prev.banks[cmd.bank]) s.banks[cmd.bank] = prev.banks[cmd.bank].slice();
+  } else if (cmd.type === 'refreshMarket') s.banks = deepClone(prev.banks);
+  if (cmd.type === 'completeContract') {
+    s.contracts = { ...prev.contracts };
+    const entry = prev.contracts[cmd.size];
+    if (entry) {
+      const active = entry.active.slice(), index = cmd.slotIndex ?? 0, slot = active[index];
+      if (slot) active[index] = { ...slot, doneReq: slot.doneReq.slice(), places: slot.places.slice() };
+      s.contracts[cmd.size] = { ...entry, deck: entry.deck.slice(), active };
+    }
+  }
+  if (cmd.type === 'activate' && !prev[SEARCH_ONLY]) s.activationLog = prev.activationLog.slice();
+  if (cmd.type === 'refreshMarket' && cmd.target === 'welfare') {
+    s.welfareMarket = prev.welfareMarket.slice();
+    s.welfareDrawPile = prev.welfareDrawPile.slice();
+  }
+  return s;
+}
 function cloneState(prev, cmd) {
-  const s = {}, local = localPlayerTransition(prev);
+  const local = localPlayerTransition(prev);
+  if (local && prev.rowTrack && LOCAL_ROW_COMMANDS.has(cmd.type)) return cloneLocalRows(prev, cmd);
+  const s = { ...prev };
   for (const k in prev) {
-    if (STATIC_KEYS.has(k)) s[k] = prev[k];
-    else if (local && k === 'players') s[k] = prev.players.map((p, i) => i === prev.current ? cloneActingPlayer(p) : p);
-    else if (local && k === 'banks' && cmd.type !== 'hire' && cmd.type !== 'refreshMarket') s[k] = prev[k];
-    else if (local && k === 'contracts' && cmd.type !== 'completeContract') s[k] = prev[k];
-    else if (local && k === 'activationLog') s[k] = cmd.type === 'activate' ? prev[k].slice() : prev[k];
-    else s[k] = deepClone(prev[k]);
+    const value = prev[k];
+    if (value === null || typeof value !== 'object' || STATIC_KEYS.has(k)) continue;
+    if (local && k === 'players') s[k] = prev.players.map((p, i) => i === prev.current ? cloneActingPlayer(p) : p);
+    else if (local && k === 'banks' && cmd.type !== 'hire' && cmd.type !== 'refreshMarket') continue;
+    else if (local && k === 'contracts' && cmd.type !== 'completeContract') continue;
+    else if (local && k === 'activationLog') s[k] = cmd.type === 'activate' ? value.slice() : value;
+    else s[k] = deepClone(value);
   }
   return s;
 }
@@ -1968,7 +2042,7 @@ export function applyCommand(prev, cmd) {
       } else for (const role of factory ? DEPT_ROLES : [cmd.role]) p.depts[role].sustainableWelfare = (p.depts[role].sustainableWelfare || 0) + 1;
       if (rondel) {
         p.welfarePosition = cmd.position;
-        p.welfareRondelStats.visits.push({ turn: state.turn, position: cmd.position, steps: cmd.steps });
+        if (!state[SEARCH_ONLY]) p.welfareRondelStats.visits.push({ turn: state.turn, position: cmd.position, steps: cmd.steps });
       }
       p.industrialStats.welfareBuys++; p.industrialStats.welfareSpent += cost;
       log(state, `${p.name}: investe ${cost} marchi in welfare, ${tokenWelfare(state) ? `${gainedTokens} gettoni utilizzabili dal prossimo turno${rondel ? '; politica ' + WELFARE_POLICIES[cmd.position].name : ''}` : factory ? 'tutti e tre i reparti' : p.depts[cmd.role].sector}.`);
@@ -2217,7 +2291,7 @@ function doActivate(state, p, sector, intensity = 1, sustainableRow = null, welf
     }
   }
   p.activations += 1;
-  p.activationTurns.push(state.turn);
+  if (!state[SEARCH_ONLY]) p.activationTurns.push(state.turn);
   p.activationsBySector[sector] = (p.activationsBySector[sector] || 0) + 1;
   noteIndexEvent(state, 'attivazioni', sector);
   state.activationCoins = 0;
@@ -2284,7 +2358,7 @@ function doActivate(state, p, sector, intensity = 1, sustainableRow = null, welf
     p.industrialStats.protectedProductions = (p.industrialStats.protectedProductions || 0) + 1;
     log(state, `${p.name}: usa un gettone welfare, tensione ${sector} invariata a ${dept.tension}.`);
   } else if (state.rowTrack) raiseTension(state, p, dept, 1, 'attivazione');
-  state.activationLog.push({ turn: state.turn, seat: p.id, sector, sustainableRow, ...(welfareToken ? { welfareToken: true } : {}), track: trackAmt, sotto: sottoAmt, mult: sottoTimes, total: trackAmt + sottoAmt, ...(state.industrial.enabled ? { intensity, tensionBefore, tensionAfter: dept.tension, welfareResources, resources: totalResources(p) - rt0 } : {}) });
+  if (!state[SEARCH_ONLY]) state.activationLog.push({ turn: state.turn, seat: p.id, sector, sustainableRow, ...(welfareToken ? { welfareToken: true } : {}), track: trackAmt, sotto: sottoAmt, mult: sottoTimes, total: trackAmt + sottoAmt, ...(state.industrial.enabled ? { intensity, tensionBefore, tensionAfter: dept.tension, welfareResources, resources: totalResources(p) - rt0 } : {}) });
   // 4. Sciopero (dopo aver incassato)
   state.phase = 'resolving';
   if (state.industrial.enabled) industrialConsequences(state, p, dept, tensionBefore);

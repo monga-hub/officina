@@ -1,3 +1,4 @@
+import { researchSummary } from './research.js';
 import { newStudy, observeStudy, finishStudy, detailedReport } from './study.js';
 import { initGame, applyCommand, scorePlayer } from '../game/engine.js';
 import { chooseCommand } from '../game/ai.js';
@@ -21,14 +22,16 @@ export async function runGame(config, progress = () => {}) {
     spent: { ...p.coinsSpentBy }, income: p.coinsGained,
     departments: Object.entries(p.depts).filter(([r])=>r!=='direzione').map(([role,d])=>({role,sector:d.sector,prod:d.prod,tension:d.tension})),
   }));
-  return { release: typeof __APP_RELEASE__==='undefined'?null:__APP_RELEASE__, seed: config.seed, turns: s.turn, elapsedMs: performance.now()-started, people, pressure, commands, finalState: s, study: finishStudy(study,s) };
+  const result={ release: typeof __APP_RELEASE__==='undefined'?null:__APP_RELEASE__, seed: config.seed, turns: s.turn, elapsedMs: performance.now()-started, people, pressure, commands, finalState: s, study: finishStudy(study,s) };
+  result.research=researchSummary([result]);
+  return result;
 }
 const sum = (xs, f) => xs.reduce((n,x)=>n+f(x),0);
 export function summarize(games) {
   const people = games.flatMap(g=>g.people), prods = games.flatMap(g=>g.pressure.productions);
   const avg = f => people.length ? sum(people,f)/people.length : 0;
   const histogram = key => Object.entries(people.reduce((a,p)=>{const n=p.stats[key];a[n]=(a[n]||0)+1;return a;},{})).map(([count,players])=>({count:Number(count),players}));
-  return { players: people.length, pv: avg(p=>p.total), welfare: avg(p=>p.stats.welfareBuys), repression: avg(p=>p.stats.repressions),
+  return { research:researchSummary(games), players: people.length, pv: avg(p=>p.total), welfare: avg(p=>p.stats.welfareBuys), repression: avg(p=>p.stats.repressions),
     sustainable: avg(p=>p.stats.sustainableProductions), contracts: avg(p=>p.nContracts),
     protected: avg(p=>p.stats.protectedProductions||0), welfareRecoveries: avg(p=>p.stats.welfareRecoveries||0), tokensRemaining: avg(p=>p.welfareTokens||0),
     welfareHistogram: histogram('welfareBuys'), repressionHistogram: histogram('repressions'),

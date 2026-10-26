@@ -10,6 +10,9 @@ assert.ok(Number.isFinite(runTiming({...run,games:[{elapsedMs:NaN}]},12000).elap
 assert.equal(runTiming({...run,ended:13000,status:'Interrotta'},90000).elapsed,12000);
 assert.equal(runTiming({...run,ended:13000,status:'Completata'},90000).finish,13000);
 assert.equal(runTiming({...run,ended:13000,status:'Errore'},90000).remaining,null);
+const queue={started:0,workerCount:4,config:{players:3,turns:28,simulation:{games:9}},games:[{elapsedMs:10000}],progress:{}};
+assert.equal(runTiming(queue,10000).remaining,20000);
+assert.equal(runTiming({...queue,workerCount:2},10000).remaining,40000);
 assert.equal(duration(-1),'0m 0s');assert.equal(duration(3661000),'1h 1m 1s');
 assert.ok(clockTime(Date.UTC(2026,9,25,14,30)).includes('15:30:00'));
 console.log('OK: initial estimate unavailable, parallel queue, advancing progress, fixed completion/interruption/error times and Italian clocks.');

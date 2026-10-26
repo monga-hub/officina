@@ -22,8 +22,9 @@ function freeze(value) {
   Object.freeze(value);for(const child of Object.values(value))freeze(child);
 }
 let transitions=0,alternatives=0;
-for(const players of [2,3,4])for(const mode of ['current','visible','quarter','engines']) {
+for(const players of [2,3,4])for(const mode of ['current','visible','quarter','engines','rondel']) {
   const c=defaults();c.players=players;c.turns=28;c.simulation.ai='greedy';
+  if(mode==='rondel'){c.welfareRondel=true;c.machineImmediate=true;c.milestoneResource=true;}
   const config=gameConfig(c,{seed:91831+players});
   if(mode==='visible')config.headless=false;
   if(mode==='quarter')config.industrial={...config.industrial,welfareScoring:'quarter'};

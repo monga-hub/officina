@@ -5,7 +5,7 @@ import {
   TENSION_LIMIT, UNBLOCK_COST, DIREZIONE_MAX, activeTrackEnd,
 } from './data.js';
 import {
-  legalCommands, applyCommand, currentPlayer, deptOfSector, bankMarket, tileForecast,
+  legalCommands, applyCommand, forkForSearch, currentPlayer, deptOfSector, bankMarket, tileForecast,
   WORKER_BY_ID, WELFARE_BY_ID, iconCount, welfareCount, totalResources, trackPV, milestoneCount, formulaOf,
   expectedDividend, workerCapacity, tensionLimit, scorePlayer, welfarePoints,
 } from './engine.js';
@@ -23,7 +23,7 @@ export const rolloutStats = {
   msApplyCommand: 0,
   perDecisionLog: [], // {turn, node, nCandidates, ms} — una riga per ogni decisione rollout (bestActionAtRollout)
   beamCalls: 0, beamExpanded: 0, beamLayers: 0, beamForecasts: 0,
-  tokenDeferredForecasts: 0, tokenRecoveryBranches: 0,
+  tokenDeferredForecasts: 0, tokenRecoveryBranches: 0, reusedMovePlans: 0, greedyCacheHits: 0, greedyCacheMisses: 0, greedyCacheEvictions: 0, needCacheHits: 0, moveCacheHits: 0, moveCacheMisses: 0, sharedPrefixSteps: 0,
 };
 export function resetRolloutStats() {
   for (const k in rolloutStats) rolloutStats[k] = Array.isArray(rolloutStats[k]) ? [] : 0;
@@ -229,10 +229,15 @@ function evaluateInner(state, playerId, rolloutLeaf) {
 // Per settore: quante risorse servono al massimo per completare UNA commessa raggiungibile (ceiling utile).
 // Oltre questa soglia una risorsa è surplus (vendibile/terminale), non "carburante convertibile".
 function reachableNeedBySector(state, p) {
+  const sizes = ['small','medium','large'], ms = milestoneCount(state, p);
+  let mask = 0;
+  for (let i = 0; i < sizes.length; i++) if (ms >= (state.contractMilestoneReq?.[sizes[i]] || 0)) mask |= 1 << i;
+  const cached = decisionCache?.needs.get(state.contracts);
+  if (cached?.has(mask)) { rolloutStats.needCacheHits++; return cached.get(mask); }
   const need = Object.fromEntries(SECTORS.map(s => [s, 0]));
-  for (const size of ['small', 'medium', 'large']) {
-    if (!sizeUnlocked(state, p, size)) continue; // commesse bloccate dal gate: non giustificano scorte
-    for (const slot of state.contracts[size].active) {
+  for (let sizeIndex = 0; sizeIndex < sizes.length; sizeIndex++) {
+    if (!(mask & (1 << sizeIndex))) continue;
+    for (const slot of state.contracts[sizes[sizeIndex]].active) {
       if (!slot) continue;
       slot.card.reqs.forEach((reqArr, i) => {
         if (slot.doneReq[i]) return;
@@ -241,6 +246,10 @@ function reachableNeedBySector(state, p) {
         for (const s of SECTORS) need[s] = Math.max(need[s], cnt[s] || 0);
       });
     }
+  }
+  if (decisionCache) {
+    const entries = cached || new Map(); entries.set(mask, need);
+    if (!cached) decisionCache.needs.set(state.contracts, entries);
   }
   return need;
 }
@@ -309,12 +318,68 @@ function raceProgress(state, p) {
 }
 
 // ---------- Scelta comando ----------
+// Una sola azione già cercata durante il movimento; stato e registro carte devono coincidere esattamente.
+let plannedAction = null;
+const planKey = state => JSON.stringify([state, WORKER_BY_ID]);
+const GREEDY_CACHE_LIMIT = 5000;
+const GREEDY_METRICS = new Set(['coinsGained','coinsGainedBy','coinsSpentBy','coinsHistory','resHistory','industrialStats','welfareRondelStats','nodeVisits','activationTurns','activationsBySector','convCount','convAttempts','resGainedBy','resSpentByCat','resGen','resSpent','sottoVal','lastHireTurn','lastDirTurn','firstMachineTurn','activations','maxActivationCoins','tensionReductions','strikesByOpponent','welfareLog','borsaLog','borsaBuys','resToContracts']);
+let decisionCache = null;
+const EMPTY_ARRAY_PART = ['empty-array'];
+// Interna valori immutabili di gioco: le chiavi restano brevi senza hash approssimativi.
+function decisionPart(value) {
+  if (value === null || typeof value !== 'object') return value;
+  if (Array.isArray(value) && value.length === 0) return EMPTY_ARRAY_PART;
+  let part = decisionCache.parts.get(value);
+  if (part === undefined) {
+    const key = JSON.stringify(value);
+    part = decisionCache.partValues.get(key);
+    if (part === undefined) {
+      // A memoria piena usa il contenuto esatto: non cambiare identità a valori già riconosciuti.
+      part = decisionCache.partValues.size < GREEDY_CACHE_LIMIT * 4 ? [decisionCache.nextId++] : ['json', key];
+      if (decisionCache.partValues.size < GREEDY_CACHE_LIMIT * 4) decisionCache.partValues.set(key, part);
+    }
+    decisionCache.parts.set(value, part);
+  }
+  return part;
+}
+function greedyActionKey(state) {
+  const p = currentPlayer(state), own = decisionCache.playerKeys[p.id].map(k => decisionPart(p[k]));
+  let contracts = decisionCache.contracts.get(state.contracts);
+  if (contracts === undefined) { contracts = decisionCache.nextId++; decisionCache.contracts.set(state.contracts, contracts); }
+  let banks = decisionCache.banks.get(state.banks);
+  if (banks === undefined) { banks = decisionPart(state.bankIds.map(bank => bankMarket(state, bank))); decisionCache.banks.set(state.banks, banks); }
+  // In questa variante l'azione non muove né modifica gli avversari; conta il loro ordine, non le loro scorte.
+  return JSON.stringify([own, contracts, banks, state.turn, state.clock,
+    state.current, state.roundStart, state.roundTurns, state.dir, state.phase, decisionPart(state.turnFlags), defersToken(state, p.id),
+    state.finalRound, state.endImmediate, decisionPart(state.pendingQueue), decisionPart(state.trackTileStock)]);
+}
 export function chooseCommand(state) {
+  const root = !decisionCache && GREEDY_CACHE_LIMIT > 0 && state.aiRollout && state.contractsOnly && state.rowTrack && state.rowEconomy?.enabled
+    && !state.contractEngine && !state.borsaFabbriche?.enabled && !state.borsaIndici?.enabled && !state.raceObjectives?.enabled
+    && !state.industrial.opponentPressure && state.industrial.welfareScoring !== 'quarter' && state.players.every(p => p.direzione.sotto.length === 0);
+  if (root) decisionCache = { actions: new Map(), moves: new Map(), contracts: new WeakMap(), needs: new WeakMap(), banks: new WeakMap(), parts: new WeakMap(), partValues: new Map(), nextId: 0,
+    playerKeys: state.players.map(p => Object.keys(p).filter(k => !GREEDY_METRICS.has(k))) };
+  try { return chooseCommandInner(state); }
+  finally { if (root) decisionCache = null; }
+}
+function chooseCommandInner(state) {
   if (state.gameOver) return null;
   if (state.pending) return resolvePending(state);
   const p = currentPlayer(state);
-  if (state.phase === 'move') return chooseMove(state, p).cmd;
-  if (state.phase === 'action') return chooseAction(state, p);
+  if (state.phase === 'move') {
+    plannedAction = null;
+    const move = chooseMove(state, p);
+    if (state.aiRollout && move.action && move.state.phase === 'action') plannedAction = { key: planKey(move.state), command: move.action };
+    return move.cmd;
+  }
+  if (state.phase === 'action') {
+    const planned = plannedAction; plannedAction = null;
+    if (planned && planned.key === planKey(state)) {
+      rolloutStats.reusedMovePlans++;
+      return { ...planned.command };
+    }
+    return chooseAction(state, p);
+  }
   if (state.phase === 'borsa') return chooseBorsa(state, p);
   return null;
 }
@@ -467,6 +532,22 @@ function neededResource(p, needs) {
 
 // ----- fase movimento: lookahead nodo → miglior azione -----
 function chooseMove(state, p) {
+  if (!decisionCache || state.aiRollout) return chooseMoveInner(state, p);
+  const key = greedyActionKey(state) + ':' + JSON.stringify(state.players.map(q => q.node));
+  if (decisionCache.moves.has(key)) {
+    rolloutStats.moveCacheHits++;
+    const cached = decisionCache.moves.get(key);
+    decisionCache.moves.delete(key); decisionCache.moves.set(key, cached);
+    return cached;
+  }
+  rolloutStats.moveCacheMisses++;
+  const choice = chooseMoveInner(state, p);
+  if (decisionCache.moves.size >= GREEDY_CACHE_LIMIT) decisionCache.moves.delete(decisionCache.moves.keys().next().value);
+  // Applica il piano allo stato corrente: non conservare uno stato con scorte avversarie diverse.
+  if (choice) decisionCache.moves.set(key, {cmd:choice.cmd, action:choice.action, score:choice.score});
+  return choice;
+}
+function chooseMoveInner(state, p) {
   // chooseProduction: produrre è gratis e non finisce il turno → fallo prima di muovere, scegliendo il colore utile.
   const prod = legalCommands(state).filter(c => c.type === 'produceFactory');
   if (prod.length) {
@@ -499,7 +580,7 @@ function chooseMove(state, p) {
       score = (act ? act.score : -5) - mv.cost * 0.45 * moveCost;
     }
     score += noise(state, p.id, mv.node) * 0.3; // rompe le simmetrie
-    if (!best || score > best.score) best = { cmd: mv, score, action };
+    if (!best || score > best.score) best = { cmd: mv, score, action, state: s2 };
   }
   return best;
 }
@@ -527,13 +608,14 @@ function forwardStep(state) {
   }
   return after;
 }
-function playForward(state, turns) {
+function playForward(state, turns, prefixSteps = 0) {
+  state = forkForSearch(state);
   rolloutStats.playForwardCalls++;
   const startTurn = state.turn;
   // continuazione SEMPRE greedy: senza questo, chooseCommand vede ancora state.aiRollout e rilancia
   // bestActionAtRollout dentro la simulazione — rollout ricorsivo, esponenziale, mai inteso.
   let s = state.aiRollout ? { ...state, aiRollout: null } : state;
-  let guard = 0;
+  let guard = prefixSteps;
   while (!s.gameOver && (s.turn - startTurn) < turns && guard++ < 4000) {
     const after = forwardStep(s);
     if (after === s) break;
@@ -582,11 +664,24 @@ function pendingOutcomes(state, playerId, branchTokens) {
 function deferredTokenValue(state, depth, playerId, fallback) {
   if (state.gameOver || !plansTokens(state, playerId) || !state.players[playerId].welfareTokens) return fallback;
   let best = fallback;
+  const endTurn = state.turn + depth;
+  let prefix = { ...forkForSearch(state), aiRollout: null, aiTokenPlan: { playerId, notBeforeTurn: endTurn } };
+  let prefixSteps = 0, stopped = false;
   // shortcut: vary the first spending turn, then continue greedily; replan on every real decision.
   // The final schedule holds all tokens through the window. No token value is added to evaluate().
   for (let delay = 1; delay <= depth; delay++) {
-    const planned = { ...state, aiTokenPlan: { playerId, notBeforeTurn: state.turn + delay } };
-    best = Math.max(best, evaluate(playForward(planned, depth), playerId, true));
+    const notBeforeTurn = state.turn + delay;
+    rolloutStats.sharedPrefixSteps += prefixSteps;
+    // Fino alla scadenza tutti i piani conservano i gettoni: questo prefisso è identico.
+    while (!prefix.gameOver && prefix.turn < notBeforeTurn && prefixSteps < 4000 && !stopped) {
+      const after = forwardStep(prefix);
+      prefixSteps++;
+      if (after === prefix) stopped = true;
+      prefix = after;
+    }
+    const planned = { ...prefix, aiTokenPlan: { playerId, notBeforeTurn } };
+    const leaf = stopped ? planned : playForward(planned, endTurn - prefix.turn, prefixSteps);
+    best = Math.max(best, evaluate(leaf, playerId, true));
     rolloutStats.tokenDeferredForecasts++;
   }
   return best;
@@ -609,6 +704,7 @@ function pendingOutcomeForRollout(state, depth, playerId) {
 
 // Stesso orizzonte e stessa valutazione del rollout precedente, senza quote per tipo di azione.
 export function continuationValue(state, depth, playerId) {
+  state = forkForSearch(state);
   const fallback = tokenFutureValue(state, depth, playerId);
   const mode = state.players[playerId].aiContinuation;
   if (!state.rowEconomy?.enabled || !['beam2', 'forecast2'].includes(mode)) return fallback;
@@ -721,6 +817,24 @@ export function logDecision(state, rolloutOpts = { depth: 4, rollouts: 1 }, topN
 }
 
 function bestActionAt(state) {
+  if (!decisionCache || state.pending || state.phase !== 'action') return bestActionAtInner(state);
+  const key = greedyActionKey(state);
+  if (decisionCache.actions.has(key)) {
+    rolloutStats.greedyCacheHits++;
+    const cached = decisionCache.actions.get(key);
+    decisionCache.actions.delete(key); decisionCache.actions.set(key, cached);
+    return cached;
+  }
+  rolloutStats.greedyCacheMisses++;
+  const result = bestActionAtInner(state);
+  if (decisionCache.actions.size >= GREEDY_CACHE_LIMIT) {
+    decisionCache.actions.delete(decisionCache.actions.keys().next().value);
+    rolloutStats.greedyCacheEvictions++;
+  }
+  decisionCache.actions.set(key, result);
+  return result;
+}
+function bestActionAtInner(state) {
   const p = currentPlayer(state);
   const candidates = actionCandidates(state, p);
   if (candidates.length === 1) return { cmd: candidates[0], score: 0 }; // nulla da confrontare: salta apply+evaluate

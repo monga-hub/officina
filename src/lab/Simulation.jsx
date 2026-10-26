@@ -18,7 +18,7 @@ export default function Simulation({c,set,locked,setLocked,onPlay}) {
   const start=()=>{
     try{validate(c);}catch(e){setError(e.message);return;}
     setError('');setCopied(false);setShowReport(false);setLocked(true);setNow(Date.now());
-    const workerCount=Math.min(2,c.simulation.games,navigator.hardwareConcurrency||2);
+    const workerCount=Math.min(4,c.simulation.games,Math.max(1,navigator.hardwareConcurrency||2));
     const a={workerCount,config:structuredClone(c),games:[],progress:{},workers:[],next:0,started:Date.now(),status:'In corso'};active.current=a;publish(a);
     const fail=message=>{if(active.current!==a)return;setError(message);stop('Errore');};
     const schedule=w=>{
@@ -82,6 +82,9 @@ export default function Simulation({c,set,locked,setLocked,onPlay}) {
       {summary&&<><div className="lab-metrics">{[['PV medi',summary.pv],['Acquisti welfare / giocatore',summary.welfare],['Repressioni / giocatore',summary.repression],[tokens?'Produzioni protette / giocatore':'Produzioni sostenibili / giocatore',tokens?summary.protected:summary.sustainable]].map(([label,value])=><div key={label}><strong>{fmt(value)}</strong><span>{label}</span></div>)}</div>
       <p>Produzioni con righe sviluppate bloccate: <b>{summary.blocked}/{summary.productions}</b>. Righe perse nella modalità scelta: <b>{summary.lostRows}/{summary.potentialRows}</b>.</p>
       <p className="lab-muted">Medie su {summary.players} giocatori-partita completati. {tokens?'La produzione protetta usa tutte le righe accessibili e consuma un gettone.':'Le righe accessibili a cui si rinuncia scegliendo la produzione sostenibile non sono conteggiate come bloccate.'}</p>
+      <h3>Quanti giocatori scelgono queste azioni?</h3>
+      <div className="lab-table-scroll"><table><thead><tr><th>Scelta</th><th>Giocatori che la usano</th><th>% giocatori</th><th>% turni propri</th></tr></thead><tbody>{summary.research.participation.map(r=><tr key={r.id}><td>{r.label}</td><td>{r.players}/{r.totalPlayers}</td><td>{fmt(r.playerPercent)}%</td><td>{fmt(r.turnPercent)}%</td></tr>)}</tbody></table></div>
+      <p className="lab-muted">Giocatori-partita che fanno la scelta almeno una volta. Protezioni e cure possono accompagnare altre azioni: le percentuali si sovrappongono. Il report completo include politiche della rondella, rendimenti e seguito degli interventi.</p>
       <div className="lab-two"><Distribution title="Welfare acquistati" rows={summary.welfareHistogram}/><Distribution title="Repressioni utilizzate" rows={summary.repressionHistogram}/></div>
       {tokens?<p>Recuperi con gettoni: <b>{fmt(summary.welfareRecoveries)}</b> per giocatore. Gettoni rimasti a fine partita: <b>{fmt(summary.tokensRemaining)}</b> per giocatore.</p>:<><h3>I benefici aggiuntivi vengono usati?</h3><div className="lab-table-scroll"><table><thead><tr><th>Welfare</th><th>Acquirenti</th><th>Produzioni che usano questa riga</th><th>Assunzioni che usano questo sconto</th></tr></thead><tbody>{summary.ordinalUses.filter(x=>x.n<=3||x.owners).map(x=><tr key={x.n}><td>{x.n}°</td><td>{x.owners}</td><td>{x.rows}</td><td>{x.hires}</td></tr>)}</tbody></table></div></>}
       <p className="lab-muted">Sono utilizzi osservati: non dimostrano da soli che l’investimento abbia ripagato costo e turno.</p>

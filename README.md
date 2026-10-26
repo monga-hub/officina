@@ -82,3 +82,20 @@ La produzione presenta due modalità: **Intensa** usa tutte le righe accessibili
 Il welfare costa **4 marchi per 3 gettoni**, utilizzabili dal proprio turno successivo, **solo nel reparto in cui si trova il procuratore**. Se non si produce, dopo un acquisto oppure rinunciando all’azione si possono spendere più gettoni insieme per curare quel reparto: **−1 tensione per gettone, fino a zero**. Non si può curare nello stesso turno in cui si produce. I gettoni non scontano le assunzioni e non valgono punti a fine partita. Le nuove partite usano il prezzo aggiornato; quelle già salvate conservano il prezzo con cui sono iniziate.
 
 La repressione mantiene il costo fisso di **2 marchi**: azzera la tensione di un reparto e aumenta di 1 quella degli altri due, fino al limite del tracciato. I prezzi indicati sono quelli di riferimento e rimangono modificabili nell’editor.
+
+### Rondella Welfare sperimentale
+
+In **Welfare e denaro**, attiva **Attiva la rondella Welfare** per le nuove partite e simulazioni. Il modello a pacchetti resta disponibile per il confronto; le partite già salvate conservano le proprie regole.
+
+Al Welfare scegli tra acquistare una carta ed eseguire l’azione della rondella. Scegli 1–6 passi: ciascun passo costa 1 marco e dà 1 gettone, utilizzabile dal turno successivo. Al primo ingresso scegli liberamente la politica; poi procedi in senso orario. Sei passi fanno un giro completo e conservano la politica attuale. Gli spazi sono attraversabili e condivisi, con lo stesso beneficio per ogni occupante. Il bonus personale resta attivo fino al prossimo spostamento; le caselle attraversate non si attivano.
+
+Ordine delle politiche:
+
+1. **Formazione:** +1 passo di sviluppo per ogni operaio assunto Sopra, entro il limite del tracciato.
+2. **Cooperazione:** +1 marco quando produci in un reparto con almeno due nazionalità fra gli operai Sopra.
+3. **Innovazione:** −1 marco per installare un macchinario, minimo 1.
+4. **Affidabilità:** +2 marchi per ogni commessa completata.
+5. **Integrazione:** −1 marco per assumere Sopra una nazionalità assente nel reparto, minimo 1. Lo sconto per connazionali continua ad applicarsi alle altre assunzioni.
+6. **Mutuo soccorso:** una conversione facoltativa per produzione, da una risorsa appena prodotta dal reparto a una di un altro settore. Non si attiva con scorte vecchie a produzione nulla o all’installazione di macchinari.
+
+La simulazione valuta le destinazioni e i passi come alternative legali. I report Markdown/JSON registrano la cronologia delle visite e i benefici effettivi di ogni politica, separati dalle rendite dei macchinari. Questi valori sono una prima ipotesi da provare, non un bilanciamento dimostrato.

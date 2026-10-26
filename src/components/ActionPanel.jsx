@@ -1,3 +1,5 @@
+import WelfareRondel from './WelfareRondel.jsx';
+import { rondelEnabled } from '../game/welfare-rondel.js';
 import { rowNodeLabel, tokenWelfare } from '../game/row-economy.js';
 import IndustrialActions from './IndustrialActions.jsx';
 import { productionChoices, productionPreview } from './production-choices.js';
@@ -348,7 +350,8 @@ export function ProductionActions({state,p,activations,dispatch}) {
 
 export function RowEconomyActions({state,legal,dispatch}) {
   return (state.rowEconomy?.enabled && <div>
-        {legal.filter(c => c.type === 'investWelfare'||c.type === 'repress').map(c => {
+        {rondelEnabled(state) && currentPlayer(state).node === 'Servizi' && <WelfareRondel key={state.current} state={state} player={currentPlayer(state)} legal={legal} dispatch={dispatch}/>}
+        {legal.filter(c => (c.type === 'investWelfare' && !rondelEnabled(state))||c.type === 'repress').map(c => {
           const welfare=c.type==='investWelfare',preview=rowActionPreview(state,c);
           const first=preview.departments[0];
           if(tokenWelfare(state))return <button key={`${c.type}-${c.role||c.scope}`} className="production-choice" onClick={()=>dispatch(c)}>

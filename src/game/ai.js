@@ -386,6 +386,11 @@ function resolvePendingHeuristic(state) {
   // effetti opzionali con scelta di settore — euristica per FORMA dello scambio, non per tipo
   const F = formulaOf(pend.card || WORKER_BY_ID[pend.cardId]);
   const needs = resourceNeeds(state, owner);
+  if (pend.welfareRondel) {
+    const give = pend.card.sector, take = neededResource(owner, needs);
+    if (owner.resources[RESOURCE_OF[give]] > (needs[give] || 0) && take && take !== give) return { type: 'resolveEffect', use: true, take };
+    return { type: 'resolveEffect', use: false };
+  }
   const f1res = F.f1?.tipo === 'risorsa', f2res = F.f2?.tipo === 'risorsa';
   if (f1res && F.f2?.tipo === 'moneta') { // vendo risorsa → monete (es. swap_res_3m)
     const give = surplusResource(owner, needs);

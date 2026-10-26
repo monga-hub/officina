@@ -1,3 +1,4 @@
+import { WELFARE_POLICIES } from '../game/welfare-rondel.js';
 import { bankMarket, hireCost, legalCommands, WORKER_BY_ID } from '../game/engine.js';
 import { rowMachineCard } from '../game/row-economy.js';
 import { rowPressureState } from '../game/row-pressure.js';
@@ -32,6 +33,11 @@ export function observeStudy(out,before,cmd,after) {
   const event={seq,turn:before.turn,seat:p.id,type:cmd.type,role,side:cmd.side,cardId:cmd.cardId,
     coinsBefore:p.coins,coinsAfter:q.coins,income:q.coinsGained-p.coinsGained,spent:total(q.coinsSpentBy)-total(p.coinsSpentBy),
     resourcesGained:total(q.resGainedBy)-total(p.resGainedBy),resourcesSpent:total(q.resSpentByCat)-total(p.resSpentByCat),tokens:cmd.type==='spendWelfareToken'?(cmd.count||1):0};
+  if(before.rowEconomy.welfareRondel) {
+    event.policyBefore=p.welfarePosition; event.policyAfter=q.welfarePosition;
+    if(cmd.type==='investWelfare'){event.steps=cmd.steps;event.tokensGained=q.welfareTokens-p.welfareTokens;}
+    event.policyBenefits=Object.fromEntries(WELFARE_POLICIES.map(policy=>[policy.id,q.welfareRondelStats.benefits[policy.id]-p.welfareRondelStats.benefits[policy.id]]).filter(([,n])=>n));
+  }
   if(cmd.type==='hire') {
     const w=WORKER_BY_ID[cmd.cardId];card(w.id)[cmd.side]++;
     event.paid=hireCost(before,p,w,role,cmd.side);event.discount=cmd.side==='sopra'?w.v-event.paid:0;
@@ -108,10 +114,16 @@ export function detailedReport(config,games,status) {
     `Macchinari da tensione: ${targets.length}; coppie o gruppi da ≥2 nella stessa produzione: ${pair.length} attivazioni; ${f(sum(pair,p=>p.targetIncome))} marchi. Produzioni con macchinari da tensione e zero righe accessibili: ${prods.filter(p=>p.targets>0&&p.available===0).length}.`,
     table(['Tensione prima della produzione','Un macchinario','Due o più'],Array.from({length:Math.max(...prods.map(p=>p.tension),4)+1},(_,t)=>[t,prods.filter(p=>p.tension===t&&p.targets===1).length,prods.filter(p=>p.tension===t&&p.targets>=2).length])),
     '\n## Welfare, repressione e tensione\n',
-    `Pacchetti welfare: ${sum(people,p=>p.stats.welfareBuys)}; produzioni protette: ${sum(people,p=>p.stats.protectedProductions||0)}; cure: ${cures.length}; gettoni finali: ${sum(people,p=>p.welfareTokens||0)}.`,
+    `${config.welfareRondel?'Visite alla rondella Welfare':'Pacchetti welfare'}: ${sum(people,p=>p.stats.welfareBuys)}; produzioni protette: ${sum(people,p=>p.stats.protectedProductions||0)}; cure: ${cures.length}; gettoni finali: ${sum(people,p=>p.welfareTokens||0)}.`,
     `Cure insieme a un’assunzione nello stesso turno: ${cures.filter(c=>events.some(e=>e.type==='hire'&&e.seat===c.seat&&e.turn===c.turn&&studies.some(s=>s.events.includes(c)&&s.events.includes(e)))).length}.`,
     `Repressioni: ${repressions.length}; righe riaperte nel reparto azzerato: ${sum(repressions,e=>sum(e.affected.filter(a=>a.role===e.role),a=>a.after.available-a.before.available))}; righe coperte negli altri: ${sum(repressions,e=>sum(e.affected.filter(a=>a.role!==e.role),a=>Math.max(0,a.before.available-a.after.available)))}.`,
     `Produzioni: ${prods.length}; con righe sviluppate bloccate: ${prods.filter(p=>p.blocked>0).length}; righe bloccate totali: ${sum(prods,p=>p.blocked)} su ${sum(prods,p=>p.developed)} sviluppate.`,
+    ...(config.welfareRondel ? [
+      '\n## Rondella Welfare\n',
+      'Un marco per passo e gettone, da 1 a 6. Primo ingresso libero; poi avanzamento in senso orario, spazi condivisi. Il bonus personale resta attivo fino allo spostamento. I valori dei benefici sono rendimenti effettivi, non una stima dei PV.',
+      table(['Politica','Visite','Giocatori distinti per partita','Beneficio effettivo','Unità'],WELFARE_POLICIES.map((policy,i)=>{const visits=events.filter(e=>e.type==='investWelfare'&&e.policyAfter===i);return [policy.name,visits.length,people.filter(p=>p.final?.welfareRondelStats?.visits.some(v=>v.position===i)).length,sum(people,p=>p.final?.welfareRondelStats?.benefits[policy.id]||0),({formation:'passi extra',integration:'marchi risparmiati',innovation:'marchi risparmiati',cooperation:'marchi incassati',reliability:'marchi incassati',mutualAid:'conversioni eseguite'})[policy.id]];})),
+      table(['Seme','Posto','Turno','Passi / costo / gettoni','Politica scelta'],games.flatMap(g=>(g.study?.events||[]).filter(e=>e.type==='investWelfare').map(e=>[g.seed,e.seat+1,e.turn,e.steps,WELFARE_POLICIES[e.policyAfter]?.name]))),
+    ] : []),
     '\n## Commesse\n',table(['Taglia','Completate','PV','Turno medio'],['small','medium','large'].map(size=>{const cs=people.flatMap(p=>p.final?.contractsWon||[]).filter(c=>c.size===size);return [size,cs.length,sum(cs,c=>c.pv),mean(cs,c=>c.turn)];})),
     `Giocatori senza commesse: ${people.filter(p=>!p.nContracts).length}/${N}.`,
     '\n## Conversioni\n',table(['Tipo','Disponibili','Eseguite'],Object.keys(source('convAttempts')).map(key=>[key,source('convAttempts')[key],source('convCount')[key]||0])),

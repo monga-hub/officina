@@ -21,7 +21,7 @@ export function defaults() {
   return structuredClone({ schema: 'officina-lab-1', rulesRevision: RULES_REVISION, presetRevision: PRESET_REVISION, contractsOnly: true, name: 'Prova di riferimento',
     players: 2, turns: 28, startingCoins: [15, 15, 15, 15],
     trackModel: 'righe4corte', track: withoutTrackPoints(reference.tracks.terziario),
-    welfareCost: 4, repressionBase: 2, repressionStep: 0,
+    welfareCost: 4, welfareRondel: false, repressionBase: 2, repressionStep: 0,
     contractCoins: reference.rowEconomy.contractCoins,
     machineSlots: [2, 2, 2], productionThresholds: [1, 5, 9, 13], milestoneResource: false, machineImmediate: false,
     workers: reference.workers.filter(w => !w.power && w.deck !== 'Impiegati').map(tensionMachineCard), contracts: { ...reference.contracts, large: reference.contracts.large.map(card => ({ ...card, pv: [13, card.pv[1]] })) },
@@ -50,6 +50,7 @@ export function validate(c) {
   const layout = TRACK_MODELS[c.trackModel];
   check(Array.isArray(c.productionThresholds) && c.productionThresholds.length === layout.rows, 'Serve una soglia per ogni riga.');
   c.productionThresholds.forEach((n, i) => integer(n, i * layout.columns + 1, (i + 1) * layout.columns, `Soglia riga ${i + 1}`));
+  check(typeof c.welfareRondel === 'boolean', 'Opzione rondella Welfare non valida.');
   check(typeof c.milestoneResource === 'boolean' && typeof c.machineImmediate === 'boolean', 'Opzioni ricompense immediate non valide.');
   for (const key of ['welfareCost', 'repressionBase', 'repressionStep']) integer(c[key], 0, 30, key);
   check(c.repressionStep === 0, 'La repressione ha un costo fisso, senza rincari.');
@@ -99,7 +100,7 @@ export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
     workers: structuredClone(c.workers), contracts: structuredClone(c.contracts), contractPV: undefined,
     contractCount: structuredClone(c.contractCount), contractMarket: c.contractMarket,
     rowEconomy: { ...reference.rowEconomy, welfareMode: 'tokens', welfareScope: 'factory', welfareHireDiscount: false, sameNationHireDiscount: true, tensionMachineCash: true, productionThresholds: [...c.productionThresholds], milestoneResource: c.milestoneResource, machineImmediate: c.machineImmediate,
-      welfareCost: c.welfareCost, repressionBase: c.repressionBase, repressionStep: 0, contractCoins: { ...c.contractCoins } },
+      welfareCost: c.welfareCost, welfareRondel: c.welfareRondel, repressionBase: c.repressionBase, repressionStep: 0, contractCoins: { ...c.contractCoins } },
     slots: { ...Object.fromEntries(ROLES.map((r,i) => [r, { sopra: 3, sotto: c.machineSlots[i] }])), direzione: { sopra: 0, sotto: 0 } },
     borsaExit: { enabled: true, coins: c.cityIncome }, borsaRefresh: { enabled: c.cityRefresh },
     contractsOnly: true, pianoEnabled: false, raceObjectives: { enabled: false, list: [] }, raceIncentive: 0,
@@ -115,6 +116,7 @@ export function parseConfig(raw) {
     const migrateLargePV = c.presetRevision == null || c.presetRevision === 1;
     const migrateMachines = c.rulesRevision == null || [1, 2, 3].includes(c.rulesRevision);
     c.productionThresholds ??= Array.from({length: TRACK_MODELS[c.trackModel]?.rows || 4}, (_, i) => i * (TRACK_MODELS[c.trackModel]?.columns || 4) + 1);
+    c.welfareRondel ??= false;
     c.milestoneResource ??= false; c.machineImmediate ??= false;
     c.contractsOnly = true;
     if (c.rulesRevision == null || c.rulesRevision === 1) {

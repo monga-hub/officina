@@ -13,6 +13,8 @@ import { industrialForTrack, activeWorkers, wellbeing, policiesOf, welfareEffici
 
 import { normalizeRowEconomy, rowEconomyConfig, rowMachineCard, repressionCost, tokenWelfare, availableWelfareTokens } from './row-economy.js';
 
+import { WELFARE_POLICIES, rondelEnabled, welfarePolicy, welfareRondelCommands, recordWelfareBenefit } from './welfare-rondel.js';
+
 const STRIKE_PENALTY_PV = 3; // penalità PV di default per ogni carta bloccata (Sciopero) a fine partita
 
 // Azioni della Trattativa. resetOwn + attackOther sono un blocco unico sempre attivo; unblock è opzionale.
@@ -416,6 +418,7 @@ export function initGame(config) {
     return {
       id: i, name: pc.name || `Giocatore ${i + 1}`, isAI: !!pc.isAI,
       aiRecovery: pc.aiRecovery || 'free', repressions: 0, welfareTokens: 0,
+      ...(rowEconomy.enabled && rowEconomy.welfareRondel ? { welfarePosition: null, welfareRondelStats: { visits: [], benefits: Object.fromEntries(WELFARE_POLICIES.map(p => [p.id, 0])) } } : {}),
       aiEvaluation: pc.aiEvaluation || 'baseline', // versione euristica, non una regola; consente confronti a posti invertiti
       aiContinuation: pc.aiContinuation || config.aiContinuation || 'greedy',
       personality: pc.personality || 'neutro', // profilo AI (vedi PROFILES in ai.js)
@@ -425,7 +428,7 @@ export function initGame(config) {
       coinsGained: 0,             // marchi guadagnati durante la partita (funnel addCoins)
       // da dove nascono i marchi. bonus = SOLO effetti carte lavoratore (dept.sotto), splittati per tipo:
       // lavFisso=«prendi N monete» · lavNazioni=marchi×nazionalità · lavIcone=marchi×icona · lavTensione=marchi×tensione
-      coinsGainedBy: { ...Object.fromEntries(SECTORS.map(s => [s, 0])), tracciati: 0, lavFisso: 0, lavNazioni: 0, lavIcone: 0, lavTensione: 0, lavFabbrica: 0, scambio: 0, trackTile: 0, commessa: 0 },
+      coinsGainedBy: { ...(rowEconomy.welfareRondel ? { politicaWelfare: 0 } : {}), ...Object.fromEntries(SECTORS.map(s => [s, 0])), tracciati: 0, lavFisso: 0, lavNazioni: 0, lavIcone: 0, lavTensione: 0, lavFabbrica: 0, scambio: 0, trackTile: 0, commessa: 0 },
       coinsSpentBy: { lavoratori: 0, direzione: 0, sindacato: 0, borsa: 0, movimento: 0, azioni: 0, welfare: 0, repressione: 0 }, // dove sono finiti i marchi
       pvWelfare: 0, welfareLog: [],
       industrialStats: { tensionProduction: 0, tensionExternal: 0, welfareBuys: 0, shutdowns: 0, restarts: 0, sustainableProductions: 0, protectedProductions: 0, welfareTokensUsed: 0, welfareRecoveries: 0, repressions: 0, welfareSpent: 0, repressionSpent: 0 },
@@ -711,7 +714,9 @@ export function hireCost(state, p, w, role, side) {
   const welfareDiscount = state.rowEconomy?.enabled && !tokenWelfare(state) && state.rowEconomy.welfareHireDiscount && d?.sustainableWelfare && side === 'sopra' && !w.power ? d.sustainableWelfare : 0;
   const nationDiscount = state.rowEconomy?.enabled && state.rowEconomy.sameNationHireDiscount && side === 'sopra' && !w.power
     ? (d?.sopra || []).filter(id => WORKER_BY_ID[id]?.nation === w.nation).length : 0;
-  return Math.max(state.rowEconomy?.enabled ? 1 : 0, w.v - structHireDiscount(p, p.node) - welfareDiscount - nationDiscount) + surcharge;
+  const policy = welfarePolicy(state, p)?.id;
+  const policyDiscount = !w.power && ((side === 'sotto' && policy === 'innovation') || (side === 'sopra' && policy === 'integration' && !d?.sopra.some(id => WORKER_BY_ID[id]?.nation === w.nation))) ? 1 : 0;
+  return Math.max(state.rowEconomy?.enabled ? 1 : 0, w.v - policyDiscount - structHireDiscount(p, p.node) - welfareDiscount - nationDiscount) + surcharge;
 }
 
 export function welfarePoints(state, p) {
@@ -1606,7 +1611,7 @@ export function legalCommands(state) {
           }
         }
       } else if (!giveScelta && takeScelta) {
-        if (canCoins) for (const take of SECTORS) cmds.push({ type: 'resolveEffect', use: true, take });
+        if (canCoins && (!pend.welfareRondel || canPayF(owner, pend.card, F.f1))) for (const take of SECTORS.filter(s => !pend.welfareRondel || s !== pend.card.sector)) cmds.push({ type: 'resolveEffect', use: true, take });
       } else if (giveScelta && !takeScelta) {
         for (const give of SECTORS) if (owner.resources[RESOURCE_OF[give]] >= F.f1.q) cmds.push({ type: 'resolveEffect', use: true, give });
       }
@@ -1664,7 +1669,8 @@ export function legalCommands(state) {
         select([], 0);
       }
     } else if (node === 'Servizi' && state.rowEconomy?.enabled) {
-      if (p.coins >= state.rowEconomy.welfareCost) {
+      if (rondelEnabled(state)) cmds.push(...welfareRondelCommands(state, p));
+      else if (p.coins >= state.rowEconomy.welfareCost) {
         if (tokenWelfare(state) || state.rowEconomy.welfareScope === 'factory') {
           cmds.push({ type: 'investWelfare', scope: 'factory' });
         } else for (const role of DEPT_ROLES) if (!p.depts[role].sustainableWelfare) cmds.push({ type: 'investWelfare', role });
@@ -1950,16 +1956,22 @@ export function applyCommand(prev, cmd) {
       return state;
     }
     case 'investWelfare': {
-      const cost = state.rowEconomy.welfareCost;
+      const rondel = rondelEnabled(state);
+      const cost = rondel ? cmd.steps : state.rowEconomy.welfareCost;
+      const gainedTokens = rondel ? cmd.steps : 3;
       spendCoins(p, 'welfare', cost);
       const factory = state.rowEconomy.welfareScope === 'factory';
       if (tokenWelfare(state)) {
-        p.welfareTokens = (p.welfareTokens || 0) + 3;
+        p.welfareTokens = (p.welfareTokens || 0) + gainedTokens;
         state.turnFlags ||= {};
-        state.turnFlags.welfareTokensPurchased = (state.turnFlags.welfareTokensPurchased || 0) + 3;
+        state.turnFlags.welfareTokensPurchased = (state.turnFlags.welfareTokensPurchased || 0) + gainedTokens;
       } else for (const role of factory ? DEPT_ROLES : [cmd.role]) p.depts[role].sustainableWelfare = (p.depts[role].sustainableWelfare || 0) + 1;
+      if (rondel) {
+        p.welfarePosition = cmd.position;
+        p.welfareRondelStats.visits.push({ turn: state.turn, position: cmd.position, steps: cmd.steps });
+      }
       p.industrialStats.welfareBuys++; p.industrialStats.welfareSpent += cost;
-      log(state, `${p.name}: investe ${cost} marchi in welfare, ${tokenWelfare(state) ? '3 gettoni utilizzabili dal prossimo turno' : factory ? 'tutti e tre i reparti' : p.depts[cmd.role].sector}.`);
+      log(state, `${p.name}: investe ${cost} marchi in welfare, ${tokenWelfare(state) ? `${gainedTokens} gettoni utilizzabili dal prossimo turno${rondel ? '; politica ' + WELFARE_POLICIES[cmd.position].name : ''}` : factory ? 'tutti e tre i reparti' : p.depts[cmd.role].sector}.`);
       finishTurn(state); return state;
     }
     case 'repress': {
@@ -2025,6 +2037,7 @@ export function applyCommand(prev, cmd) {
           if (F.f2.tipo === 'moneta') addCoins(state, owner, gq, 'scambio');
           else if (RESOURCE_OF[takeSec]) convRes(owner, takeSec, gq, F.f1.tipo === 'moneta' ? 'acquisto' : 'scambio');
         }
+        if (pend.welfareRondel) recordWelfareBenefit(owner, 'mutualAid', 1);
         log(state, `${owner.name}: scambia (${w.effectText}).`);
       }
       state.pending = null;
@@ -2146,6 +2159,11 @@ function doHire(state, p, cmd) {
   bank.splice(i, 1);
   const base = cmd.discount ? Math.max(0, w.v - (cmd.discountAmount ?? 1)) : w.v;
   const paid = state.industrial.enabled ? hireCost(state, p, w, cmd.role, cmd.side) : Math.max(0, base - structHireDiscount(p, p.node));
+  const policy = welfarePolicy(state, p)?.id;
+  if (policy === 'innovation' || policy === 'integration') {
+    const without = hireCost({ ...state, rowEconomy: { ...state.rowEconomy, welfareRondel: false } }, p, w, cmd.role, cmd.side);
+    recordWelfareBenefit(p, policy, without - paid);
+  }
   spendCoins(p, w.power ? 'direzione' : 'lavoratori', paid);
   p.lastHireTurn = state.turn;
   const dept = p.depts[cmd.role];
@@ -2162,7 +2180,10 @@ function doHire(state, p, cmd) {
     dept.sopra.push(w.id);
     if (dept.slotTurn.sopra[dept.sopra.length - 1] == null) dept.slotTurn.sopra[dept.sopra.length - 1] = state.turn;
     log(state, `${p.name} assume ${w.nation} ${w.sector} [V${w.v}] Sopra in ${dept.sector}.`);
-    advanceTrack(state, p, dept, state.rowTrack ? (state.rowEconomy?.enabled ? w.v : paid) : state.industrial.enabled && state.industrial.development === 'workers' ? 1 : w.v, 'assunzione Sopra');
+    const development = state.rowTrack ? (state.rowEconomy?.enabled ? w.v : paid) : state.industrial.enabled && state.industrial.development === 'workers' ? 1 : w.v;
+    const training = policy === 'formation' ? 1 : 0;
+    if (training) recordWelfareBenefit(p, policy, Math.min(1, Math.max(0, state.trackMax - dept.prod - development)));
+    advanceTrack(state, p, dept, development + training, 'assunzione Sopra');
   } else {
     dept.sotto.push(w.id);
     if (dept.slotTurn.sotto[dept.sotto.length - 1] == null) dept.slotTurn.sotto[dept.sotto.length - 1] = state.turn;
@@ -2214,6 +2235,17 @@ function doActivate(state, p, sector, intensity = 1, sustainableRow = null, welf
   const welfareResources = state.industrial.enabled ? welfareEfficiency(state, dept, intensity) : 0;
   if (state.industrial.enabled) addRes(p, sector, welfareResources, 'produzione');
   const trackAmt = (p.coins - ct0) + (totalResources(p) - rt0);
+  const policy = welfarePolicy(state, p)?.id;
+  if (policy === 'cooperation' && new Set(dept.sopra.map(id => WORKER_BY_ID[id]?.nation)).size >= 2) {
+    addCoins(state, p, 1, 'politicaWelfare');
+    recordWelfareBenefit(p, policy, 1);
+  }
+  if (policy === 'mutualAid' && totalResources(p) > rt0) {
+    const card = { id: 'welfare-mutual-aid', sector, effectText: 'Mutuo soccorso: converti una risorsa appena prodotta', effect: { verbo: 'scambia', f1: { q: 1, tipo: 'risorsa', settore: sector }, f2: { q: 1, tipo: 'risorsa', settore: 'scelta' } } };
+    p.convAttempts.risorsaRisorsa++;
+    state.pendingQueue.push({ type: 'effect', playerId: p.id, role: dept.role, card, welfareRondel: true });
+    advancePending(state);
+  }
   // 3. Carte Sotto non bloccate. Se factoryActivates è ON, ogni carta scatta N volte = fabbriche del settore
   // del reparto (floor 1 = comportamento normale, cap 3). Le fabbriche potenziano le attivazioni bonus.
   let sottoTimes = 1;
@@ -2615,6 +2647,10 @@ function doContract(state, p, cmd) {
   slot.places[place] = p.id;
   const pv = slot.card.pv[place];
   if (state.rowEconomy?.enabled) addCoins(state, p, state.rowEconomy.contractCoins[cmd.size], 'commessa');
+  if (welfarePolicy(state, p)?.id === 'reliability') {
+    addCoins(state, p, 2, 'politicaWelfare');
+    recordWelfareBenefit(p, 'reliability', 2);
+  }
   p.contractsWon.push({ cardId: slot.card.id, size: cmd.size, place, pv, reqIndex: cmd.reqIndex, req: [...req], turn: state.turn });
   // carta-motore sotto la Direzione: da ora produce ogni turno la risorsa dominante × forza-settore (config)
   if (state.contractEngine) {

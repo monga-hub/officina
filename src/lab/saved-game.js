@@ -1,5 +1,6 @@
 import { initGame, scorePlayer } from '../game/engine.js';
 import { withoutTrackPoints } from './config.js';
+import { WELFARE_POLICIES, rondelEnabled } from '../game/welfare-rondel.js';
 import { tensionMachineCard } from '../game/row-economy.js';
 
 export const GAME_SAVE_KEY='officina1907-partita-v1';
@@ -11,6 +12,8 @@ function validState(state,config) {
     &&Number.isInteger(state.turn)&&state.turn>0&&['move','action','borsa','resolving','done'].includes(state.phase)
     &&state.banks&&state.tracks&&state.contracts&&Array.isArray(state.log)&&Array.isArray(state.pendingQueue)
     &&state.players.every(p=>p.resources&&p.depts&&ROLES.every(role=>Array.isArray(p.depts[role]?.sopra)&&Array.isArray(p.depts[role]?.sotto)))
+    &&(!rondelEnabled(state)||state.players.every(p=>(p.welfarePosition===null||(Number.isInteger(p.welfarePosition)&&p.welfarePosition>=0&&p.welfarePosition<6))
+      &&Array.isArray(p.welfareRondelStats?.visits)&&WELFARE_POLICIES.every(policy=>Number.isFinite(p.welfareRondelStats.benefits?.[policy.id])&&p.welfareRondelStats.benefits[policy.id]>=0)))
     &&(!state.pending||(Number.isInteger(state.pending.playerId)&&state.players[state.pending.playerId]));
 }
 export function validateGameSave(save) {

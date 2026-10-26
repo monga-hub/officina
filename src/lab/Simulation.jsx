@@ -78,7 +78,7 @@ export default function Simulation({c,set,locked,setLocked,onPlay}) {
     {error&&<p className="lab-error" role="alert">{error}</p>}
     </Card>
     {run&&<Card title={`${run.status} · ${run.config.name}`}>
-      <p className="lab-muted">{run.config.players} giocatori · welfare {run.config.welfareCost} M · {AI_NAMES[run.config.simulation.ai]}{run.config.simulation.ai!=='greedy'?` · d${run.config.simulation.depth} r${run.config.simulation.rollouts}`:''}</p>
+      <p className="lab-muted">{run.config.players} giocatori · welfare {run.config.welfareRondel?'rondella · 1 M per passo/gettone':`${run.config.welfareCost} M per 3 gettoni`} · {AI_NAMES[run.config.simulation.ai]}{run.config.simulation.ai!=='greedy'?` · d${run.config.simulation.depth} r${run.config.simulation.rollouts}`:''}</p>
       {summary&&<><div className="lab-metrics">{[['PV medi',summary.pv],['Acquisti welfare / giocatore',summary.welfare],['Repressioni / giocatore',summary.repression],[tokens?'Produzioni protette / giocatore':'Produzioni sostenibili / giocatore',tokens?summary.protected:summary.sustainable]].map(([label,value])=><div key={label}><strong>{fmt(value)}</strong><span>{label}</span></div>)}</div>
       <p>Produzioni con righe sviluppate bloccate: <b>{summary.blocked}/{summary.productions}</b>. Righe perse nella modalità scelta: <b>{summary.lostRows}/{summary.potentialRows}</b>.</p>
       <p className="lab-muted">Medie su {summary.players} giocatori-partita completati. {tokens?'La produzione protetta usa tutte le righe accessibili e consuma un gettone.':'Le righe accessibili a cui si rinuncia scegliendo la produzione sostenibile non sono conteggiate come bloccate.'}</p>

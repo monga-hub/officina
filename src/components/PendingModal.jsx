@@ -105,7 +105,7 @@ function EffectChoice({ state, pend, owner, legal, dispatch, renderResource }) {
   const useOpts = legal.filter(c => c.use);
   return (
     <>
-      <h3>Effetto carta — {owner.name}</h3>
+      <h3>{pend.welfareRondel?'Politica · Mutuo soccorso':'Effetto carta'} — {owner.name}</h3>
       <p>{effectChoiceLabel(w)} <small>(opzionale)</small></p>
       <div className="btn-row col">
         {useOpts.map((c, i) => (

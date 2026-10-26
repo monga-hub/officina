@@ -234,3 +234,17 @@
 .department-nations .nation-badge b{font-size:12px;color:#243b2c}
 
 .lab-run-status{background:#edf3e7;border:1px solid #a9bd9f;border-radius:10px;padding:20px 22px;margin-bottom:20px}.lab-run-status .lab-run-head{gap:12px;flex-wrap:wrap;color:#244c39}.lab-run-times{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:10px 0}.lab-run-times dt{font-size:11px;color:#607653;margin-bottom:6px}.lab-run-times dd{margin:0;font-size:14px;font-weight:600;color:#244133;font-variant-numeric:tabular-nums}.lab-run-status>div[aria-live]{font-size:12px;color:#536654}@media(max-width:760px){.lab-run-status{padding:18px 16px}.lab-run-times{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 12px}}
+
+/* Welfare: clockwise order and shared positions remain readable on small screens. */
+.welfare-rondel{margin:1rem 0;padding:1rem;border:1px solid #a6b29a;border-radius:12px;background:#f1f4eb;color:#263524}
+.welfare-rondel h3{margin-top:0}.rondel-steps{display:flex;gap:.35rem;flex-wrap:wrap;margin:.8rem 0}
+.rondel-steps button[aria-pressed=true],.rondel-policies button[aria-pressed=true]{background:#31583e;color:white}
+.rondel-policies{list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;padding:0}
+.rondel-policies li{padding:.7rem;border:2px solid #c8d0bf;border-radius:9px;background:#fffdf6;min-width:0}
+.rondel-policies li.rondel-destination{border-color:#31583e;box-shadow:0 0 0 1px #31583e}
+.rondel-policies p{font-size:.85rem;margin:.5rem 0}.rondel-policies button{text-align:left;width:100%}
+.rondel-occupants{display:flex;flex-wrap:wrap;gap:.3rem}.rondel-occupants span{border:1px solid;border-radius:20px;padding:.15rem .4rem;font-size:.8rem}
+.rondel-occupants i{display:inline-block;width:.65rem;height:.65rem;border-radius:50%}
+@media(max-width:480px){.rondel-policies{grid-template-columns:1fr}.welfare-rondel{padding:.65rem}}
+.table-action-dialog .rondel-steps button{width:auto;flex:1 0 65px;padding:.4rem .5rem}
+@media(min-width:900px){.rondel-policies{grid-template-columns:repeat(3,minmax(0,1fr))}}

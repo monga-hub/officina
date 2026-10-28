@@ -67,14 +67,13 @@ export default function PlayTable({state,dispatch,undo,paused,setPaused,onClose,
     <nav className="play-jumps" aria-label="Comandi del tavolo"><button onClick={()=>{setActionType(null);setActionsOpen(true);}}>{state.phase==='roundRondel'?'Scegli la politica':'Azioni del nodo'}</button><button onClick={()=>setInfo({type:'log'})}>Registro</button><button onClick={()=>setInfo({type:'symbols'})}>Simboli</button><span className="game-save-state">{saved?'✓ Partita salvata':'Salvataggio non disponibile'}</span></nav>
     <main className="play-layout">
       <StarBoard state={state} dispatch={dispatch} onActions={()=>{setActionType(null);setActionsOpen(true);}} onNodeAction={type=>{setActionType(type);setActionsOpen(true);}}/>
-      <section id="commesse" className="lab-card play-contracts play-contracts-side" aria-label="Commesse disponibili"><ContractsPanel state={state} player={player}/></section>
+      <section id="commesse" className="lab-card play-contracts play-contracts-side" aria-label="Rondella e commesse"><WelfareRondel state={state} player={player}/><ContractsPanel state={state} player={player}/></section>
       <div id="fabbrica" className="play-factory-column">
         <div className="play-player-tabs" aria-label="Plance dei giocatori">{state.players.map(x=><button key={x.id} aria-pressed={view===x.id} onClick={()=>setView(x.id)}>{x.name}{x.isAI?' · IA':''} <small><Amount kind="pv" value={scorePlayer(state,x).total}/></small></button>)}</div>
         <section className="lab-card play-factory">
           <div className="play-factory-heading"><div><p className="lab-eyebrow">{player.isAI?'FABBRICA AVVERSARIA':'LA TUA FABBRICA'}</p><h2>{player.name}</h2></div><span>📍 {rowNodeLabel(state,player.node)}</span></div>
           <div className="play-wallet"><Amount kind="coin" value={player.coins}/>{Object.entries(player.resources).map(([r,n])=><Amount key={r} kind={r} value={n}/>)}<span title={welfareLabel} aria-label={welfareLabel}>🌿 <b>{welfare}</b>{tokens&&' gettoni'}</span></div>
           <div className="play-departments">{ROLES.map(role=><Department key={role} state={state} player={player} role={role} onInspect={setInspected} onCards={(playerId,role)=>setInfo({type:'cards',playerId,role})}/>)}</div>
-          <WelfareRondel state={state} player={player}/>
           <div className="play-direction">{state.rowEconomy.welfareBank&&<p><b>Banca Welfare: {state.welfareBank||0} marchi</b> · fondi comuni saccheggiabili con la repressione.</p>}<p className="lab-muted">Commesse completate: {player.contractsWon.length} · Repressioni: {player.industrialStats.repressions}</p></div>
         </section>
 

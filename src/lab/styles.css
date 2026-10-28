@@ -293,3 +293,12 @@
 .table-overview .welfare-rondel{padding:6px;margin-top:6px}.table-overview .rondel-heading{margin-bottom:4px}.table-overview .rondel-heading h3{font-size:11px}.table-overview .rondel-heading>span{font-size:10px}.table-overview .rondel-policies>li{padding:3px}
 }
 .table-overview .play-factory{flex:0 0 auto}
+
+/* Policies sit above the compact contract market in the right column. */
+.table-overview .play-contracts-side .welfare-rondel{margin:0 0 10px;padding:6px}
+.table-overview .play-contracts-side .rondel-heading{align-items:flex-start;flex-direction:column;gap:2px}
+.table-overview .play-contracts-side .rondel-policies{grid-template-columns:repeat(2,minmax(0,1fr))}
+.table-overview .play-contracts-side .orders-grid{gap:5px}
+.table-overview .play-contracts-side .order-card{padding:6px}
+.table-overview .play-contracts-side .order-resources{margin-top:5px}
+.table-overview .play-contracts-side .order-resources .amount-token{min-width:20px;width:20px;height:20px;font-size:12px}

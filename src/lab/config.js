@@ -40,7 +40,6 @@ export function validate(c) {
   if (c.machinesRequireOpenRow !== undefined) check(typeof c.machinesRequireOpenRow === 'boolean', 'Blocco macchinari non valido.');
   if (c.finalCoinsPerPV !== undefined) integer(c.finalCoinsPerPV, 1, 100, 'Marchi per PV finale');
   if(c.finalResourcePV!==undefined)check(typeof c.finalResourcePV==='boolean','PV finali delle risorse non validi.');
-  if(c.finalResourcesPerPV!==undefined)integer(c.finalResourcesPerPV,1,100,'Risorse dello stesso tipo per PV finale');
   if (c.finalCoinPV !== undefined) check(typeof c.finalCoinPV === 'boolean', 'Conversione finale marchi non valida.');
   check(c.contractsOnly === true, 'Nel Laboratorio si contano i PV delle commesse e gli eventuali PV dei marchi e delle risorse finali.');
   check(!c.roundAwards?.enabled, 'Le carte premio non fanno parte di questa versione.');
@@ -122,7 +121,7 @@ export function validate(c) {
 export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
   validate(c);
   return { ...structuredClone(reference),
-    ...((c.finalCoinsPerPV||c.finalResourcesPerPV)?{conversions:{...reference.conversions,...(c.finalCoinsPerPV?{coinsPerPV:c.finalCoinsPerPV}:{}),...(c.finalResourcesPerPV?{resPerPV:c.finalResourcesPerPV}:{})}}:{}),
+    ...((c.finalCoinsPerPV||c.finalResourcePV)?{conversions:{...reference.conversions,...(c.finalCoinsPerPV?{coinsPerPV:c.finalCoinsPerPV}:{}),...(c.finalResourcePV?{resPerPV:3}:{})}}:{}),
     ...(c.roundAwards?.enabled ? {roundAwards:structuredClone(c.roundAwards)} : {}),
     ...(c.roundRondel?.enabled ? {roundRondel:structuredClone(c.roundRondel)} : {}),
     seed, headless: humans === 0, endMode: 'rounds', roundLimit: c.turns, singleContractVisit: true,
@@ -178,7 +177,7 @@ export function parseConfig(raw) {
   }
   validate(c);
   // Only the current schema is persisted; imported legacy knobs cannot alter rules.
-  const optional=['roundRondel','conversionMachines','machinesRequireOpenRow','finalCoinPV','finalCoinsPerPV','finalResourcePV','finalResourcesPerPV'];
+  const optional=['roundRondel','conversionMachines','machinesRequireOpenRow','finalCoinPV','finalCoinsPerPV','finalResourcePV'];
   return Object.fromEntries([...Object.keys(defaults()),...optional.filter(k=>Object.hasOwn(c,k))].map(k => [k, structuredClone(c[k])]));
 }
 export function playableConfig(c, humans = 1, pace = 'rapid') {

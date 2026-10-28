@@ -2057,6 +2057,5 @@
     "extraStepCost": 1,
     "mandatoryMove": true
   },
-  "finalResourcePV": true,
-  "finalResourcesPerPV": 3
+  "finalResourcePV": true
 }

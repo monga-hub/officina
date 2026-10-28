@@ -1391,7 +1391,7 @@ export function scorePlayer(state, p) {
   const pvContracts = p.contractsWon.reduce((a, c) => a + c.pv, 0);
   const blockedCount = DEPT_ROLES.reduce((a, r) => a + p.depts[r].blocked.length, 0);
   const finalCoinPoints = state.finalCoinPV ? Math.floor(p.coins / state.rules.coinsPerPV) : 0;
-  const finalResourcePoints=state.finalResourcePV?Object.values(p.resources).reduce((sum,n)=>sum+Math.floor(n/state.rules.resPerPV),0):0;
+  const finalResourcePoints=state.finalResourcePV?Math.min(...SECTORS.map(sector=>p.resources[RESOURCE_OF[sector]]||0)):0;
   if (state.contractsOnly) return {
     playerId: p.id, name: p.name, pvContracts, total: pvContracts + finalCoinPoints + finalResourcePoints,
     pvWelfare: 0, pvObjectives: 0, pvTrack: 0, pvCoins: finalCoinPoints, pvResources: finalResourcePoints,

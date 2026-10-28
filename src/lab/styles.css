@@ -302,3 +302,16 @@
 .table-overview .play-contracts-side .order-card{padding:6px}
 .table-overview .play-contracts-side .order-resources{margin-top:5px}
 .table-overview .play-contracts-side .order-resources .amount-token{min-width:20px;width:20px;height:20px;font-size:12px}
+
+/* All three columns share one height; spare room belongs to tracks and orders. */
+.table-overview .play-layout{height:max(680px,var(--play-area-height,620px))}
+.table-overview .play-factory{flex:1;display:flex;flex-direction:column;margin-bottom:0}
+.table-overview .play-departments{flex:1;grid-template-rows:repeat(3,minmax(0,1fr));align-content:stretch}
+.table-overview .play-department{display:flex;flex-direction:column;min-height:0}
+.table-overview .play-department .opposed-track{flex:1;min-height:0;display:flex;flex-direction:column}
+.table-overview .play-department .opposed-track-row{flex:1 1 0;min-height:0}
+.table-overview .play-department .opposed-cell,.table-overview .play-department .opposed-track-row>.row-tension-step{height:auto;min-height:0}
+.table-overview .play-layout>.play-contracts-side{align-self:stretch;display:flex;flex-direction:column;margin-bottom:0}
+.table-overview .play-contracts-side .orders-table{flex:1;display:flex;flex-direction:column;min-height:0}
+.table-overview .play-contracts-side .orders-grid{flex:1;grid-auto-rows:1fr;align-content:stretch}
+.table-overview .play-contracts-side .orders-grid>.order-card{display:flex;flex-direction:column;justify-content:space-between}

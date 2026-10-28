@@ -317,3 +317,9 @@
 .table-overview .play-contracts-side .orders-grid>.order-card{display:flex;flex-direction:column;justify-content:space-between}
 
 .round-rondel-options .round-policy-effect{margin-top:7px;font-size:13px;line-height:1.45;font-weight:400}
+
+.lab-shell.table-overview .department-cards-button{flex-wrap:wrap;gap:3px 6px;flex-shrink:0}
+.table-overview .department-cards-button .department-nations{margin-left:auto;gap:3px}
+.table-overview .department-nations .nation-badge{padding:1px 3px;gap:2px}
+.table-overview .department-nations .nation-flag{font-size:18px}
+.table-overview .department-nations .nation-badge b{font-size:10px}

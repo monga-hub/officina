@@ -19,6 +19,11 @@ import { Amount, SymbolKey } from './GameSymbols.jsx';
 import TableViewport, { TableOverlay } from './TableViewport.jsx';
 function Department({state,player,role,onCards}) {
   const d=player.depts[role], p=rowPressureState(state,d);
+  const nations=d.sopra.reduce((counts,id)=>{
+    const nation=WORKER_BY_ID[id]?.nation;
+    if(nation)counts[nation]=(counts[nation]||0)+1;
+    return counts;
+  },{});
   const cellLabel=pos=>{
     const c=state.tracks[role][pos];
     if(!c)return '—';
@@ -36,7 +41,7 @@ function Department({state,player,role,onCards}) {
     <p className="play-row-count"><b>{p.available}/{p.developed}</b> righe utilizzabili{p.blocked>0&&<em> · {p.blocked} bloccate</em>}</p>
     <RowProductionTrack tensionDirection={state.rowEconomy.tensionDirection} unlock={state.rowEconomy.productionUnlock} thresholds={state.rowEconomy.productionUnlock==='cells'?null:state.rowEconomy.productionThresholds} milestones={state.tracks[role].flatMap((c,i)=>c?.milestoneReward?[i]:[])} model={state.trackModel} prod={d.prod} tension={d.tension} wholeRows renderCell={renderCell} renderReward={pos=>{const reward=state.tracks[role][pos]?.milestoneReward;return reward?<em className="track-milestone-reward">★ {reward.res>0&&<Amount kind={d.sector} value={reward.res}/>} {reward.coins>0&&<Amount kind="coin" value={reward.coins}/>}</em>:null;}} cellTitle={cellLabel}/>
 
-    <button className="department-cards-button" onClick={()=>onCards(player.id,role)}>{d.sopra.length} operai · {d.sotto.length}/{state.slots[role].sotto} macchinari <span aria-hidden="true">↗</span></button>
+    <button className="department-cards-button" onClick={()=>onCards(player.id,role)}><span>{d.sopra.length} operai · {d.sotto.length}/{state.slots[role].sotto} macchinari</span>{d.sopra.length>0&&<span className="department-nations" aria-label="Nazionalità assunte">{NATIONS_NUOVO.filter(nation=>nations[nation]).map(nation=><NationBadge key={nation} nation={nation} count={nations[nation]}/>)}</span>}<span aria-hidden="true">↗</span></button>
   </section>;
 }
 export default function PlayTable({state,dispatch,undo,paused,setPaused,onClose,thinking,error,saved,saveError}) {

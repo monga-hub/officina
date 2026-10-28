@@ -1,6 +1,6 @@
 import PolicyHint from './PolicyHint.jsx';
 import React, { useState } from 'react';
-import { WELFARE_POLICIES, WELFARE_DISPLAY_POLICIES, welfareMaxSteps, freeWelfareEntry, rondelEnabled, welfarePolicy, welfarePolicyEnabled } from '../game/welfare-rondel.js';
+import { WELFARE_POLICIES, WELFARE_DISPLAY_POLICIES, welfareDisplayPolicies, welfarePolicies, welfareMaxSteps, freeWelfareEntry, rondelEnabled, welfarePolicy, welfarePolicyEnabled } from '../game/welfare-rondel.js';
 
 export default function WelfareRondel({ state, player, legal = [], dispatch }) {
   const [selectedSteps, setSteps] = useState(1), [firstPosition, setFirstPosition] = useState(1);
@@ -18,8 +18,8 @@ export default function WelfareRondel({ state, player, legal = [], dispatch }) {
       <p><b>1 marco = 1 passo = 1 gettone.</b> Da 1 a {welfareMaxSteps(state)} passi per visita. {freeFirst ? 'Al primo ingresso scegli liberamente la politica.' : first ? 'Parti prima di Cooperazione: 1 passo Cooperazione, 2 Innovazione, 3 Affidabilità. Formazione richiede almeno due visite.' : 'Avanza in senso orario fino alla destinazione evidenziata.'}</p>
       <div className="rondel-steps" role="group" aria-label="Passi della rondella">{Array.from({length:welfareMaxSteps(state)}, (_, i) => i + 1).map(n => <button key={n} aria-pressed={steps === n} disabled={!commands.some(c => c.steps === n)} onClick={() => setSteps(n)}>{n} {n === 1 ? 'passo' : 'passi'}</button>)}</div>
     </>}
-    <ol className="rondel-policies">{WELFARE_DISPLAY_POLICIES.map((policy, displayIndex) => {
-      const i = WELFARE_POLICIES.indexOf(policy);
+    <ol className="rondel-policies">{welfareDisplayPolicies(state).map((policy, displayIndex) => {
+      const i = welfarePolicies(state).indexOf(policy);
       const enabled = welfarePolicyEnabled(state,policy);
       const occupants = state.players.filter(p => p.welfarePosition === i);
       const selected = dispatch && position === i;

@@ -1,4 +1,4 @@
-import { WELFARE_POLICIES } from '../game/welfare-rondel.js';
+import { welfarePolicies } from '../game/welfare-rondel.js';
 const sum = (xs, f) => xs.reduce((n, x) => n + f(x), 0);
 const mean = (xs, f) => xs.length ? sum(xs, f) / xs.length : null;
 const categories = [
@@ -13,6 +13,7 @@ const categories = [
   ['contracts','Consegnano commesse',e=>e.type==='completeContract'],
 ];
 export function researchSummary(games) {
+  const WELFARE_POLICIES=welfarePolicies(games[0]?.finalState||{});
   const players = games.flatMap((game, index) => game.finalState?.players.map(p => ({ game, index, player:p, events:(game.study?.events||[]).filter(e=>e.seat===p.id).map(e=>({...e,protected:e.protected??game.commands?.[e.seq]?.welfareToken??false})) })) || []);
   const totalTurns = sum(players,p=>p.player.coinsHistory?.length??p.game.turns);
   const participation = categories.map(([id,label,test]) => {
@@ -43,7 +44,7 @@ export function researchSummary(games) {
         steps:visit.steps,cost:visit.spent,tokens:visit.tokensGained,
         futureTurns:Math.max(0,(next?.turn??p.game.turns)-visit.turn+(roundMode&&!next?1:0)),firstBenefitTurn:triggers[0]?.turn??null,
         triggers:triggers.length,value,unused:triggers.length===0,
-        directCoinReturn:['cooperation','innovation','integration','reliability'].includes(policy.id)?value:null,
+        directCoinReturn:['cooperation','innovation','integration','affinity','reliability'].includes(policy.id)?value:null,
         actions:{staff:hired.filter(e=>e.side==='sopra').length,machines:hired.filter(e=>e.side==='sotto').length,
           productions:after.filter(e=>e.type==='activate').length,contracts:after.filter(e=>e.type==='completeContract').length,repressions:after.filter(e=>e.type==='repress').length}});
     });

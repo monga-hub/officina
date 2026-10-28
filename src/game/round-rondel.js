@@ -1,6 +1,7 @@
-import { WELFARE_POLICIES, welfarePolicyEnabled } from './welfare-rondel.js';
+import { welfareDisplayPolicies, welfarePolicies, welfarePolicyEnabled } from './welfare-rondel.js';
 export function initRoundRondel(config,n,turns) {
   if(n!==3||turns!==28||JSON.stringify(config.bounds)!=='[9,18]'||JSON.stringify(config.firstSeats)!=='[0,1]'||config.maxSteps!==3||![0,1].includes(config.stepCost)||config.tokenCost!==1||config.tokenMax!==3)throw new Error('Unsupported round rondel experiment');
+  if(config.startingPolicy!==undefined&&(config.startingPolicy!=='affinity'||config.extraStepCost!==1||config.mandatoryMove!==true||config.freeEntry!==false))throw new Error('Unsupported starting policy');
   return {...structuredClone(config),completed:[],active:null,log:[]};
 }
 export function beginRoundRondel(state,finishedTurn) {
@@ -13,18 +14,20 @@ export function beginRoundRondel(state,finishedTurn) {
 }
 export function roundRondelCommands(state) {
   const rr=state.roundRondel;if(state.phase!=='roundRondel'||!rr?.active)return [];
-  const p=state.players[state.current],commands=[{type:'keepRoundRondel'}];
+  const p=state.players[state.current],commands=rr.mandatoryMove?[]:[{type:'keepRoundRondel'}];
   const freeEntry=rr.freeEntry&&p.welfarePosition==null;
-  const limit=freeEntry?WELFARE_POLICIES.length:rr.maxSteps;
-  for(let steps=1;steps<=limit&&steps*rr.stepCost<=p.coins;steps++){
-    const position=((p.welfarePosition??0)+steps)%WELFARE_POLICIES.length;
-    if(welfarePolicyEnabled(state,WELFARE_POLICIES[position]))commands.push({type:'advanceRoundRondel',steps,position});
+  const policies=welfarePolicies(state),order=rr.startingPolicy==='affinity'?welfareDisplayPolicies(state).map(p=>policies.indexOf(p)):policies.map((_,i)=>i);
+  const limit=rr.extraStepCost?order.length-1:freeEntry?policies.length:rr.maxSteps;
+  for(let steps=1;steps<=limit;steps++){
+    const cost=roundRondelCost(rr,steps);if(cost>p.coins)break;
+    const position=order[(Math.max(0,order.indexOf(p.welfarePosition??0))+steps)%order.length];
+    if(welfarePolicyEnabled(state,policies[position]))commands.push({type:'advanceRoundRondel',steps,position});
   }
   return commands;
 }
 export function applyRoundRondel(state,command) {
   const rr=state.roundRondel,a=rr.active,p=state.players[state.current],from=p.welfarePosition;
-  const steps=command.type==='advanceRoundRondel'?command.steps:0,cost=steps*rr.stepCost;
+  const steps=command.type==='advanceRoundRondel'?command.steps:0,cost=roundRondelCost(rr,steps);
   if(steps){
     p.coins-=cost;p.coinsSpentBy.roundRondel=(p.coinsSpentBy.roundRondel||0)+cost;
     p.welfarePosition=command.position;
@@ -35,3 +38,5 @@ export function applyRoundRondel(state,command) {
   if(at<a.order.length){state.roundRondel={...rr,log,active:{...a,at}};state.current=a.order[at];return false;}
   state.roundRondel={...rr,log,active:null,completed:[...rr.completed,a.index]};state.current=a.resumeCurrent;return true;
 }
+
+export const roundRondelCost=(rr,steps)=>rr.extraStepCost?Math.max(0,steps-rr.maxSteps)*rr.extraStepCost:steps*rr.stepCost;

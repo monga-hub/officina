@@ -2052,6 +2052,9 @@
     "stepCost": 0,
     "tokenCost": 1,
     "tokenMax": 3,
-    "freeEntry": true
+    "freeEntry": false,
+    "startingPolicy": "affinity",
+    "extraStepCost": 1,
+    "mandatoryMove": true
   }
 }

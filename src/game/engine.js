@@ -15,7 +15,7 @@ import { industrialForTrack, activeWorkers, wellbeing, policiesOf, welfareEffici
 
 import { normalizeRowEconomy, rowEconomyConfig, rowMachineCard, machinesOperational, continuityIncome, tensionMachineIncome, repressionCost, tokenWelfare, availableWelfareTokens } from './row-economy.js';
 
-import { WELFARE_POLICIES, rondelEnabled, welfarePolicy, welfareRondelCommands, recordWelfareBenefit } from './welfare-rondel.js';
+import { WELFARE_POLICIES, ALL_WELFARE_POLICIES, rondelEnabled, welfarePolicy, welfareRondelCommands, recordWelfareBenefit } from './welfare-rondel.js';
 
 const SEARCH_ONLY = Symbol('search-only');
 const STRIKE_PENALTY_PV = 3; // penalità PV di default per ogni carta bloccata (Sciopero) a fine partita
@@ -423,7 +423,7 @@ export function initGame(config) {
       aiRecovery: pc.aiRecovery || 'free', repressions: 0, welfareTokens: 0,
       ...(config.roundAwards?.rewardMode==='vouchers'?{roundAwardVouchers:[],roundAwardVoucherUses:[]}:{}),
       ...(config.roundRondel?.enabled?{welfareTokenPurchases:[]}:{}),
-      ...(rowEconomy.enabled && rowEconomy.welfareRondel ? { welfarePosition: null, welfareRondelStats: { visits: [], benefits: Object.fromEntries(WELFARE_POLICIES.map(p => [p.id, 0])) } } : {}),
+      ...(rowEconomy.enabled && rowEconomy.welfareRondel ? { welfarePosition: config.roundRondel?.startingPolicy==='affinity'?6:null, welfareRondelStats: { visits: [], benefits: Object.fromEntries((config.roundRondel?.startingPolicy==='affinity'?ALL_WELFARE_POLICIES:WELFARE_POLICIES).map(p => [p.id, 0])) } } : {}),
       aiEvaluation: pc.aiEvaluation || 'baseline', // versione euristica, non una regola; consente confronti a posti invertiti
       aiContinuation: pc.aiContinuation || config.aiContinuation || 'greedy',
       personality: pc.personality || 'neutro', // profilo AI (vedi PROFILES in ai.js)
@@ -732,7 +732,7 @@ export function hireCostBeforeVoucher(state, p, w, role, side) {
   const nationDiscount = state.rowEconomy?.enabled && state.rowEconomy.sameNationHireDiscount && side === 'sopra' && !w.power
     ? (d?.sopra || []).filter(id => WORKER_BY_ID[id]?.nation === w.nation).length : 0;
   const policy = welfarePolicy(state, p)?.id;
-  const policyDiscount = !w.power && ((side === 'sotto' && policy === 'innovation') || (side === 'sopra' && policy === 'integration' && !d?.sopra.some(id => WORKER_BY_ID[id]?.nation === w.nation))) ? 1 : 0;
+  const policyDiscount = !w.power && ((side === 'sotto' && policy === 'innovation') || (side === 'sopra' && policy === 'affinity' && d?.sopra.some(id => WORKER_BY_ID[id]?.nation === w.nation)) || (side === 'sopra' && policy === 'integration' && !d?.sopra.some(id => WORKER_BY_ID[id]?.nation === w.nation))) ? 1 : 0;
   return Math.max(state.rowEconomy?.enabled ? 1 : 0, w.v - policyDiscount - structHireDiscount(p, p.node) - welfareDiscount - nationDiscount) + surcharge;
 }
 
@@ -2282,7 +2282,7 @@ function doHire(state, p, cmd) {
   const paid = state.industrial.enabled ? hireCost(state, p, w, cmd.role, cmd.side) : Math.max(0, base - structHireDiscount(p, p.node));
   const policy = welfarePolicy(state, p)?.id;
   const costBeforeVoucher=state.industrial.enabled?hireCostBeforeVoucher(state,p,w,cmd.role,cmd.side):paid;
-  if (policy === 'innovation' || policy === 'integration') {
+  if (policy === 'innovation' || policy === 'integration' || policy === 'affinity') {
     const without = hireCostBeforeVoucher({ ...state, rowEconomy: { ...state.rowEconomy, welfareRondel: false } }, p, w, cmd.role, cmd.side);
     recordWelfareBenefit(p, policy, without - costBeforeVoucher);
   }

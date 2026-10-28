@@ -1,0 +1,58 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import React from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {createServer} from 'vite';
+import {gameConfig,validate,parseConfig} from '../src/lab/config.js';
+import {initGame,applyCommand,legalCommands,hireCost,WORKER_BY_ID} from '../src/game/engine.js';
+import {beginRoundRondel,roundRondelCommands,roundRondelCost} from '../src/game/round-rondel.js';
+import {welfarePolicies,welfareDisplayPolicies,welfarePolicy} from '../src/game/welfare-rondel.js';
+import {saveGame,loadGame,gameSession} from '../src/lab/saved-game.js';
+const c=JSON.parse(fs.readFileSync(new URL('../src/lab/latest-playtest.json',import.meta.url)));
+validate(c);assert.deepEqual(parseConfig(JSON.stringify(c)),c);
+const config=gameConfig(c),s=initGame(config);
+assert.equal(s.rowEconomy.sameNationHireDiscount,false);
+assert.equal(welfarePolicies(s).length,7);
+assert.deepEqual(welfareDisplayPolicies(s).map(p=>p.id),['affinity','cooperation','innovation','reliability','integration','mutualAid','formation']);
+assert.ok(s.players.every(p=>p.welfarePosition===6&&welfarePolicy(s,p).id==='affinity'));
+const p=s.players[0],d=p.depts.terziario;
+const w=Object.values(WORKER_BY_ID).find(w=>w.sector===d.sector&&w.v===3),same=Object.values(WORKER_BY_ID).filter(x=>x.sector===d.sector&&x.nation===w.nation&&x.id!==w.id);
+const different=Object.values(WORKER_BY_ID).find(x=>x.sector===d.sector&&x.nation!==w.nation);
+assert.ok(same.length>=2);p.node='Tessile';p.coins=20;s.phase='action';
+assert.equal(hireCost(s,p,w,'terziario','sopra'),3,'No matching worker: no discount');
+d.sopra=[same[0].id];assert.equal(hireCost(s,p,w,'terziario','sopra'),2);
+d.sopra.push(same[1].id);assert.equal(hireCost(s,p,w,'terziario','sopra'),2,'Discount stays fixed at one');
+assert.equal(hireCost(s,p,different,'terziario','sopra'),different.v);
+assert.equal(hireCost(s,p,w,'terziario','sotto'),3);
+p.welfarePosition=1;assert.equal(hireCost(s,p,w,'terziario','sopra'),3,'Leaving Affinity removes its discount');p.welfarePosition=6;
+// A real legal hire records exactly one saved coin.
+const bankId=s.nodeBanks.Tessile[0];s.banks[bankId]=[w.id];
+const hire=legalCommands(s).find(x=>x.type==='hire'&&x.side==='sopra'&&x.role==='terziario'&&x.cardId===w.id);
+assert.ok(hire);const hired=applyCommand(s,hire);assert.equal(hired.players[0].coins,18);assert.equal(hired.players[0].welfareRondelStats.benefits.affinity,1);
+const round=initGame(config);assert.ok(beginRoundRondel(round,9));round.players[0].coins=3;
+const moves=roundRondelCommands(round);assert.equal(moves.length,6);
+assert.deepEqual(moves.map(x=>x.position),[1,2,3,4,5,0]);assert.deepEqual(moves.map(x=>roundRondelCost(round.roundRondel,x.steps)),[0,0,0,1,2,3]);
+assert.ok(!moves.some(x=>x.type==='keepRoundRondel'||x.position===6));assert.throws(()=>applyCommand(round,{type:'keepRoundRondel'}));
+const paid=applyCommand(round,moves[5]);assert.equal(paid.players[0].coins,0);assert.equal(paid.players[0].welfarePosition,0);assert.equal(paid.welfareBank,round.welfareBank);assert.equal(paid.players[0].welfareTokens,0);
+assert.equal(paid.roundRondel.log[0].cost,3);
+round.players[0].coins=0;assert.equal(roundRondelCommands(round).length,3);
+round.players[0].coins=1;assert.equal(roundRondelCommands(round).length,4);
+round.players[0].welfarePosition=0;assert.equal(roundRondelCommands(round)[0].position,6,'Wrap from Formation to Affinity');
+const map=new Map(),storage={getItem:k=>map.get(k)??null,setItem:(k,v)=>map.set(k,v)};
+saveGame(config,{state:paid,history:[initGame(config)],paused:true},storage);
+const saved=loadGame(storage);assert.ok(saved);assert.deepEqual(JSON.parse(JSON.stringify(gameSession(saved.config,saved).state)),JSON.parse(JSON.stringify(paid)));
+console.log('OK: seventh starting policy, fixed same-nation discount, mandatory movement, 3 free steps, paid extra steps, wrap, costs, save/resume.');
+
+const server=await createServer({server:{middlewareMode:true,hmr:false,ws:false},appType:'custom'});
+try{
+ const ssrEngine=await server.ssrLoadModule('/src/game/engine.js');ssrEngine.initGame(config);
+ const {default:Board}=await server.ssrLoadModule('/src/lab/StarBoard.jsx');
+ const render=state=>renderToStaticMarkup(React.createElement(Board,{state,dispatch(){}}));
+ assert.ok(render({...round,welfareBank:0}).includes('Banca Welfare: 0 marchi'));
+ assert.ok(render({...round,welfareBank:7}).includes('Banca Welfare: 7 marchi'));
+ assert.ok(!render({...round,rowEconomy:{...round.rowEconomy,welfareBank:false}}).includes('star-welfare-bank'));
+ const {default:Choice}=await server.ssrLoadModule('/src/components/RoundRondelChoice.jsx');
+ const choice=renderToStaticMarkup(React.createElement(Choice,{state:round,player:round.players[0],legal:roundRondelCommands(round),dispatch(){}}));
+ assert.ok(choice.includes('Devi avanzare'));assert.ok(!choice.includes('Resta su'));assert.ok(!choice.includes('Rinvia'));
+ console.log('OK: visible bank balance, zero/updated/disabled fund, mandatory round choice descriptions.');
+}finally{await server.close();}

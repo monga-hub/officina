@@ -45,6 +45,7 @@ export function validate(c) {
   if (c.conversionMachines !== undefined) check(typeof c.conversionMachines === 'boolean', 'Opzione conversioni non valida.');
   if (c.roundRondel?.enabled) {
     const r=c.roundRondel;
+    if(r.startingPolicy!==undefined)check(r.startingPolicy==='affinity'&&r.extraStepCost===1&&r.mandatoryMove===true&&r.freeEntry===false,'Casella iniziale o movimento obbligatorio non validi.');
     check(c.players===3 && c.turns===28, 'La rondella di fine round testata richiede 3 giocatori e 28 turni.');
     check(c.welfareRondel===true && JSON.stringify(r.bounds)==='[9,18]' && JSON.stringify(r.firstSeats)==='[0,1]' && r.maxSteps===3 && [0,1].includes(r.stepCost) && r.tokenCost===1 && r.tokenMax===3 && (r.freeEntry===undefined || typeof r.freeEntry==='boolean'), 'Impostazioni della rondella di fine round non valide.');
   }
@@ -128,7 +129,7 @@ export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
     nodeBanks: structuredClone(STAR_NODE_BANKS),
     workers: structuredClone(c.workers), contracts: structuredClone(c.contracts), contractPV: undefined,
     contractCount: structuredClone(c.contractCount), contractMarket: c.contractMarket,
-    rowEconomy: { ...reference.rowEconomy, ...(c.machinesRequireOpenRow ? { machinesRequireOpenRow: true } : {}), ...(c.conversionMachines === false ? { conversionMachines: false } : {}), welfareMode: 'tokens', welfareScope: 'factory', welfareHireDiscount: false, sameNationHireDiscount: true, tensionMachineCash: true, productionThresholds: [...c.productionThresholds], productionUnlock: c.productionUnlock || 'rows', tensionDirection: c.tensionDirection || 'opposed', milestoneResource: c.productionUnlock === 'cells' ? false : c.milestoneResource, machineImmediate: c.machineImmediate,
+    rowEconomy: { ...reference.rowEconomy, ...(c.machinesRequireOpenRow ? { machinesRequireOpenRow: true } : {}), ...(c.conversionMachines === false ? { conversionMachines: false } : {}), welfareMode: 'tokens', welfareScope: 'factory', welfareHireDiscount: false, sameNationHireDiscount: c.roundRondel?.startingPolicy!=='affinity', tensionMachineCash: true, productionThresholds: [...c.productionThresholds], productionUnlock: c.productionUnlock || 'rows', tensionDirection: c.tensionDirection || 'opposed', milestoneResource: c.productionUnlock === 'cells' ? false : c.milestoneResource, machineImmediate: c.machineImmediate,
       welfareCost: c.welfareCost, welfareBank: c.welfareBank===true, welfareRondel: c.welfareRondel, welfareFreeEntry: c.welfareFreeEntry === true, welfareMaxSteps: c.welfareMaxSteps ?? 3, welfarePoliciesEnabled: {...(c.welfarePoliciesEnabled||defaults().welfarePoliciesEnabled)}, repressionBase: c.repressionBase, repressionStep: 0, contractCoins: { ...c.contractCoins } },
     slots: { ...Object.fromEntries(ROLES.map((r,i) => [r, { sopra: 3, sotto: c.machineSlots[i] }])), direzione: { sopra: 0, sotto: 0 } },
     borsaExit: { enabled: true, coins: c.cityIncome }, borsaRefresh: { enabled: c.cityRefresh },

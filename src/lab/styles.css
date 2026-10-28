@@ -315,3 +315,5 @@
 .table-overview .play-contracts-side .orders-table{flex:1;display:flex;flex-direction:column;min-height:0}
 .table-overview .play-contracts-side .orders-grid{flex:1;grid-auto-rows:1fr;align-content:stretch}
 .table-overview .play-contracts-side .orders-grid>.order-card{display:flex;flex-direction:column;justify-content:space-between}
+
+.round-rondel-options .round-policy-effect{margin-top:7px;font-size:13px;line-height:1.45;font-weight:400}

@@ -1,5 +1,4 @@
 import React from 'react';
-import PolicyHint from './PolicyHint.jsx';
 import { WELFARE_POLICIES } from '../game/welfare-rondel.js';
 
 export default function RoundRondelChoice({state,player,legal,dispatch}) {
@@ -10,11 +9,12 @@ export default function RoundRondelChoice({state,player,legal,dispatch}) {
     <p>{first?'Primo ingresso libero: scegli qualsiasi casella attiva.':'Puoi restare o avanzare in senso orario di uno, due o tre passi.'} Gratis, senza gettoni.</p>
     <p>Politica attuale: <b>{WELFARE_POLICIES[player.welfarePosition]?.name||'nessuna'}</b>. Le caselle sono condivise.</p>
     <div className="round-rondel-options">{legal.map(command=>{
-      const keep=command.type==='keepRoundRondel',policy=WELFARE_POLICIES[command.position];
-      return <PolicyHint key={keep?'keep':command.position} policy={policy||{name:'Permanenza',description:'Conserva la situazione attuale fino alla prossima scelta.'}}><button className="production-choice" onClick={()=>dispatch(command)}>
+      const keep=command.type==='keepRoundRondel',policy=WELFARE_POLICIES[keep?player.welfarePosition:command.position];
+      return <button key={keep?'keep':command.position} className="production-choice" onClick={()=>dispatch(command)}>
         <strong>{keep?(first?'Rinvia il primo ingresso':`Resta su ${WELFARE_POLICIES[player.welfarePosition].name}`):policy.name}</strong>
+        <small className="round-policy-effect">{policy?.description||'Conserva la situazione attuale fino alla prossima scelta.'}</small>
         {!keep&&!first&&<small>{command.steps} {command.steps===1?'passo':'passi'} · gratis</small>}
-      </button></PolicyHint>;
+      </button>;
     })}</div>
     <p className="lab-muted">Al Welfare si acquistano separatamente i gettoni. Questa scelta non consuma un turno di gioco.</p>
   </section>;

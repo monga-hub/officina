@@ -2056,5 +2056,7 @@
     "startingPolicy": "affinity",
     "extraStepCost": 1,
     "mandatoryMove": true
-  }
+  },
+  "finalResourcePV": true,
+  "finalResourcesPerPV": 3
 }

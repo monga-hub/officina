@@ -103,6 +103,7 @@ function evaluateInner(state, playerId, rolloutLeaf) {
   v += p.contractsWon.reduce((a, c) => a + c.pv, 0) * 10 * w.wContract;
   // Banked coins are reversible end-game points as well as spending fuel.
   if (state.contractsOnly && state.finalCoinPV) v += Math.floor(p.coins / state.rules.coinsPerPV) * 10 * w.wCoins;
+  if (state.contractsOnly && state.finalResourcePV) v += scorePlayer(state,p).pvResources * 10 * w.wRes;
   if (!state.contractsOnly) v += p.tile.objectives.reduce((a, o, i) => a + (p.achieved[i] ? o.pv : 0), 0) * 9 * w.wObjective;
   // Obiettivi di gara già rivendicati: PV del posto sul podio. Greedy: dopo un 'completeRace' v sale → l'IA
   // rivendica quando è qualificata. Scala ×10 come le commesse (podio PV direttamente confrontabile).

@@ -621,6 +621,7 @@ export function initGame(config) {
     borsaRefresh: mergeBorsaRefresh(config.borsaRefresh), // refresh gratuito (Welfare o banchi) invece delle Commesse
     pianoEnabled, // Piano Industriale (obiettivi privati per-tessera) attivo? default OFF
     ...(config.finalCoinPV === true ? { finalCoinPV: true } : {}),
+    ...(config.finalResourcePV === true ? { finalResourcePV: true } : {}),
     contractsOnly: config.contractsOnly === true,
     raceObjectives: mergeRace(config.contractsOnly ? { enabled: false, list: [] } : config.raceObjectives), // obiettivi di gara condivisi (podio) completabili in Città
     // Valore marginale del PROGRESSO verso una race nell'IA-evaluate (knob di SISTEMA: cambia le decisioni).
@@ -1390,9 +1391,10 @@ export function scorePlayer(state, p) {
   const pvContracts = p.contractsWon.reduce((a, c) => a + c.pv, 0);
   const blockedCount = DEPT_ROLES.reduce((a, r) => a + p.depts[r].blocked.length, 0);
   const finalCoinPoints = state.finalCoinPV ? Math.floor(p.coins / state.rules.coinsPerPV) : 0;
+  const finalResourcePoints=state.finalResourcePV?Object.values(p.resources).reduce((sum,n)=>sum+Math.floor(n/state.rules.resPerPV),0):0;
   if (state.contractsOnly) return {
-    playerId: p.id, name: p.name, pvContracts, total: pvContracts + finalCoinPoints,
-    pvWelfare: 0, pvObjectives: 0, pvTrack: 0, pvCoins: finalCoinPoints, pvResources: 0,
+    playerId: p.id, name: p.name, pvContracts, total: pvContracts + finalCoinPoints + finalResourcePoints,
+    pvWelfare: 0, pvObjectives: 0, pvTrack: 0, pvCoins: finalCoinPoints, pvResources: finalResourcePoints,
     pvStrikes: 0, pvBorsa: 0, pvFactoryMajority: 0, pvDeptComplete: 0, pvRace: 0,
     blockedCount, coins: p.coins, nContracts: p.contractsWon.length,
   };

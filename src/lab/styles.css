@@ -326,3 +326,5 @@
 
 .star-welfare-bank{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:5px;padding:3px 7px;border:1px solid #ad852c;border-radius:5px;background:#fff5cf;color:#49370c;font-size:12px;font-weight:700;z-index:4}
 .star-welfare-bank .amount-coin{width:23px;min-width:23px;height:23px;font-size:13px}
+
+.game-final-scores table{color:#233a2b}

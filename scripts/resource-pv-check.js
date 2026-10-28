@@ -29,11 +29,10 @@ const saved=loadGame(storage),resumed=gameSession(saved.config,saved).state;
 assert.equal(resumed.finalResourcePV,true);assert.equal(resumed.rules.resPerPV,3);assert.equal(scorePlayer(resumed,resumed.players[0]).pvResources,2);
 const legacy=structuredClone(config);delete legacy.finalResourcePV;
 const old=initGame(legacy);old.players[0].resources={Tessuti:9,Acciaio:9,Coloranti:9};assert.equal(scorePlayer(old,old.players[0]).pvResources,0);
-const server=await createServer({server:{middlewareMode:true,hmr:false,ws:false},appType:'custom'});
+const server=await createServer({optimizeDeps:{noDiscovery:true,entries:[]},server:{middlewareMode:true,hmr:false,ws:false},appType:'custom'});
 try{
  const {default:LiveGame}=await server.ssrLoadModule('/src/lab/LiveGame.jsx');
  const html=renderToStaticMarkup(React.createElement(LiveGame,{config,resume:saved,onSaved(){},onClose(){}}));
  assert.ok(html.includes('PV commesse'));assert.ok(html.includes('PV marchi'));assert.ok(html.includes('PV risorse'));
- fs.writeFileSync('/private/tmp/officina-resource-score-preview.html',html);
 }finally{await server.close();}
 console.log('OK: final resource PV for complete sets of three different types, separate coin/contract totals, AI intermediate/terminal values, save/resume, legacy games and final score breakdown.');

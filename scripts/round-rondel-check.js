@@ -45,7 +45,10 @@ try{
  const human=structuredClone(zero);human.players[human.current].isAI=false;
  const html=renderToStaticMarkup(React.createElement(Choice,{state:human,player:human.players[human.current],legal:legalCommands(human),dispatch(){}}));
  for(const name of ['Formazione','Cooperazione','Innovazione','Affidabilità','Integrazione','Mutuo soccorso'])assert.ok(html.includes(name));
- assert.ok(html.includes('Primo ingresso libero'));assert.ok(html.includes('gratuito'));
+ assert.ok(html.includes('Primo ingresso libero'));assert.ok(html.includes('Gratis'));
+ const {default:Rondel}=await server.ssrLoadModule('/src/components/WelfareRondel.jsx');
+ const compact=renderToStaticMarkup(React.createElement(Rondel,{state:human,player:human.players[human.current]}));
+ assert.ok(compact.includes('Cooperazione'));assert.ok(!compact.includes('Produci con almeno due nazionalità'));assert.ok(!compact.includes('Ogni operaio assunto'));
  const {default:Setup}=await server.ssrLoadModule('/src/lab/PlaySetup.jsx');
  assert.ok(renderToStaticMarkup(React.createElement(Setup,{c:preset,set(){},onStart(){}})).includes('Gioca l’ultima versione testata'));
  const {machineText}=await server.ssrLoadModule('/src/lab/cards.js');

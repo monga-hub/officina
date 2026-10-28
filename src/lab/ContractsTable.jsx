@@ -1,5 +1,6 @@
 import { Amount } from './GameSymbols.jsx';
-import React from 'react';
+import React, {useEffect,useRef,useState} from 'react';
+import {TableOverlay} from './TableViewport.jsx';
 import { contractNeeds, missingResources } from './contract-needs.js';
 
 const SIZES={small:'Piccola',medium:'Media',large:'Grande'};
@@ -13,10 +14,14 @@ function ContractCard({card,size,index,player,coins,next=false}) {
   </article>;
 }
 export default function ContractsTable({state,player}) {
+  const [upcoming,setUpcoming]=useState(false),dialog=useRef(null);
+  useEffect(()=>{if(upcoming)dialog.current.showModal();},[upcoming]);
   return <div className="orders-table">
     <h2 title="Una commessa per visita in Città. La consegna conclude il turno.">Commesse</h2>
     <div className="orders-inventory"><b>Magazzino · {player.name}</b><span>{Object.entries(player.resources).map(([r,n])=>`${n} ${r.toLowerCase()}`).join(' · ')}</span></div>
     <div className="orders-grid">{Object.keys(SIZES).flatMap(size=>state.contracts[size].active.map((slot,i)=><ContractCard key={`${size}-${i}`} card={slot?.card} size={size} index={i+1} player={player} coins={state.rowEconomy.contractCoins[size]}/>))}</div>
-    <details className="orders-upcoming"><summary>Prossime commesse · non ancora disponibili</summary><p>La prossima carta di ogni taglia entra quando si libera un posto nel relativo mercato.</p><div className="orders-grid">{Object.keys(SIZES).map(size=><ContractCard key={size} card={state.contracts[size].deck[0]} size={size} index="" player={player} coins={state.rowEconomy.contractCoins[size]} next/>)}</div></details>
+    <button className="orders-upcoming-button" onClick={()=>setUpcoming(true)}>Prossime commesse ↗</button>
+    {upcoming&&<TableOverlay><dialog ref={dialog} className="table-action-dialog" aria-label="Prossime commesse" onCancel={()=>setUpcoming(false)} onClick={e=>{if(e.target===e.currentTarget)setUpcoming(false);}}><button className="dialog-close" onClick={()=>setUpcoming(false)}>Torna al tavolo ×</button><h2>Prossime commesse</h2><p>Non ancora disponibili: entrano quando si libera un posto della stessa taglia.</p><div className="orders-grid">{Object.keys(SIZES).map(size=><ContractCard key={size} card={state.contracts[size].deck[0]} size={size} index="" player={player} coins={state.rowEconomy.contractCoins[size]} next/>)}</div></dialog></TableOverlay>}
+
   </div>;
 }

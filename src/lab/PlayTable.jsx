@@ -17,9 +17,8 @@ import WorkerCard, { HireCard, NationBadge } from './WorkerCard.jsx';
 import ResourceIcon from './ResourceIcon.jsx';
 import { Amount, SymbolKey } from './GameSymbols.jsx';
 import TableViewport, { TableOverlay } from './TableViewport.jsx';
-function Department({state,player,role,onInspect}) {
+function Department({state,player,role,onCards}) {
   const d=player.depts[role], p=rowPressureState(state,d);
-  const nations=d.sopra.reduce((counts,id)=>{const nation=WORKER_BY_ID[id].nation;counts[nation]=(counts[nation]||0)+1;return counts;},{});
   const cellLabel=pos=>{
     const c=state.tracks[role][pos];
     if(!c)return '—';
@@ -37,13 +36,12 @@ function Department({state,player,role,onInspect}) {
     <p className="play-row-count"><b>{p.available}/{p.developed}</b> righe utilizzabili{p.blocked>0&&<em> · {p.blocked} bloccate</em>}</p>
     <RowProductionTrack tensionDirection={state.rowEconomy.tensionDirection} unlock={state.rowEconomy.productionUnlock} thresholds={state.rowEconomy.productionUnlock==='cells'?null:state.rowEconomy.productionThresholds} milestones={state.tracks[role].flatMap((c,i)=>c?.milestoneReward?[i]:[])} model={state.trackModel} prod={d.prod} tension={d.tension} wholeRows renderCell={renderCell} renderReward={pos=>{const reward=state.tracks[role][pos]?.milestoneReward;return reward?<em className="track-milestone-reward">★ {reward.res>0&&<Amount kind={d.sector} value={reward.res}/>} {reward.coins>0&&<Amount kind="coin" value={reward.coins}/>}</em>:null;}} cellTitle={cellLabel}/>
 
-    <details className="department-cards"><summary title={`${d.sopra.length} ${d.sopra.length===1?'operaio':'operai'} nel reparto`}>{d.sopra.length>0?<span className="department-nations">{NATIONS_NUOVO.filter(nation=>nations[nation]).map(nation=><NationBadge key={nation} nation={nation} count={nations[nation]}/>)}</span>:"0 operai"} · {d.sotto.length}/{state.slots[role].sotto} macchinari</summary>    <p className="lab-muted">{!p.staffed?'Serve un operaio per produrre.':tokenWelfare(state)?'Intensa: tutte le righe accessibili, poi tensione +1. Protetta: stessa produzione, spendi 1 gettone e la tensione resta invariata.':p.welfare?`Sostenibile: fino a ${Math.min(p.available,p.welfare)} righe, poi tensione −1.`:'Intensa: righe accessibili, poi tensione +1.'}</p><h4>Operai · {d.sopra.length}</h4><div className="installed-cards">{d.sopra.map(id=><WorkerCard key={id} worker={WORKER_BY_ID[id]} side="sopra" onInspect={()=>onInspect(id)}/>)}</div>
-    <h4>Macchinari · {d.sotto.length}/{state.slots[role].sotto}</h4><div className="installed-cards">{d.sotto.map(id=><WorkerCard key={id} worker={WORKER_BY_ID[id]} side="sotto" onInspect={()=>onInspect(id)}/>)}</div>
-    {!d.sotto.length&&<p className="lab-muted">Nessun macchinario installato.</p>}</details>
+    <button className="department-cards-button" onClick={()=>onCards(player.id,role)}>{d.sopra.length} operai · {d.sotto.length}/{state.slots[role].sotto} macchinari <span aria-hidden="true">↗</span></button>
   </section>;
 }
 export default function PlayTable({state,dispatch,undo,paused,setPaused,onClose,thinking,error,saved,saveError}) {
   const p=currentPlayer(state), decider=state.players[deciderId(state)];
+  const infoRef=useRef(null),[info,setInfo]=useState(null);
   const actionsRef=useRef(null), [actionsOpen,setActionsOpen]=useState(false), [actionType,setActionType]=useState(null);
   const [view,setView]=useState(state.players.find(x=>!x.isAI)?.id??0), [inspected,setInspected]=useState(null);
   useEffect(()=>{if(!decider.isAI)setView(decider.id);},[decider.id]);
@@ -56,6 +54,7 @@ export default function PlayTable({state,dispatch,undo,paused,setPaused,onClose,
     if(actionsOpen&&!actionsRef.current.open)actionsRef.current.showModal();
     else if(!actionsOpen&&actionsRef.current.open)actionsRef.current.close();
   },[actionsOpen]);
+  useEffect(()=>{if(info&&!infoRef.current.open)infoRef.current.showModal();else if(!info&&infoRef.current?.open)infoRef.current.close();},[info]);
   const player=state.players[view], moves=!decider.isAI&&!state.pending?legalCommands(state).filter(c=>c.type==='move'):[];
   const tokens=tokenWelfare(state),welfare=tokens?(player.welfareTokens||0):(player.depts.terziario.sustainableWelfare||0);
   const welfareLabel=`${welfare} ${tokens?'gettoni welfare':'welfare'}`;
@@ -65,7 +64,7 @@ export default function PlayTable({state,dispatch,undo,paused,setPaused,onClose,
   return <TableViewport><div className="lab-shell play-table table-overview">
     <header className="play-header"><div><p className="lab-eyebrow">OFFICINA 1907 / AL TAVOLO</p><h1>Turno {state.turn}<small> / {state.roundLimit}</small></h1></div><div className="play-turn" role="status"><b>{p.name}{p.isAI?' · IA':''}</b><span>{thinking?'Sta valutando le alternative…':paused?'IA in pausa':state.pending?'Completa la scelta':state.phase==='roundRondel'?'Fine round · scegli la politica':state.phase==='move'?'Scegli dove andare':`Sei a ${rowNodeLabel(state,p.node)}`}</span></div><div className="lab-actions"><button onClick={undo} disabled={!undo}>↶ Annulla mossa</button><button onClick={()=>setPaused(!paused)}>{paused?'Riprendi IA':'Pausa IA'}</button><button onClick={onClose}>Torna al laboratorio</button></div></header>
     {error&&<p className="lab-error" role="alert">{error}</p>}{saveError&&<p className="lab-error" role="alert">{saveError}</p>}
-    <nav className="play-jumps" aria-label="Comandi del tavolo"><button onClick={()=>{setActionType(null);setActionsOpen(true);}}>{state.phase==='roundRondel'?'Scegli la politica':'Azioni del nodo'}</button><a href="#registro">Registro</a><span className="game-save-state">{saved?'✓ Partita salvata':'Salvataggio non disponibile'}</span></nav>
+    <nav className="play-jumps" aria-label="Comandi del tavolo"><button onClick={()=>{setActionType(null);setActionsOpen(true);}}>{state.phase==='roundRondel'?'Scegli la politica':'Azioni del nodo'}</button><button onClick={()=>setInfo({type:'log'})}>Registro</button><button onClick={()=>setInfo({type:'symbols'})}>Simboli</button><span className="game-save-state">{saved?'✓ Partita salvata':'Salvataggio non disponibile'}</span></nav>
     <main className="play-layout">
       <StarBoard state={state} dispatch={dispatch} onActions={()=>{setActionType(null);setActionsOpen(true);}} onNodeAction={type=>{setActionType(type);setActionsOpen(true);}}/>
       <section id="commesse" className="lab-card play-contracts play-contracts-side" aria-label="Commesse disponibili"><ContractsPanel state={state} player={player}/></section>
@@ -74,15 +73,17 @@ export default function PlayTable({state,dispatch,undo,paused,setPaused,onClose,
         <section className="lab-card play-factory">
           <div className="play-factory-heading"><div><p className="lab-eyebrow">{player.isAI?'FABBRICA AVVERSARIA':'LA TUA FABBRICA'}</p><h2>{player.name}</h2></div><span>📍 {rowNodeLabel(state,player.node)}</span></div>
           <div className="play-wallet"><Amount kind="coin" value={player.coins}/>{Object.entries(player.resources).map(([r,n])=><Amount key={r} kind={r} value={n}/>)}<span title={welfareLabel} aria-label={welfareLabel}>🌿 <b>{welfare}</b>{tokens&&' gettoni'}</span></div>
-          <div className="play-departments">{ROLES.map(role=><Department key={role} state={state} player={player} role={role} onInspect={setInspected}/>)}</div>
+          <div className="play-departments">{ROLES.map(role=><Department key={role} state={state} player={player} role={role} onInspect={setInspected} onCards={(playerId,role)=>setInfo({type:'cards',playerId,role})}/>)}</div>
           <WelfareRondel state={state} player={player}/>
           <div className="play-direction">{state.rowEconomy.welfareBank&&<p><b>Banca Welfare: {state.welfareBank||0} marchi</b> · fondi comuni saccheggiabili con la repressione.</p>}<p className="lab-muted">Commesse completate: {player.contractsWon.length} · Repressioni: {player.industrialStats.repressions}</p></div>
         </section>
 
       </div>
     </main>
-    <SymbolKey/>
-    <details id="registro" className="table-history"><summary>Registro</summary><section className="lab-card play-events" aria-label="Ultime mosse"><h2>Cosa è successo</h2><ol aria-live="polite">{state.log.slice(-4).reverse().map((l,i)=><li key={i}><small>T{l.turn}</small> {l.text}</li>)}</ol><details><summary>Registro completo</summary><ol>{[...state.log].reverse().map((l,i)=><li key={i}><small>T{l.turn}</small> {l.text}</li>)}</ol></details></section></details>
+    {info&&<TableOverlay><dialog ref={infoRef} className="table-action-dialog" aria-label={info.type==='log'?'Registro':info.type==='symbols'?'Simboli':'Operai e macchinari'} onCancel={()=>setInfo(null)} onClick={e=>{if(e.target===e.currentTarget)setInfo(null);}}>
+      <button className="dialog-close" onClick={()=>setInfo(null)}>Torna al tavolo ×</button>
+      {info.type==='symbols'?<SymbolKey open/>:info.type==='log'?<section className="play-events"><h2>Registro</h2><ol>{[...state.log].reverse().map((l,i)=><li key={i}><small>T{l.turn}</small> {l.text}</li>)}</ol></section>:<section><h2>{state.players[info.playerId].depts[info.role].sector} · operai e macchinari</h2>{['sopra','sotto'].map(side=><React.Fragment key={side}><h3>{side==='sopra'?'Operai':'Macchinari'}</h3><div className="installed-cards">{state.players[info.playerId].depts[info.role][side].map(id=><WorkerCard key={id} worker={WORKER_BY_ID[id]} side={side} onInspect={()=>{setInfo(null);setInspected(id);}}/>)}</div></React.Fragment>)}</section>}
+    </dialog></TableOverlay>}
     <TableOverlay><dialog ref={actionsRef} className="table-action-dialog" aria-label={actionTitle||'Azioni del nodo'} onCancel={()=>setActionsOpen(false)} onClick={e=>{if(e.target===e.currentTarget)setActionsOpen(false);}}>
       <button className="dialog-close" onClick={()=>setActionsOpen(false)}>Torna al tabellone ×</button>
       {actionType?<section className="node-action-choices"><h2>{actionTitle}{actionType==='activate'?` · ${p.node}`:''}</h2>{actionType==='activate'?<ProductionActions state={state} p={p} activations={nodeCommands} dispatch={runNodeAction}/>:<RowEconomyActions state={state} p={p} legal={nodeCommands} dispatch={runNodeAction}/>}</section>:<aside id="azioni" className="play-action-column" aria-label="Le tue azioni">

@@ -234,6 +234,8 @@ export const TRACK_MODELS = {
     track: Array.from({ length: 25 }, (_, i) => i > 0 && (i - 1) % 4 === 0 ? { res: 1 } : null) },
   righe3: { label: 'Tensione a righe · 3 caselle', rows: 6, columns: 3, max: 18,
     track: Array.from({ length: 19 }, (_, i) => i > 0 && (i - 1) % 3 === 0 ? { res: 1 } : null) },
+  righe5x4: { label: 'Tensione a righe · 5 righe × 4 caselle', rows: 5, columns: 4, max: 20,
+    track: Array.from({ length: 21 }, (_, i) => i > 0 && (i - 1) % 4 === 0 ? { res: 1 } : null) },
   righe4corte: { label: 'Tensione a righe · 4 righe × 4 caselle', rows: 4, columns: 4, max: 16,
     track: Array.from({ length: 17 }, (_, i) => i > 0 && (i - 1) % 4 === 0 ? { res: 1 } : null) },
 };
@@ -246,12 +248,22 @@ export function inferTrackModel(config) {
   return Object.keys(TRACK_MODELS).find(key => TRACK_MODELS[key].max + 1 === length) || TRACK_MODEL_DEFAULT;
 }
 // La tensione copre righe fisiche dal basso, anche se non ancora sviluppate.
-export function activeTrackEnd(prod, tension, model, wholeRows = false, thresholds = null) {
+export function activeTrackEnd(prod, tension, model, wholeRows = false, thresholds = null, unlock = 'rows') {
   const layout = rowTrackModel(model);
   if (!layout) return prod;
   const coveredRows = Math.min(layout.rows, Math.max(0, Math.floor(Number(tension) || 0)));
-  const developed = wholeRows && thresholds ? thresholds.filter(n => prod >= n).length * layout.columns : wholeRows ? Math.ceil(prod / layout.columns) * layout.columns : prod;
+  const developed = unlock === 'cells' ? prod : wholeRows && thresholds ? thresholds.filter(n => prod >= n).length * layout.columns : wholeRows ? Math.ceil(prod / layout.columns) * layout.columns : prod;
   return Math.max(0, Math.min(developed, (layout.rows - coveredRows) * layout.columns));
+}
+
+// Production can cover either the last physical rows (legacy) or the first rows.
+export function activeTrackRange(prod, tension, model, wholeRows = false, thresholds = null, unlock = 'rows', tensionDirection = 'opposed') {
+  const developed = activeTrackEnd(prod, 0, model, wholeRows, thresholds, unlock);
+  const layout = rowTrackModel(model);
+  const same = layout && tensionDirection === 'same';
+  const start = same ? Math.min(developed, Math.min(layout.rows, Math.max(0, Math.floor(Number(tension) || 0))) * layout.columns) + 1 : 1;
+  const end = same ? developed : activeTrackEnd(prod, tension, model, wholeRows, thresholds, unlock);
+  return { start, end, developed, available: Math.max(0, end - start + 1) };
 }
 
 // mappa posizione → [riga, colonna] per la UI. 4 righe (0=A ... 3=D), serpentina dal basso.

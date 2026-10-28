@@ -30,7 +30,8 @@ export function researchSummary(games) {
   });
   const spells=[];
   for(const p of players){
-    const visits=p.events.filter(e=>e.type==='investWelfare'&&Number.isInteger(e.policyAfter));
+    const roundMode=!!p.game.finalState?.roundRondel;
+    const visits=p.events.filter(e=>(roundMode?e.type==='advanceRoundRondel':e.type==='investWelfare')&&Number.isInteger(e.policyAfter));
     visits.forEach((visit,i)=>{
       const next=visits[i+1],after=p.events.filter(e=>e.seq>visit.seq&&(!next||e.seq<next.seq));
       const policy=WELFARE_POLICIES[visit.policyAfter];
@@ -40,7 +41,7 @@ export function researchSummary(games) {
       spells.push({game:p.index,seed:p.game.seed,seat:p.player.id,turn:visit.turn,seq:visit.seq,position:visit.policyAfter,policy:policy.id,
         previous:visit.policyBefore,firstEntry:visit.policyBefore==null,fullLap:visit.steps===6&&visit.policyBefore===visit.policyAfter,
         steps:visit.steps,cost:visit.spent,tokens:visit.tokensGained,
-        futureTurns:Math.max(0,(next?.turn??p.game.turns)-visit.turn),firstBenefitTurn:triggers[0]?.turn??null,
+        futureTurns:Math.max(0,(next?.turn??p.game.turns)-visit.turn+(roundMode&&!next?1:0)),firstBenefitTurn:triggers[0]?.turn??null,
         triggers:triggers.length,value,unused:triggers.length===0,
         directCoinReturn:['cooperation','innovation','integration','reliability'].includes(policy.id)?value:null,
         actions:{staff:hired.filter(e=>e.side==='sopra').length,machines:hired.filter(e=>e.side==='sotto').length,
@@ -65,7 +66,7 @@ export function researchSummary(games) {
   }));
   return {players:players.length,totalTurns,participation,opportunities,spells,policies,steps,interventions,
     fullLaps:spells.filter(s=>s.fullLap).length,firstEntries:spells.filter(s=>s.firstEntry).length,
-    purchasedTokens:sum(spells,s=>s.tokens||0),policyCoinReturn:sum(spells,s=>s.directCoinReturn||0),
+    purchasedTokens:sum(players,p=>p.game.finalState?.roundRondel?sum(p.events.filter(e=>e.type==='investWelfare'),e=>e.tokensGained||0):sum(spells.filter(s=>s.game===p.index&&s.seat===p.player.id),s=>s.tokens||0)),policyCoinReturn:sum(spells,s=>s.directCoinReturn||0),
     tokensRemaining:sum(players,p=>p.player.welfareTokens||0),
     policyUsers:players.filter(p=>p.events.some(e=>Object.values(e.policyBenefits||{}).some(n=>n>0))).length};
 }

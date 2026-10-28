@@ -248,3 +248,12 @@
 @media(max-width:480px){.rondel-policies{grid-template-columns:1fr}.welfare-rondel{padding:.65rem}}
 .table-action-dialog .rondel-steps button{width:auto;flex:1 0 65px;padding:.4rem .5rem}
 @media(min-width:900px){.rondel-policies{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Premi una tantum distinti dai rendimenti coperti dalla tensione. */
+.lab-shell .opposed-cell.milestone-cell{border-color:#ae7435;border-width:2px}
+.lab-shell .track-milestone-reward{display:block;margin-top:5px;color:#88521e;font-size:10px;font-style:normal;font-weight:700;line-height:1.3}
+.lab-shell .track-milestone-reward .amount{display:inline-flex}
+
+.rondel-disabled { opacity: .55; }
+
+.round-rondel-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.round-rondel-options .production-choice{width:100%;text-align:left;white-space:normal}

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { defaults, gameConfig, parseConfig } from '../src/lab/config.js';
 import { initGame, applyCommand, legalCommands, hireCost, WORKER_BY_ID } from '../src/game/engine.js';
-import { WELFARE_POLICIES, welfarePolicy } from '../src/game/welfare-rondel.js';
+import { WELFARE_POLICIES, WELFARE_DISPLAY_POLICIES, welfarePolicy } from '../src/game/welfare-rondel.js';
 import { availableWelfareTokens } from '../src/game/row-economy.js';
 import { productionPreview } from '../src/components/production-choices.js';
 import { rowActionPreview } from '../src/components/row-action-preview.js';
@@ -11,6 +11,8 @@ import { runGame, textReport } from '../src/lab/run.js';
 
 const editor=defaults(); editor.welfareRondel=true; editor.milestoneResource=true;
 const config=gameConfig(editor);
+assert.equal(parseConfig(JSON.stringify(editor)).welfareMaxSteps,3);
+assert.throws(()=>gameConfig({...editor,welfareMaxSteps:4}),/massimo 3/);
 function fixture(node='Servizi',policy=null) {
   const s=initGame(config),p=s.players[0];s.phase='action';p.node=node;p.coins=20;
   p.welfarePosition=policy==null?null:WELFARE_POLICIES.findIndex(x=>x.id===policy);
@@ -28,7 +30,16 @@ function hireFixture(policy,side='sopra',predicate=w=>w.v===2) {
   assert.ok(cmd);return {s,w,cmd};
 }
 const initial=fixture();initial.players[0].coins=6;
-const commands=legalCommands(initial).filter(c=>c.type==='investWelfare');assert.equal(commands.length,36);
+const commands=legalCommands(initial).filter(c=>c.type==='investWelfare');assert.equal(commands.length,3);
+assert.deepEqual(commands.map(c=>[c.steps,c.position]),[[1,1],[2,2],[3,3]]);
+assert.equal(welfarePolicy(initial,initial.players[0]),null);
+assert.throws(()=>applyCommand(initial,{type:'investWelfare',steps:3,position:0}),/non disponibile/);
+const secondVisit=structuredClone(initial);secondVisit.players[0].welfarePosition=3;
+assert.ok(legalCommands(secondVisit).some(c=>c.type==='investWelfare'&&c.steps===3&&c.position===0),'Formation reachable on second visit after 3+3 steps');
+assert.equal(WELFARE_DISPLAY_POLICIES.at(-1).id,'formation');
+assert.ok(commands.every(c=>c.steps<=3));
+const oldRules=structuredClone(initial);delete oldRules.rowEconomy.welfareMaxSteps;delete oldRules.rowEconomy.welfareFreeEntry;
+assert.equal(legalCommands(oldRules).filter(c=>c.type==='investWelfare').length,36,'Existing saves retain six-step commands');
 const frozen=structuredClone(initial);
 for(const c of commands){
   const next=applyCommand(initial,c),p=next.players[0];
@@ -38,13 +49,13 @@ for(const c of commands){
   assert.equal(preview.policy.after.id,WELFARE_POLICIES[c.position].id);
 }
 assert.deepEqual(initial,frozen,'Every preview/command must preserve its predecessor');
-for(const c of [{steps:0,position:0},{steps:7,position:0},{steps:1.5,position:0},{steps:1,position:6},{steps:'1',position:0},{steps:1},{scope:'factory'}])assert.throws(()=>applyCommand(initial,{type:'investWelfare',...c}),/Azione non disponibile/);
+for(const c of [{steps:0,position:0},{steps:4,position:0},{steps:6,position:0},{steps:7,position:0},{steps:1.5,position:0},{steps:1,position:6},{steps:'1',position:0},{steps:1},{scope:'factory'}])assert.throws(()=>applyCommand(initial,{type:'investWelfare',...c}),/Azione non disponibile/);
 const later=fixture('Servizi','mutualAid');later.players[1].welfarePosition=0;
-const forward=legalCommands(later).filter(c=>c.type==='investWelfare');assert.equal(forward.length,6);
-assert.equal(forward[0].position,0);assert.equal(forward[5].position,5);
+const forward=legalCommands(later).filter(c=>c.type==='investWelfare');assert.equal(forward.length,3);
+assert.equal(forward[0].position,0);assert.equal(forward[2].position,2);
 assert.throws(()=>applyCommand(later,{type:'investWelfare',steps:2,position:0}));
 assert.equal(applyCommand(later,forward[0]).players[0].welfarePosition,0,'Shared positions remain available');
-let purchased=applyCommand(initial,{type:'investWelfare',steps:3,position:0});
+let purchased=applyCommand(initial,{type:'investWelfare',steps:3,position:3});
 assert.equal(purchased.turnFlags.welfareTokensPurchased,0,'The next actor has fresh flags');
 purchased=applyCommand(purchased,legalCommands(purchased).find(c=>c.type==='move'));
 purchased=applyCommand(purchased,legalCommands(purchased).find(c=>['pass','endTurn'].includes(c.type)));
@@ -112,16 +123,16 @@ for(const players of [2,3,4]){
  assert.deepEqual(replay,game.finalState);assert.equal(game.study.verified.money,players);assert.equal(game.study.verified.resources,players);
  const report=textReport(c,[game],'Completata');assert.ok(report.includes('## Rondella Welfare'));assert.ok(!report.includes('NaN'));assert.ok(!report.includes('undefined'));
 }
-// The search must see all six first-entry policies, not just the token package from the old rules.
+// Search only sees reachable first-entry destinations.
 s=fixture();s.players[0].coins=1;s.turn=27;s.aiRollout={depth:2,rollouts:1};
 for(const p of s.players)p.aiContinuation='forecast2';
 for(const bank in s.banks)s.banks[bank]=[];
 const untouched=structuredClone(s);resetRolloutStats();cmd=chooseCommand(s);
 assert.ok(legalCommands(s).some(c=>JSON.stringify(c)===JSON.stringify(cmd)));
-assert.ok(rolloutStats.perDecisionLog.some(d=>d.node==='Servizi'&&d.nCandidates===7));assert.deepEqual(s,untouched);
+assert.ok(rolloutStats.perDecisionLog.some(d=>d.node==='Servizi'&&d.nCandidates===2));assert.deepEqual(s,untouched);
 // A cheap policy visit can be selected for future investments, without a token purchase quota.
-s=fixture();s.players[0].coins=3;s.players[0].depts.terziario.prod=2;s.players[1].coins=0;
+s=fixture();s.rowEconomy.welfareFreeEntry=true;s.players[0].coins=3;s.players[0].depts.terziario.prod=2;s.players[1].coins=0;
 s.turn=3;s.aiRollout={depth:2,rollouts:1};for(const bank in s.banks)s.banks[bank]=[];
 s.banks.A=[Object.values(WORKER_BY_ID).find(w=>w.sector==='Tessile'&&w.v===2).id];
 cmd=chooseCommand(s);assert.equal(cmd.type,'investWelfare');assert.equal(cmd.steps,1);
-console.log('OK: six policies, 1–6 steps/tokens/cost, shared slots, complete lap, first entry, real bonuses, floor one, pending queues, old saves, save/undo, immutable previews, AI alternatives, verified 2/3/4-player replays and Markdown reports.');
+console.log('OK: six policies, 1–3 steps/tokens/cost, Formation last, legacy free-entry/six-step saves, shared slots, fixed start and second-visit Formation, real bonuses, floor one, pending queues, old saves, save/undo, immutable previews, AI alternatives, verified 2/3/4-player replays and Markdown reports.');

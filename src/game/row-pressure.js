@@ -1,16 +1,23 @@
-import { activeTrackEnd, rowTrackModel } from './data.js';
+import { activeTrackEnd, activeTrackRange, rowTrackModel } from './data.js';
 import { hireCost, WORKER_BY_ID } from './engine.js';
 import { tokenWelfare } from './row-economy.js';
 
 const roles = ['terziario', 'secondario', 'primario'];
 export function rowPressureState(state, d) {
   const layout = rowTrackModel(state.trackModel);
-  const developed = activeTrackEnd(d.prod, 0, state.trackModel, true, state.rowEconomy?.productionThresholds) / layout.columns;
-  const available = activeTrackEnd(d.prod, d.tension, state.trackModel, true, state.rowEconomy?.productionThresholds) / layout.columns;
+  const range = activeTrackRange(d.prod, d.tension, state.trackModel, true, state.rowEconomy?.productionThresholds, state.rowEconomy?.productionUnlock, state.rowEconomy?.tensionDirection);
+  const developed = Math.ceil(range.developed / layout.columns);
+  const available = range.available ? Math.ceil(range.end / layout.columns) - Math.floor((range.start - 1) / layout.columns) : 0;
+  let potentialResources = 0, blockedResources = 0;
+  for (let pos = 1; pos <= range.developed; pos++) {
+    const res = state.tracks[d.role][pos]?.res || 0;
+    potentialResources += res;
+    if (pos < range.start || pos > range.end) blockedResources += res;
+  }
   return { sector: d.sector, position: d.prod, tension: d.tension,
     staffed: d.sopra.some(id => !d.blocked.includes(id)), welfare: d.sustainableWelfare || 0,
-    developed, available, blocked: developed - available,
-    buffer: Math.max(0, layout.rows - developed - d.tension),
+    potentialResources, blockedResources, developed, available, blocked: developed - available,
+    buffer: state.rowEconomy?.tensionDirection === 'same' ? 0 : Math.max(0, layout.rows - developed - d.tension),
   };
 }
 export function newRowPressure(state) {

@@ -9,7 +9,8 @@ const ROLES=['terziario','secondario','primario'];
 function validState(state,config) {
   return state&&Array.isArray(state.players)&&state.players.length===config.players.length
     &&state.nPlayers===state.players.length&&Number.isInteger(state.current)&&state.current>=0&&state.current<state.players.length
-    &&Number.isInteger(state.turn)&&state.turn>0&&['move','action','borsa','resolving','done'].includes(state.phase)
+    &&Number.isInteger(state.turn)&&state.turn>0&&['move','action','borsa','resolving','roundRondel','done'].includes(state.phase)
+    &&(state.phase!=='roundRondel'||(state.roundRondel?.active&&Array.isArray(state.roundRondel.log)&&Array.isArray(state.roundRondel.completed)&&state.roundRondel.active.order[state.roundRondel.active.at]===state.current))
     &&state.banks&&state.tracks&&state.contracts&&Array.isArray(state.log)&&Array.isArray(state.pendingQueue)
     &&state.players.every(p=>p.resources&&p.depts&&ROLES.every(role=>Array.isArray(p.depts[role]?.sopra)&&Array.isArray(p.depts[role]?.sotto)))
     &&(!rondelEnabled(state)||state.players.every(p=>(p.welfarePosition===null||(Number.isInteger(p.welfarePosition)&&p.welfarePosition>=0&&p.welfarePosition<6))

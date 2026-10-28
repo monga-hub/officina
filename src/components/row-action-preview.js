@@ -14,7 +14,7 @@ export function rowActionPreview(state, command) {
     const pressure=rowPressureState(game,dept);
     return {...pressure,sustainableLimit:tokens?0:Math.min(pressure.welfare,rowTrackModel(game.trackModel).rows),hireDiscount:!tokens&&game.rowEconomy.welfareHireDiscount?pressure.welfare:0};
   };
-  return {cost:before.coins-after.coins, policy: { before: welfarePolicy(state,before), after: welfarePolicy(next,after) },...(tokens?{welfareTokens:{before:before.welfareTokens||0,after:after.welfareTokens||0}}:{}),departments:roles.map(role=>({
+  return {cost:(after.coinsSpentBy.welfare-before.coinsSpentBy.welfare)+(after.coinsSpentBy.repressione-before.coinsSpentBy.repressione),income:after.coinsGained-before.coinsGained,...(state.rowEconomy.welfareBank?{bank:{before:state.welfareBank||0,after:next.welfareBank||0}}:{}), policy: { before: welfarePolicy(state,before), after: welfarePolicy(next,after) },...(tokens?{welfareTokens:{before:before.welfareTokens||0,after:after.welfareTokens||0}}:{}),departments:roles.map(role=>({
     before:snapshot(state,before.depts[role]),after:snapshot(next,after.depts[role]),
   }))};
 }

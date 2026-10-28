@@ -2,7 +2,7 @@
 // chooseCommand(state) → il prossimo comando per il giocatore/decisore corrente.
 import {
   SECTORS, RESOURCE_OF, NODES, NODE_BANKS, ROLE_SLOTS_SOPRA,
-  TENSION_LIMIT, UNBLOCK_COST, DIREZIONE_MAX, activeTrackEnd,
+  TENSION_LIMIT, UNBLOCK_COST, DIREZIONE_MAX, activeTrackEnd, activeTrackRange,
 } from './data.js';
 import {
   legalCommands, applyCommand, forkForSearch, currentPlayer, deptOfSector, bankMarket, tileForecast,
@@ -11,7 +11,7 @@ import {
 } from './engine.js';
 
 import { activeWorkers, policiesOf, welfareEfficiency, wellbeing } from './industrial.js';
-import { tokenWelfare } from './row-economy.js';
+import { machinesOperational, tensionMachineIncome, tokenWelfare } from './row-economy.js';
 
 // profiler artigianale per il rollout: contatori + tempo per bucket, azzerati a mano con resetRolloutStats().
 // Copre le chiamate applyCommand fatte da ai.js (playForward, bestActionAt, bestActionAtRollout) — non quelle
@@ -101,6 +101,8 @@ function evaluateInner(state, playerId, rolloutLeaf) {
   }
   let v = 0;
   v += p.contractsWon.reduce((a, c) => a + c.pv, 0) * 10 * w.wContract;
+  // Banked coins are reversible end-game points as well as spending fuel.
+  if (state.contractsOnly && state.finalCoinPV) v += Math.floor(p.coins / state.rules.coinsPerPV) * 10 * w.wCoins;
   if (!state.contractsOnly) v += p.tile.objectives.reduce((a, o, i) => a + (p.achieved[i] ? o.pv : 0), 0) * 9 * w.wObjective;
   // Obiettivi di gara già rivendicati: PV del posto sul podio. Greedy: dopo un 'completeRace' v sale → l'IA
   // rivendica quando è qualificata. Scala ×10 come le commesse (podio PV direttamente confrontabile).
@@ -157,8 +159,8 @@ function evaluateInner(state, playerId, rolloutLeaf) {
     // prod/sopra/sotto = motore industriale del tableau → pesati come i tracciati
     v += (d.prod * 0.6 + (d.prod >= state.milestonePos[role] ? 2 : 0)) * w.wTrack * futureEngine;
     if (state.rowTrack) {
-      const developed = activeTrackEnd(d.prod, 0, state.trackModel, state.rowEconomy?.enabled, state.rowEconomy?.productionThresholds);
-      v -= (developed - activeTrackEnd(d.prod, d.tension, state.trackModel, state.rowEconomy?.enabled, state.rowEconomy?.productionThresholds)) * 0.6 * w.wTrack * futureEngine;
+      const developed = activeTrackEnd(d.prod, 0, state.trackModel, state.rowEconomy?.enabled, state.rowEconomy?.productionThresholds, state.rowEconomy?.productionUnlock);
+      v -= (developed - activeTrackRange(d.prod, d.tension, state.trackModel, state.rowEconomy?.enabled, state.rowEconomy?.productionThresholds, state.rowEconomy?.productionUnlock, state.rowEconomy?.tensionDirection).available) * 0.6 * w.wTrack * futureEngine;
     }
     if (!state.rowEconomy?.enabled) v += d.sopra.length * 1.2 * w.wTrack;
     // carte Sotto: valore = qualità dell'effetto × attivazioni future attese
@@ -166,6 +168,15 @@ function evaluateInner(state, playerId, rolloutLeaf) {
       if (!d.blocked.includes(id)) v += (state.industrial?.enabled && state.industrial.productionMode === 'compact' ? Math.min(1.5, sottoValue(WORKER_BY_ID[id])) : sottoValue(WORKER_BY_ID[id])) * 2.2 * w.wTrack * futureEngine;
     }
     v -= d.blocked.length * 2.2;
+    // Diagnostic hypothesis: value one future activation at today's tension, in ordinary coin units.
+    // shortcut: this is a one-use estimate, not a fitted forecast of every future production.
+    if (finiteFactory && machinesOperational(state, d)) {
+      const income = d.sotto.reduce((sum,id) => {
+        const effect = formulaOf(WORKER_BY_ID[id]);
+        return sum + (!d.blocked.includes(id) && effect.verbo === 'perOgni' && effect.f2?.conta === 'tensione' && effect.f1?.tipo === 'moneta' ? tensionMachineIncome(effect,d.tension) : 0);
+      },0);
+      v += income * 0.7 * (3 / state.rules.coinsPerPV) * w.wCoins * futureEngine;
+    }
     // tensione = budget consumabile prima dello sciopero: penalità graduata (non solo al limite),
     // così ridurla vale sempre qualcosa (0.4/punto) e l'AI usa l'abbassa-tensione al Sindacato.
     // K basso: un'attivazione (che alza la tensione ma produce risorse ~1.5) resta comunque conveniente.
@@ -350,7 +361,9 @@ function greedyActionKey(state) {
   if (banks === undefined) { banks = decisionPart(state.bankIds.map(bank => bankMarket(state, bank))); decisionCache.banks.set(state.banks, banks); }
   // In questa variante l'azione non muove né modifica gli avversari; conta il loro ordine, non le loro scorte.
   return JSON.stringify([own, contracts, banks, state.turn, state.clock,
-    state.current, state.roundStart, state.roundTurns, state.dir, state.phase, decisionPart(state.turnFlags), defersToken(state, p.id),
+    state.current, state.welfareBank, state.roundStart, state.roundTurns, state.dir, state.phase, decisionPart(state.turnFlags), defersToken(state, p.id),
+    ...(state.roundAwards ? [decisionPart(state.roundAwards), decisionPart(state.players.map(q=>q.depts))] : []),
+    ...(state.roundRondel ? [decisionPart(state.roundRondel),Boolean(state.aiRoundRondelProbe)] : []),
     state.finalRound, state.endImmediate, decisionPart(state.pendingQueue), decisionPart(state.trackTileStock)]);
 }
 export function chooseCommand(state) {
@@ -364,6 +377,8 @@ export function chooseCommand(state) {
 }
 function chooseCommandInner(state) {
   if (state.gameOver) return null;
+  if (state.phase === 'roundRondel') return chooseRoundRondel(state);
+  if (state.phase === 'roundAwards') return chooseRoundAward(state);
   if (state.pending) return resolvePending(state);
   const p = currentPlayer(state);
   if (state.phase === 'move') {
@@ -1051,4 +1066,29 @@ function contractPV(state, cmd) {
   const slot = state.contracts[cmd.size].active[cmd.slotIndex ?? 0];
   const place = slot.places[0] === null ? 0 : 1;
   return slot.card.pv[place];
+}
+
+// Exact rewards enter the ordinary evaluator and existing d6 forecasts. No objective weights.
+// shortcut: inside simulated replies choices stay greedy, as with other opponent decisions.
+function chooseRoundAward(state) {
+  const commands=legalCommands(state),owner=state.current;
+  let best=commands[0],bestValue=-Infinity;
+  for(const command of commands){
+    const next=timedApply(state,command);
+    const value=state.aiRollout?continuationValue(next,state.aiRollout.depth,owner):evaluate(next,owner);
+    if(value>bestValue){bestValue=value;best=command;}
+  }
+  return best;
+}
+
+// Paid policies have no immediate payoff: simulated choices must inspect future uses too.
+// shortcut: a 3-turn greedy probe, with other round choices held, bounds recursive previews.
+function chooseRoundRondel(state) {
+  const owner=state.current;let best=null,bestValue=-Infinity;
+  for(const command of legalCommands(state)){
+    const next=timedApply(state,command);
+    const value=state.aiRollout?continuationValue(next,state.aiRollout.depth,owner):state.aiRoundRondelProbe?evaluate(next,owner):evaluate(playForward({...next,aiRoundRondelProbe:true},3),owner);
+    if(value>bestValue){bestValue=value;best=command;}
+  }
+  return best;
 }

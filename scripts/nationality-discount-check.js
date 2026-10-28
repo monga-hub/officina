@@ -70,13 +70,13 @@ assert.deepEqual(resumed.state.players, oldState.players);
 assert.deepEqual(resumed.state.banks, oldState.banks);
 assert.equal(JSON.stringify(saved), raw, 'Loading does not mutate old saves');
 
-// The normal search path can execute hires priced by the same rule as human play.
+// The normal search path can execute discounted hires, at a node without a competing production.
 const aiState = initGame(config), aiPlayer = aiState.players[0];
-aiState.phase = 'action'; aiPlayer.node = 'Tessile'; aiPlayer.coins = 1;
+aiState.phase = 'action'; aiPlayer.node = 'Servizi'; aiPlayer.coins = 1;
 const worker = Object.values(WORKER_BY_ID).find(w => w.sector === 'Tessile' && w.v === 4);
 aiPlayer.depts.terziario.sopra = Object.values(WORKER_BY_ID).filter(w => w.sector === 'Tessile' && w.nation === worker.nation && w.id !== worker.id).map(w => w.id);
-for (const bank of aiState.nodeBanks.Tessile) aiState.banks[bank] = [];
-aiState.banks[aiState.nodeBanks.Tessile[0]] = [worker.id];
+for (const bank of aiState.nodeBanks.Servizi) aiState.banks[bank] = [];
+aiState.banks[aiState.nodeBanks.Servizi[0]] = [worker.id];
 const decision = chooseCommand(aiState);
 assert.equal(decision.type, 'hire');
 assert.equal(decision.side, 'sopra');

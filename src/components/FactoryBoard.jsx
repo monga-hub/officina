@@ -1,6 +1,6 @@
 import { activeWorkers, wellbeing, policiesOf, welfareDescription } from '../game/industrial.js';
 import React, { useState } from 'react';
-import { RESOURCE_OF, SECTOR_COLORS, NATION_FLAGS, trackGridPos, activeTrackEnd } from '../game/data.js';
+import { RESOURCE_OF, SECTOR_COLORS, NATION_FLAGS, trackGridPos, activeTrackEnd, activeTrackRange } from '../game/data.js';
 import RowProductionTrack from './RowProductionTrack.jsx';
 import { WORKER_BY_ID, describeCond, workerCapacity, maxIntensity, tensionLimit, describeTileEffect } from '../game/engine.js';
 
@@ -36,8 +36,8 @@ function cellLabel(cell, sector) {
 }
 
 // Griglia 4x4 come sulla plancia fisica (righe A in alto → D in basso, serpentina da D1)
-function Track({ dept, track, trackTileById, model, rowTrack, wholeRows }) {
-  if (rowTrack) return <RowProductionTrack wholeRows={wholeRows} model={model} prod={dept.prod} tension={dept.tension}
+function Track({ dept, track, trackTileById, model, rowTrack, wholeRows, unlock, thresholds, tensionDirection }) {
+  if (rowTrack) return <RowProductionTrack tensionDirection={tensionDirection} unlock={unlock} thresholds={unlock==='cells'?null:thresholds} wholeRows={wholeRows} model={model} prod={dept.prod} tension={dept.tension}
     renderCell={pos => dept.tileFills?.[pos] ? '◆' : cellLabel(track[pos], dept.sector)}
     cellTitle={pos => dept.tileFills?.[pos] ? trackTileById[dept.tileFills[pos]]?.name : cellLabel(track[pos], dept.sector)} />;
   const grid = [[], [], [], []]; // righe A..D
@@ -107,8 +107,8 @@ export default function FactoryBoard({ state, player, isCurrent }) {
                 <small> {ROLE_LABEL[role]}</small>
                 <span className={`tension t${d.tension}`} title="Tensione">✊ {d.tension}/{tensionLimit(state)}</span>
               </div>
-              {(!state.industrial?.enabled || state.industrial.development !== 'off') && <Track dept={d} track={state.tracks[role]} trackTileById={state.trackTileById} model={state.trackModel} rowTrack={state.rowTrack} wholeRows={state.rowEconomy?.enabled} />}
-              {state.rowTrack && <p className="hint">{activeTrackEnd(d.prod, d.tension, state.trackModel, state.rowEconomy?.enabled)} caselle produttive utilizzabili · Intensa: tensione +1{state.rowEconomy?.enabled ? ` · Welfare ${d.sustainableWelfare || 0}${d.sustainableWelfare ? `: fino a ${d.sustainableWelfare} righe accessibili e tensione −1` : ""}` : ""}</p>}
+              {(!state.industrial?.enabled || state.industrial.development !== 'off') && <Track dept={d} track={state.tracks[role]} trackTileById={state.trackTileById} model={state.trackModel} rowTrack={state.rowTrack} wholeRows={state.rowEconomy?.enabled} tensionDirection={state.rowEconomy?.tensionDirection} unlock={state.rowEconomy?.productionUnlock} thresholds={state.rowEconomy?.productionThresholds} />}
+              {state.rowTrack && <p className="hint">{activeTrackRange(d.prod, d.tension, state.trackModel, state.rowEconomy?.enabled, state.rowEconomy?.productionThresholds, state.rowEconomy?.productionUnlock, state.rowEconomy?.tensionDirection).available} caselle produttive utilizzabili · Intensa: tensione +1{state.rowEconomy?.enabled ? ` · Welfare ${d.sustainableWelfare || 0}${d.sustainableWelfare ? `: fino a ${d.sustainableWelfare} righe accessibili e tensione −1` : ""}` : ""}</p>}
               {state.industrial?.enabled && !state.rowTrack && <div>
                 <p><b>{d.shutdown ? '⛔ FILIERA FERMA' : maxIntensity(state, d) ? `Spinta disponibile: 1–${maxIntensity(state, d)}` : 'Nessun operaio attivo'}</b> · Benessere {wellbeing(state, d)} · Operai attivi {activeWorkers(d)}</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }} aria-label={`Tracciato tensione ${d.sector}`}>

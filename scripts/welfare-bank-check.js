@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import {defaults,gameConfig,parseConfig} from '../src/lab/config.js';
+import {initGame,applyCommand,legalCommands,forkForSearch} from '../src/game/engine.js';
+import {rowActionPreview} from '../src/components/row-action-preview.js';
+import {runGame,textReport} from '../src/lab/run.js';
+import {saveGame,loadGame,gameSession} from '../src/lab/saved-game.js';
+const c=defaults();c.welfareRondel=true;c.welfareBank=true;c.simulation.ai='greedy';
+assert.deepEqual(parseConfig(JSON.stringify(c)),c);
+const old={...c};delete old.welfareBank;assert.equal(parseConfig(JSON.stringify(old)).welfareBank,false);
+assert.throws(()=>gameConfig({...c,welfareBank:'yes'}),/banca/);
+const cfg=gameConfig(c),s=initGame(cfg),p=s.players[0];assert.equal(s.welfareBank,0);
+s.phase='action';p.node='Servizi';p.coins=10;
+const buy={type:'investWelfare',steps:3,position:3},bought=applyCommand(s,buy);
+assert.equal(s.welfareBank,0);assert.equal(bought.welfareBank,3);assert.equal(bought.players[0].coins,7);
+const r=structuredClone(bought);r.current=1;r.phase='action';const q=r.players[1];q.node='Sindacato';q.coins=0;q.depts.terziario.tension=4;
+const cmd={type:'repress',role:'terziario'};assert.ok(legalCommands(r).some(x=>x.type==='repress'));
+const preview=rowActionPreview(r,cmd);assert.equal(preview.cost,0);assert.equal(preview.income,3);assert.deepEqual(preview.bank,{before:3,after:0});
+const robbed=applyCommand(r,cmd);assert.equal(robbed.welfareBank,0);assert.equal(robbed.players[1].coins,3);assert.equal(robbed.players[1].coinsGainedBy.welfareLoot,3);assert.equal(robbed.players[1].depts.secondario.tension,1);
+assert.equal(r.welfareBank,3);assert.equal(applyCommand(forkForSearch(r),cmd).welfareBank,0);
+assert.deepEqual(applyCommand(forkForSearch(r),cmd).players[1].coins,robbed.players[1].coins);
+const empty=structuredClone(r);empty.welfareBank=0;assert.equal(applyCommand(empty,cmd).players[1].coins,0);
+const abundant=structuredClone(r);abundant.welfareBank=10;assert.equal(applyCommand(abundant,cmd).welfareBank,6);assert.equal(applyCommand(abundant,cmd).players[1].coins,4);
+const zero=structuredClone(r);zero.players[1].depts.terziario.tension=0;assert.ok(!legalCommands(zero).some(x=>x.type==='repress'&&x.role==='terziario'));
+let stored;saveGame(cfg,{state:bought,history:[s],paused:true},{setItem:(k,v)=>stored=v});const saved=gameSession(cfg,loadGame({getItem:()=>stored}));assert.equal(saved.state.welfareBank,3);assert.equal(saved.history[0].welfareBank,0);
+for(const players of [2,3,4]) {
+ const editor={...c,players,turns:8},gc=gameConfig(editor),g=await runGame(gc);
+ assert.equal(g.study.bankVerified.deposits-g.study.bankVerified.loot,g.finalState.welfareBank);
+ let replay=initGame(gc);for(const command of g.commands)replay=applyCommand(replay,command);assert.deepEqual(replay,g.finalState);
+ assert.ok(textReport(editor,[g],'Completata').includes('Banca Welfare e saccheggi'));
+}
+console.log('OK: shared fund deposits, free repression, capped/empty/zero-tension loot, opponent withdrawal, forecasts, no input mutation, preview, save/undo, 2/3/4-player replay and bank/player finance conservation.');

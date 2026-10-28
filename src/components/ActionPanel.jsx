@@ -1,4 +1,5 @@
 import WelfareRondel from './WelfareRondel.jsx';
+import RoundRondelChoice from './RoundRondelChoice.jsx';
 import { rondelEnabled } from '../game/welfare-rondel.js';
 import { rowNodeLabel, tokenWelfare } from '../game/row-economy.js';
 import IndustrialActions from './IndustrialActions.jsx';
@@ -25,6 +26,7 @@ export default function ActionPanel({ state, dispatch, renderHireCard }) {
     return <div className="actions"><h3>Azioni</h3><p className="hint">Decisione in corso…</p></div>;
   }
   const legal = legalCommands(state);
+  if(state.phase==='roundRondel')return <RoundRondelChoice state={state} player={p} legal={legal} dispatch={dispatch}/>;
 
   return (
     <div className="actions">
@@ -350,28 +352,29 @@ export function ProductionActions({state,p,activations,dispatch}) {
 
 export function RowEconomyActions({state,legal,dispatch}) {
   return (state.rowEconomy?.enabled && <div>
-        {rondelEnabled(state) && currentPlayer(state).node === 'Servizi' && <WelfareRondel key={state.current} state={state} player={currentPlayer(state)} legal={legal} dispatch={dispatch}/>}
-        {legal.filter(c => (c.type === 'investWelfare' && !rondelEnabled(state))||c.type === 'repress').map(c => {
+        {!state.roundRondel && rondelEnabled(state) && currentPlayer(state).node === 'Servizi' && <WelfareRondel key={state.current} state={state} player={currentPlayer(state)} legal={legal} dispatch={dispatch}/>}
+        {legal.filter(c => (c.type === 'investWelfare' && (!rondelEnabled(state)||state.roundRondel))||c.type === 'repress').map(c => {
           const welfare=c.type==='investWelfare',preview=rowActionPreview(state,c);
           const first=preview.departments[0];
-          if(tokenWelfare(state))return <button key={`${c.type}-${c.role||c.scope}`} className="production-choice" onClick={()=>dispatch(c)}>
+          if(tokenWelfare(state))return <button key={`${c.type}-${c.count||c.role||c.scope}`} className="production-choice" onClick={()=>dispatch(c)}>
             <strong>{welfare?'Welfare':`Repressione — ${first.before.sector}`}</strong>
-            <span className="production-yield">Paghi <Amount kind="coin" value={preview.cost}/>
+            <span className="production-yield">Paghi <Amount kind="coin" value={preview.cost}/>{preview.income>0&&<span> · Incassi <Amount kind="coin" value={preview.income}/></span>}
               {welfare?<span>🌿 <b>+{preview.welfareTokens.after-preview.welfareTokens.before} gettoni</b></span>:<span>Tensione <b>{first.before.tension} → {first.after.tension}</b></span>}
             </span>
             {welfare?<>
               <small>Gettoni: <b>{preview.welfareTokens.before} → {preview.welfareTokens.after}</b> · i nuovi dal prossimo turno.</small>
               <small>Solo nel reparto visitato: 1 gettone protegge la produzione; senza produrre puoi curare con più gettoni, −1 tensione ciascuno.</small>
             </>:<>
+              {preview.bank&&<small>Banca Welfare: <b>{preview.bank.before} → {preview.bank.after} marchi</b>.</small>}
               <small>Righe utilizzabili: <b>{first.before.available} → {first.after.available}</b>.</small>
               {preview.departments.slice(1).map(({before,after})=><small key={before.sector}>{before.sector}: tensione <b>{before.tension} → {after.tension}</b> · righe <b>{before.available} → {after.available}</b></small>)}
             </>}
           </button>;
           const uniform=preview.departments.every(d=>d.before.welfare===first.before.welfare&&d.after.welfare===first.after.welfare);
           const benefits=uniform?[first]:preview.departments;
-          return <button key={`${c.type}-${c.role||c.scope}`} className="production-choice" onClick={()=>dispatch(c)}>
+          return <button key={`${c.type}-${c.count||c.role||c.scope}`} className="production-choice" onClick={()=>dispatch(c)}>
             <strong>{welfare?'Welfare':'Repressione'} — {preview.departments.length===3?'tutti e tre i reparti':first.before.sector}</strong>
-            <span className="production-yield">Paghi <Amount kind="coin" value={preview.cost}/>
+            <span className="production-yield">Paghi <Amount kind="coin" value={preview.cost}/>{preview.income>0&&<span> · Incassi <Amount kind="coin" value={preview.income}/></span>}
               {!welfare&&<span>Tensione <b>{first.before.tension} → {first.after.tension}</b></span>}
             </span>
             {welfare?<>

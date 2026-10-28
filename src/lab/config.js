@@ -1,11 +1,12 @@
 import reference from './reference.json' with { type: 'json' };
 import { TRACK_MODELS, SECTORS, NATIONS_NUOVO } from '../game/data.js';
+import { WELFARE_POLICIES } from '../game/welfare-rondel.js';
 import { STAR_NODE_BANKS } from './markets.js';
 import { tensionMachineCard } from '../game/row-economy.js';
 export const ROLES = ['terziario', 'secondario', 'primario'];
 export const SIZES = ['small', 'medium', 'large'];
 export const SIZE_NAMES = { small: 'Piccole', medium: 'Medie', large: 'Grandi' };
-export const MODELS = ['righe4corte', 'righe4', 'righe3'];
+export const MODELS = ['righe4corte', 'righe4', 'righe3', 'righe5x4'];
 export const AI_NAMES = { forecast2: 'Nuova IA · valuta gli utilizzi futuri', beam2: 'IA precedente · confronto', greedy: 'Rapida · controllo tecnico' };
 export const STORAGE_KEY = 'officina1907-laboratorio-v1';
 export const RULES_REVISION = 4;
@@ -21,11 +22,11 @@ export function defaults() {
   return structuredClone({ schema: 'officina-lab-1', rulesRevision: RULES_REVISION, presetRevision: PRESET_REVISION, contractsOnly: true, name: 'Prova di riferimento',
     players: 2, turns: 28, startingCoins: [15, 15, 15, 15],
     trackModel: 'righe4corte', track: withoutTrackPoints(reference.tracks.terziario),
-    welfareCost: 4, welfareRondel: false, repressionBase: 2, repressionStep: 0,
+    welfareCost: 4, welfareBank: false, welfareRondel: false, welfareFreeEntry: false, welfareMaxSteps: 3, welfarePoliciesEnabled: Object.fromEntries(WELFARE_POLICIES.map(p=>[p.id,true])), repressionBase: 2, repressionStep: 0,
     contractCoins: reference.rowEconomy.contractCoins,
-    machineSlots: [2, 2, 2], productionThresholds: [1, 5, 9, 13], milestoneResource: false, machineImmediate: false,
+    machineSlots: [2, 2, 2], productionThresholds: [1, 5, 9, 13], productionUnlock: 'rows', tensionDirection: 'opposed', milestoneResource: false, machineImmediate: false,
     workers: reference.workers.filter(w => !w.power && w.deck !== 'Impiegati').map(tensionMachineCard), contracts: { ...reference.contracts, large: reference.contracts.large.map(card => ({ ...card, pv: [13, card.pv[1]] })) },
-    contractCount: reference.contractCount, contractMarket: 2,
+    contractCount: Object.fromEntries([2,3,4].map(n=>[n,Object.fromEntries(SIZES.map(size=>[size,reference.contracts[size].length]))])), contractMarket: 2,
     cityIncome: reference.borsaExit.coins, cityRefresh: true,
     simulation: { games: 3, seed: 1907, ai: 'forecast2', depth: 6, rollouts: 1 },
   });
@@ -36,7 +37,17 @@ export function validate(c) {
   check(c && c.schema === 'officina-lab-1', 'Importa una configurazione del nuovo Laboratorio, non un report o una configurazione del vecchio simulatore.');
   check(c.rulesRevision === RULES_REVISION, 'Versione delle regole non supportata: riapri la configurazione dal Laboratorio aggiornato.');
   check(c.presetRevision === PRESET_REVISION, 'Versione delle impostazioni non supportata: riapri la configurazione dal Laboratorio aggiornato.');
-  check(c.contractsOnly === true, 'Nel Laboratorio si contano solo i PV delle commesse.');
+  if (c.machinesRequireOpenRow !== undefined) check(typeof c.machinesRequireOpenRow === 'boolean', 'Blocco macchinari non valido.');
+  if (c.finalCoinsPerPV !== undefined) integer(c.finalCoinsPerPV, 1, 100, 'Marchi per PV finale');
+  if (c.finalCoinPV !== undefined) check(typeof c.finalCoinPV === 'boolean', 'Conversione finale marchi non valida.');
+  check(c.contractsOnly === true, 'Nel Laboratorio si contano i PV delle commesse e gli eventuali PV dei marchi finali.');
+  check(!c.roundAwards?.enabled, 'Le carte premio non fanno parte di questa versione.');
+  if (c.conversionMachines !== undefined) check(typeof c.conversionMachines === 'boolean', 'Opzione conversioni non valida.');
+  if (c.roundRondel?.enabled) {
+    const r=c.roundRondel;
+    check(c.players===3 && c.turns===28, 'La rondella di fine round testata richiede 3 giocatori e 28 turni.');
+    check(c.welfareRondel===true && JSON.stringify(r.bounds)==='[9,18]' && JSON.stringify(r.firstSeats)==='[0,1]' && r.maxSteps===3 && [0,1].includes(r.stepCost) && r.tokenCost===1 && r.tokenMax===3 && (r.freeEntry===undefined || typeof r.freeEntry==='boolean'), 'Impostazioni della rondella di fine round non valide.');
+  }
   check(typeof c.name === 'string' && c.name.length <= 100, 'Nome della prova non valido.');
   integer(c.players, 2, 4, 'Giocatori'); integer(c.turns, 1, 60, 'Turni');
   check(Array.isArray(c.startingCoins) && c.startingCoins.length === 4, 'Servono i marchi iniziali dei quattro posti.');
@@ -44,12 +55,23 @@ export function validate(c) {
   check(MODELS.includes(c.trackModel), 'Modello del tracciato non supportato.');
   check(Array.isArray(c.track) && c.track.length === TRACK_MODELS[c.trackModel].max + 1 && c.track[0] === null, 'Lunghezza del tracciato non valida.');
   for (const cell of c.track) if (cell !== null) {
-    check(typeof cell === 'object' && !Array.isArray(cell) && Object.keys(cell).length > 0 && Object.keys(cell).every(k => ['res', 'coins'].includes(k)), 'Nel tracciato sono ammessi solo risorse e marchi.');
-    Object.values(cell).forEach(v => integer(v, 0, 20, 'Bonus casella'));
+    check(typeof cell === 'object' && !Array.isArray(cell) && Object.keys(cell).length > 0 && Object.keys(cell).every(k => ['res', 'coins', 'milestoneReward'].includes(k)), 'Nel tracciato sono ammessi risorse, marchi e premi milestone.');
+    for (const key of ['res','coins']) if (cell[key] !== undefined) integer(cell[key], 0, 20, 'Rendimento casella');
+    if (cell.milestoneReward !== undefined) {
+      const reward=cell.milestoneReward;
+      check(reward && typeof reward==='object' && !Array.isArray(reward) && Object.keys(reward).length>0 && Object.keys(reward).every(k=>['res','coins'].includes(k)), 'Premio milestone non valido.');
+      Object.values(reward).forEach(v=>integer(v,0,20,'Premio milestone'));
+    }
   }
+  check(c.tensionDirection === undefined || ['opposed','same'].includes(c.tensionDirection), 'Direzione tensione non valida.');
+  check(c.productionUnlock === undefined || ['rows','cells'].includes(c.productionUnlock), 'Modalità di sblocco non valida.');
   const layout = TRACK_MODELS[c.trackModel];
   check(Array.isArray(c.productionThresholds) && c.productionThresholds.length === layout.rows, 'Serve una soglia per ogni riga.');
   c.productionThresholds.forEach((n, i) => integer(n, i * layout.columns + 1, (i + 1) * layout.columns, `Soglia riga ${i + 1}`));
+  check(c.welfareFreeEntry === undefined || typeof c.welfareFreeEntry === 'boolean', 'Ingresso Welfare non valido.');
+  check(c.welfareMaxSteps === undefined || c.welfareMaxSteps === 3, 'La rondella consente al massimo 3 passi.');
+  if(c.welfarePoliciesEnabled!==undefined)check(c.welfarePoliciesEnabled&&typeof c.welfarePoliciesEnabled==='object'&&!Array.isArray(c.welfarePoliciesEnabled)&&Object.keys(c.welfarePoliciesEnabled).length===WELFARE_POLICIES.length&&WELFARE_POLICIES.every(p=>typeof c.welfarePoliciesEnabled[p.id]==='boolean'),'Caselle ON/OFF della rondella non valide.');
+  check(c.welfareBank===undefined||typeof c.welfareBank==='boolean','Opzione banca Welfare non valida.');
   check(typeof c.welfareRondel === 'boolean', 'Opzione rondella Welfare non valida.');
   check(typeof c.milestoneResource === 'boolean' && typeof c.machineImmediate === 'boolean', 'Opzioni ricompense immediate non valide.');
   for (const key of ['welfareCost', 'repressionBase', 'repressionStep']) integer(c[key], 0, 30, key);
@@ -66,6 +88,10 @@ export function validate(c) {
     check(!w.power, 'Gli impiegati non fanno più parte del mazzo.');
     check(SECTORS.includes(w.sector) && ['A','B','C','D','E'].includes(w.deck), 'Reparto o mazzetto non valido.');
     check(['prendi', 'scambia', 'perOgni'].includes(w.effect?.verbo), 'Effetto macchinario non valido.');
+    if(w.effect.tensionRewards !== undefined) {
+      check(w.effect.verbo === 'perOgni' && w.effect.f2?.conta === 'tensione' && w.effect.f1?.tipo === 'moneta' && Array.isArray(w.effect.tensionRewards) && w.effect.tensionRewards.length === 5, 'Curva tensione: servono cinque premi, da tensione 0 a 4.');
+      w.effect.tensionRewards.forEach(v=>integer(v,0,100,'Premio curva tensione'));
+    }
     const factors = w.effect.verbo === 'scambia' ? [w.effect.f1, w.effect.f2] : [w.effect.f1];
     for (const f of factors) {
       check(f && ['risorsa', 'moneta'].includes(f.tipo), 'Risorsa dello scambio non valida.');
@@ -93,16 +119,20 @@ export function validate(c) {
 export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
   validate(c);
   return { ...structuredClone(reference),
+    ...(c.finalCoinsPerPV ? { conversions: { ...reference.conversions, coinsPerPV: c.finalCoinsPerPV } } : {}),
+    ...(c.roundAwards?.enabled ? {roundAwards:structuredClone(c.roundAwards)} : {}),
+    ...(c.roundRondel?.enabled ? {roundRondel:structuredClone(c.roundRondel)} : {}),
     seed, headless: humans === 0, endMode: 'rounds', roundLimit: c.turns, singleContractVisit: true,
     startingCoins: [...c.startingCoins], trackModel: c.trackModel,
     tracks: Object.fromEntries(ROLES.map(r => [r, structuredClone(c.track)])),
     nodeBanks: structuredClone(STAR_NODE_BANKS),
     workers: structuredClone(c.workers), contracts: structuredClone(c.contracts), contractPV: undefined,
     contractCount: structuredClone(c.contractCount), contractMarket: c.contractMarket,
-    rowEconomy: { ...reference.rowEconomy, welfareMode: 'tokens', welfareScope: 'factory', welfareHireDiscount: false, sameNationHireDiscount: true, tensionMachineCash: true, productionThresholds: [...c.productionThresholds], milestoneResource: c.milestoneResource, machineImmediate: c.machineImmediate,
-      welfareCost: c.welfareCost, welfareRondel: c.welfareRondel, repressionBase: c.repressionBase, repressionStep: 0, contractCoins: { ...c.contractCoins } },
+    rowEconomy: { ...reference.rowEconomy, ...(c.machinesRequireOpenRow ? { machinesRequireOpenRow: true } : {}), ...(c.conversionMachines === false ? { conversionMachines: false } : {}), welfareMode: 'tokens', welfareScope: 'factory', welfareHireDiscount: false, sameNationHireDiscount: true, tensionMachineCash: true, productionThresholds: [...c.productionThresholds], productionUnlock: c.productionUnlock || 'rows', tensionDirection: c.tensionDirection || 'opposed', milestoneResource: c.productionUnlock === 'cells' ? false : c.milestoneResource, machineImmediate: c.machineImmediate,
+      welfareCost: c.welfareCost, welfareBank: c.welfareBank===true, welfareRondel: c.welfareRondel, welfareFreeEntry: c.welfareFreeEntry === true, welfareMaxSteps: c.welfareMaxSteps ?? 3, welfarePoliciesEnabled: {...(c.welfarePoliciesEnabled||defaults().welfarePoliciesEnabled)}, repressionBase: c.repressionBase, repressionStep: 0, contractCoins: { ...c.contractCoins } },
     slots: { ...Object.fromEntries(ROLES.map((r,i) => [r, { sopra: 3, sotto: c.machineSlots[i] }])), direzione: { sopra: 0, sotto: 0 } },
     borsaExit: { enabled: true, coins: c.cityIncome }, borsaRefresh: { enabled: c.cityRefresh },
+    ...(c.finalCoinPV ? { finalCoinPV: true } : {}),
     contractsOnly: true, pianoEnabled: false, raceObjectives: { enabled: false, list: [] }, raceIncentive: 0,
     aiRollout: c.simulation.ai === 'greedy' ? null : { depth: c.simulation.depth, rollouts: c.simulation.rollouts },
     aiContinuation: c.simulation.ai,
@@ -116,7 +146,10 @@ export function parseConfig(raw) {
     const migrateLargePV = c.presetRevision == null || c.presetRevision === 1;
     const migrateMachines = c.rulesRevision == null || [1, 2, 3].includes(c.rulesRevision);
     c.productionThresholds ??= Array.from({length: TRACK_MODELS[c.trackModel]?.rows || 4}, (_, i) => i * (TRACK_MODELS[c.trackModel]?.columns || 4) + 1);
-    c.welfareRondel ??= false;
+    c.welfareRondel ??= false; c.welfareBank ??= false;
+    c.welfareFreeEntry ??= false;
+    c.welfareMaxSteps ??= 3;
+    c.welfarePoliciesEnabled ??= Object.fromEntries(WELFARE_POLICIES.map(p=>[p.id,true]));
     c.milestoneResource ??= false; c.machineImmediate ??= false;
     c.contractsOnly = true;
     if (c.rulesRevision == null || c.rulesRevision === 1) {
@@ -141,7 +174,8 @@ export function parseConfig(raw) {
   }
   validate(c);
   // Only the current schema is persisted; imported legacy knobs cannot alter rules.
-  return Object.fromEntries(Object.keys(defaults()).map(k => [k, structuredClone(c[k])]));
+  const optional=['roundRondel','conversionMachines','machinesRequireOpenRow','finalCoinPV','finalCoinsPerPV'];
+  return Object.fromEntries([...Object.keys(defaults()),...optional.filter(k=>Object.hasOwn(c,k))].map(k => [k, structuredClone(c[k])]));
 }
 export function playableConfig(c, humans = 1, pace = 'rapid') {
   integer(humans, 1, c.players, 'Giocatori umani');

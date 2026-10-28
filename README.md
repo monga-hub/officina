@@ -14,6 +14,19 @@ Sul telefono il tavolo si ridimensiona per mostrare insieme fabbrica, stella e c
 
 Il tavolo usa cerchi dorati per i marchi e quadrati verde chiaro per i PV, con il numero all’interno. Le risorse restano quadrati rossi, blu e gialli. Operaio, ingranaggio e freccia indicano sviluppo, macchinario e conversione: la legenda **Simboli** è disponibile sotto il tavolo.
 
+## Ultima versione testata · 28 ottobre 2026
+
+In **Gioca**, premi **Gioca l’ultima versione testata** per caricare e avviare le regole delle ultime cinque prove, anche se nel browser hai ancora altre impostazioni. Usa il numero di giocatori umani e la velocità IA selezionati nella stessa schermata. Le partite già salvate conservano le proprie regole.
+
+- **3 giocatori, 28 turni, cinque righe da quattro caselle**, sviluppo fino a20. Il rendimento delle risorse si sblocca raggiungendo o superando la singola casella; la tensione copre le prime righe.
+- **Rondella gratuita dopo i turni9 e18** di tutti i giocatori: primo ingresso su qualsiasi politica attiva; dopo l’ingresso puoi restare o avanzare fino a tre passi. Nessun gettone dal movimento, nessuna carta premio. Primo periodo senza politiche. Ordine: Cooperazione, Innovazione, Affidabilità, Integrazione, Mutuo soccorso, Formazione. Caselle condivise.
+- **Welfare:** acquisti da uno a tre gettoni a un marco ciascuno; alimentano la banca comune. Disponibili dal turno successivo.
+- **Repressione gratuita:** azzera un reparto, aumenta gli altri di1 e saccheggia la banca fino alla tensione eliminata e ai fondi disponibili.
+- **Macchinari:** fissi, tensione×3 e Continuità (un marco per ogni riga raggiunta e libera, anche parziale). Incasso immediato all’installazione; tutti spenti se il reparto non ha righe raggiunte libere. Conversioni soltanto con Mutuo soccorso.
+- **Punteggio:** commesse più un PV ogni10marchi finali, arrotondato per difetto. Tutte36le commesse disponibili.
+
+Il motore conserva le regole precedenti per le configurazioni personalizzate e i salvataggi. La modalità rapida usa d2/r1 per ridurre l’attesa al tavolo; **Approfondito** usa d6/r1 come i test. Le sezioni di riferimento sotto descrivono anche le modalità precedenti.
+
 ## Avvio locale dai sorgenti
 
 Richiede Node.js 22 e npm.

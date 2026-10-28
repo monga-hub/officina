@@ -1,21 +1,28 @@
-import { rowTrackModel, inferTrackModel } from './data.js';
+import { WELFARE_POLICIES } from './welfare-rondel.js';
+import { rowTrackModel, inferTrackModel, activeTrackRange } from './data.js';
 
 // Variante ottobre: valori sperimentali, separati dai salvataggi precedenti.
 export const ROW_ECONOMY_DEFAULT = {
-  enabled: false, welfareMode: 'permanent', welfareCost: 3, welfareScope: 'department', welfareHireDiscount: false, sameNationHireDiscount: false, repressionBase: 2, repressionStep: 1,
-  contractCoins: { small: 2, medium: 3, large: 4 }, machineCash: true, tensionMachineCash: false, productionThresholds: null, milestoneResource: false, machineImmediate: false, welfareRondel: false,
+  enabled: false, welfareBank: false, welfareMode: 'permanent', welfareCost: 3, welfareScope: 'department', welfareHireDiscount: false, sameNationHireDiscount: false, repressionBase: 2, repressionStep: 1,
+  contractCoins: { small: 2, medium: 3, large: 4 }, machineCash: true, tensionMachineCash: false, productionThresholds: null, productionUnlock: 'rows', tensionDirection: 'opposed', milestoneResource: false, machineImmediate: false, welfareRondel: false,
 };
 export function normalizeRowEconomy(raw = {}) {
   const x = { ...ROW_ECONOMY_DEFAULT, ...(raw || {}) };
+  x.productionUnlock = x.productionUnlock === 'cells' ? 'cells' : 'rows';
+  x.tensionDirection = x.tensionDirection === 'same' ? 'same' : 'opposed';
   x.enabled = x.enabled === true;
   x.machineCash = x.machineCash !== false;
   x.welfareMode = x.welfareMode === 'tokens' ? 'tokens' : 'permanent';
+  x.welfareBank = x.welfareBank === true && x.welfareMode === 'tokens';
   x.welfareScope = x.welfareScope === 'factory' ? 'factory' : 'department';
   x.welfareHireDiscount = x.welfareMode !== 'tokens' && x.welfareHireDiscount === true;
   x.sameNationHireDiscount = x.sameNationHireDiscount === true;
   x.tensionMachineCash = x.tensionMachineCash === true;
   x.milestoneResource = x.milestoneResource === true;
   x.machineImmediate = x.machineImmediate === true;
+  x.welfarePoliciesEnabled = Object.fromEntries(WELFARE_POLICIES.map(p => [p.id, x.welfarePoliciesEnabled?.[p.id] !== false]));
+  x.welfareFreeEntry = raw?.welfareFreeEntry !== false;
+  x.welfareMaxSteps = raw?.welfareMaxSteps === 3 ? 3 : 6;
   x.welfareRondel = x.welfareRondel === true && x.welfareMode === 'tokens';
   x.productionThresholds = Array.isArray(x.productionThresholds) ? [...x.productionThresholds] : null;
   for (const k of ['welfareCost', 'repressionBase', 'repressionStep'])
@@ -33,7 +40,7 @@ export function availableWelfareTokens(state, p) {
   if (flags?.welfareTokenUsed) return 0;
   return Math.max(0, (p.welfareTokens || 0) - (flags?.welfareTokensPurchased || 0));
 }
-export const repressionCost = (state, p) => state.rowEconomy.repressionBase + (tokenWelfare(state) ? 0 : state.rowEconomy.repressionStep * (p.repressions || 0));
+export const repressionCost = (state, p) => state.rowEconomy.welfareBank ? 0 : state.rowEconomy.repressionBase + (tokenWelfare(state) ? 0 : state.rowEconomy.repressionStep * (p.repressions || 0));
 export const rowNodeLabel = (state, node) => state.rowEconomy?.enabled
   ? ({ Servizi: 'Welfare', Sindacato: 'Repressione', Borsa: 'Città' }[node] || node)
   : ({ Servizi: 'Fabbriche', Borsa: 'Città' }[node] || node);
@@ -53,6 +60,7 @@ export function rowEconomyConfig(config) {
 export function rowMachineCard(w, options) {
   if (w.power || !w.effect?.verbo) return w;
   const f = w.effect;
+  if (f.continuity) return w;
   if (options.tensionMachineCash && f.verbo === 'perOgni' && f.f2?.conta === 'tensione' && f.f1?.tipo === 'moneta') return w;
   if (!['prendi', 'perOgni'].includes(f.verbo)) return w;
   const f1 = { ...f.f1, ...(options.machineCash ? { tipo: 'moneta' } : {}) };
@@ -65,4 +73,25 @@ export function tensionMachineCard(w) {
   if (![3, 4].includes(w.v) || current.effect?.verbo !== 'prendi' || current.effect.f1?.tipo !== 'moneta' || current.effect.f1.q !== 1) return w;
   return { ...w, effect: { verbo: 'perOgni', f1: { q: 1, tipo: 'moneta' }, f2: { conta: 'tensione' } },
     effectText: 'Incassa marchi pari alla tensione del reparto prima della produzione.' };
+}
+
+// Curve values are complete rewards, rather than a per-level multiplier.
+export function tensionMachineIncome(effect, tension) {
+  const curve = effect.tensionRewards;
+  return Array.isArray(curve) && curve.length
+    ? curve[Math.min(Math.max(0, tension), curve.length - 1)]
+    : effect.f1.q * tension;
+}
+
+// Experimental Continuity: count entered physical rows still accessible before tension rises.
+export function continuityIncome(state, dept, amount = 1, rowsPerCoin = 1) {
+  const options = state.rowEconomy, layout = rowTrackModel(state.trackModel);
+  const range = activeTrackRange(dept.prod, dept.tension, state.trackModel, true, options.productionThresholds, options.productionUnlock, options.tensionDirection);
+  const freeRows = range.available ? Math.ceil(range.end / layout.columns) - Math.floor((range.start - 1) / layout.columns) : 0;
+  return amount * Math.floor(freeRows / rowsPerCoin);
+}
+
+// Machines need an entered, uncovered physical row; a resource on that row is not required.
+export function machinesOperational(state, dept) {
+  return !state.rowEconomy?.machinesRequireOpenRow || continuityIncome(state, dept, 1, 1) > 0;
 }

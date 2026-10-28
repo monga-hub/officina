@@ -1,35 +1,38 @@
 import React, { useState } from 'react';
-import { WELFARE_POLICIES, rondelEnabled, welfarePolicy } from '../game/welfare-rondel.js';
+import { WELFARE_POLICIES, WELFARE_DISPLAY_POLICIES, welfareMaxSteps, freeWelfareEntry, rondelEnabled, welfarePolicy, welfarePolicyEnabled } from '../game/welfare-rondel.js';
 
 export default function WelfareRondel({ state, player, legal = [], dispatch }) {
-  const [selectedSteps, setSteps] = useState(1), [firstPosition, setFirstPosition] = useState(0);
+  const [selectedSteps, setSteps] = useState(1), [firstPosition, setFirstPosition] = useState(1);
   if (!rondelEnabled(state)) return null;
   const first = player.welfarePosition == null;
+  const freeFirst = first && freeWelfareEntry(state);
   const commands = legal.filter(c => c.type === 'investWelfare');
   const steps = commands.some(c => c.steps === selectedSteps) ? selectedSteps : commands[0]?.steps ?? 1;
-  const position = first ? firstPosition : (player.welfarePosition + steps) % 6;
+  const position = freeFirst ? (commands.some(c=>c.steps===steps&&c.position===firstPosition)?firstPosition:commands.find(c=>c.steps===steps)?.position??firstPosition) : ((player.welfarePosition ?? 0) + steps) % 6;
   const choice = commands.find(c => c.steps === steps && c.position === position);
   const active = welfarePolicy(state, player);
-  return <section className="welfare-rondel" aria-label={`Rondella Welfare · ${player.name}`}>
-    <h3>Rondella Welfare · {player.name}</h3>
-    <p>{active ? <>Politica attiva: <b>{active.name}</b>. {active.description}</> : 'Nessuna politica attiva: scegli al primo ingresso nel Welfare.'}</p>
+  return <section className="welfare-rondel" aria-label={`Rondella · ${player.name}`}>
+    <h3>Rondella · {player.name}</h3>
+    <p>{active ? <>Politica attiva: <b>{active.name}</b>. {active.description}</> : (state.roundRondel ? 'Nessuna politica attiva: scegli gratuitamente alla fine del round (dopo i turni 9 e 18).' : freeWelfareEntry(state) ? 'Nessuna politica attiva: scegli al primo ingresso nel Welfare.' : 'Partenza: prima della casella 1, Cooperazione. Nessuna politica attiva.')}</p>
     {dispatch && <>
-      <p><b>1 marco = 1 passo = 1 gettone.</b> Da 1 a 6 passi; 6 fanno un giro completo. {first ? 'Al primo ingresso scegli liberamente la politica.' : 'Avanza in senso orario fino alla destinazione evidenziata.'}</p>
-      <div className="rondel-steps" role="group" aria-label="Passi della rondella">{[1,2,3,4,5,6].map(n => <button key={n} aria-pressed={steps === n} disabled={!commands.some(c => c.steps === n)} onClick={() => setSteps(n)}>{n} {n === 1 ? 'passo' : 'passi'}</button>)}</div>
+      <p><b>1 marco = 1 passo = 1 gettone.</b> Da 1 a {welfareMaxSteps(state)} passi per visita. {freeFirst ? 'Al primo ingresso scegli liberamente la politica.' : first ? 'Parti prima di Cooperazione: 1 passo Cooperazione, 2 Innovazione, 3 Affidabilità. Formazione richiede almeno due visite.' : 'Avanza in senso orario fino alla destinazione evidenziata.'}</p>
+      <div className="rondel-steps" role="group" aria-label="Passi della rondella">{Array.from({length:welfareMaxSteps(state)}, (_, i) => i + 1).map(n => <button key={n} aria-pressed={steps === n} disabled={!commands.some(c => c.steps === n)} onClick={() => setSteps(n)}>{n} {n === 1 ? 'passo' : 'passi'}</button>)}</div>
     </>}
-    <ol className="rondel-policies">{WELFARE_POLICIES.map((policy, i) => {
+    <ol className="rondel-policies">{WELFARE_DISPLAY_POLICIES.map((policy, displayIndex) => {
+      const i = WELFARE_POLICIES.indexOf(policy);
+      const enabled = welfarePolicyEnabled(state,policy);
       const occupants = state.players.filter(p => p.welfarePosition === i);
       const selected = dispatch && position === i;
-      return <li key={policy.id} className={selected ? 'rondel-destination' : ''}>
-        {dispatch && first ? <button aria-pressed={selected} onClick={() => setFirstPosition(i)}><b>{i + 1}. {policy.name}</b> →</button> : <strong>{i + 1}. {policy.name} →</strong>}
+      return <li key={policy.id} className={`${selected&&enabled?'rondel-destination':''} ${enabled?'':'rondel-disabled'}`}>
+        {dispatch && freeFirst ? <button disabled={!enabled} aria-pressed={selected&&enabled} onClick={() => setFirstPosition(i)}><b>{displayIndex + 1}. {policy.name}{!enabled&&' · OFF'}</b> →</button> : <strong>{displayIndex + 1}. {policy.name}{!enabled&&' · OFF'} →</strong>}
         <p>{policy.description}</p>
         <div className="rondel-occupants">{occupants.map(p => <span key={p.id} style={{ borderColor: p.color }}><i style={{ background: p.color }} aria-hidden="true"/> {p.name}</span>)}</div>
       </li>;
     })}</ol>
-    <small>Spazi attraversabili e condivisi. Ogni meeple conserva il proprio bonus fino al prossimo spostamento.</small>
+    <small>Spazi attraversabili e condivisi. Le caselle OFF contano come passi ma non sono destinazioni disponibili. Ogni meeple conserva il proprio bonus fino al prossimo spostamento.</small>
     {dispatch && <>
       <p>Gettoni: <b>{player.welfareTokens || 0} → {(player.welfareTokens || 0) + steps}</b>; i nuovi si usano dal turno successivo.</p>
-      <button className="primary" disabled={!choice} onClick={() => dispatch(choice)}>{choice ? `Paga ${steps} ${steps === 1 ? 'marco' : 'marchi'} · ${WELFARE_POLICIES[position].name} · +${steps} ${steps === 1 ? 'gettone' : 'gettoni'}` : 'Serve almeno 1 marco per l’azione Welfare'}</button>
+      <button className="primary" disabled={!choice} onClick={() => dispatch(choice)}>{choice ? `Paga ${steps} ${steps === 1 ? 'marco' : 'marchi'} · ${WELFARE_POLICIES[position].name} · +${steps} ${steps === 1 ? 'gettone' : 'gettoni'}` : 'Nessuna destinazione raggiungibile e pagabile: controlla marchi e caselle ON'}</button>
     </>}
   </section>;
 }

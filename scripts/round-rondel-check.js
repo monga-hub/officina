@@ -11,7 +11,7 @@ import { gameSession, saveGame, loadGame } from '../src/lab/saved-game.js';
 const preset=JSON.parse(fs.readFileSync(new URL('../src/lab/latest-playtest.json',import.meta.url),'utf8'));
 // Preserve coverage of the previous six-position saved-game rules.
 delete preset.finalResourcePV;delete preset.finalResourcesPerPV;
-delete preset.roundRondel.startingPolicy;delete preset.roundRondel.extraStepCost;delete preset.roundRondel.mandatoryMove;preset.roundRondel.freeEntry=true;
+delete preset.roundRondel.fundThresholds;delete preset.roundRondel.startingPolicy;delete preset.roundRondel.extraStepCost;delete preset.roundRondel.mandatoryMove;preset.roundRondel.freeEntry=true;
 validate(preset);assert.deepEqual(parseConfig(JSON.stringify(preset)),preset);
 assert.throws(()=>validate({...preset,players:2}),/3 giocatori/);
 assert.throws(()=>validate({...preset,turns:32}),/28 turni/);

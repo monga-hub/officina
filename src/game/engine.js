@@ -1,3 +1,4 @@
+import {WELFARE_FUNDS,fundBalances,policyBoosted,welfareAllocations,changeFund,allocationLabel} from './welfare-funds.js';
 import { initRoundRondel, beginRoundRondel, roundRondelCommands, applyRoundRondel } from './round-rondel.js';
 import { initRoundAwards, beginRoundAwards, roundAwardCommands, applyRoundAward, roundVoucherDiscount, spendRoundVoucher } from './round-awards.js';
 // Engine di Officina 1907 — regole dal regolamento giocatore + plance 26.
@@ -381,6 +382,7 @@ const PLAYER_COLORS = ['#c0392b', '#2471a3', '#1e8449', '#b7950b'];
 
 // ---------- Setup ----------
 export function initGame(config) {
+  searchLegalCommands = new WeakMap();
   config = rowEconomyConfig(config);
   // config: { seed, players: [{ name, isAI }] } — plancia unica, non più scelta per giocatore
   const seed = config.seed ?? Math.floor(Math.random() * 2 ** 31);
@@ -733,7 +735,7 @@ export function hireCostBeforeVoucher(state, p, w, role, side) {
   const nationDiscount = state.rowEconomy?.enabled && state.rowEconomy.sameNationHireDiscount && side === 'sopra' && !w.power
     ? (d?.sopra || []).filter(id => WORKER_BY_ID[id]?.nation === w.nation).length : 0;
   const policy = welfarePolicy(state, p)?.id;
-  const policyDiscount = !w.power && ((side === 'sotto' && policy === 'innovation') || (side === 'sopra' && policy === 'affinity' && d?.sopra.some(id => WORKER_BY_ID[id]?.nation === w.nation)) || (side === 'sopra' && policy === 'integration' && !d?.sopra.some(id => WORKER_BY_ID[id]?.nation === w.nation))) ? 1 : 0;
+  const policyDiscount = !w.power && ((side === 'sotto' && policy === 'innovation') || (side === 'sopra' && policy === 'affinity' && d?.sopra.some(id => WORKER_BY_ID[id]?.nation === w.nation)) || (side === 'sopra' && policy === 'integration' && !d?.sopra.some(id => WORKER_BY_ID[id]?.nation === w.nation))) ? (policyBoosted(state,policy)?2:1) : 0;
   return Math.max(state.rowEconomy?.enabled ? 1 : 0, w.v - policyDiscount - structHireDiscount(p, p.node) - welfareDiscount - nationDiscount) + surcharge;
 }
 
@@ -1608,7 +1610,18 @@ function refreshWelfareMarket(state, cause) {
 }
 
 // ---------- Mosse legali ----------
+let searchLegalCommands = new WeakMap();
 export function legalCommands(state) {
+  if (!state[SEARCH_ONLY]) return legalCommandsInner(state);
+  // Search states keep their game data immutable; callers may reorder the returned list.
+  let commands = searchLegalCommands.get(state);
+  if (!commands) {
+    commands = legalCommandsInner(state);
+    searchLegalCommands.set(state, commands);
+  }
+  return commands.slice();
+}
+function legalCommandsInner(state) {
   if (state.gameOver) return [];
   if (state.phase === 'roundAwards') return roundAwardCommands(state);
   if (state.phase === 'roundRondel') return roundRondelCommands(state);
@@ -1702,7 +1715,7 @@ export function legalCommands(state) {
         select([], 0);
       }
     } else if (node === 'Servizi' && state.rowEconomy?.enabled) {
-      if(state.roundRondel){for(let count=1;count<=state.roundRondel.tokenMax&&count*state.roundRondel.tokenCost<=p.coins;count++)cmds.push({type:'investWelfare',count});}
+      if(state.roundRondel){for(let count=1;count<=state.roundRondel.tokenMax&&count*state.roundRondel.tokenCost<=p.coins;count++){if(fundBalances(state))for(const funds of welfareAllocations(count))cmds.push({type:'investWelfare',count,funds});else cmds.push({type:'investWelfare',count});}}
       else if (rondelEnabled(state)) cmds.push(...welfareRondelCommands(state, p));
       else if (p.coins >= state.rowEconomy.welfareCost) {
         if (tokenWelfare(state) || state.rowEconomy.welfareScope === 'factory') {
@@ -1745,7 +1758,7 @@ export function legalCommands(state) {
       }
     } else if (node === 'Sindacato' && state.rowEconomy?.enabled) {
       if (p.coins >= repressionCost(state, p)) for (const role of DEPT_ROLES)
-        if (p.depts[role].tension > 0) cmds.push({ type: 'repress', role });
+        if (p.depts[role].tension > 0) {if(fundBalances(state))for(const f of WELFARE_FUNDS)cmds.push({type:'repress',role,fund:f.id});else cmds.push({ type: 'repress', role });}
     } else if (node === 'Sindacato') {
       // ss può essere null se lo stato non arriva da un 'move' su Sindacato (partita ricaricata, test):
       // stesso guardia-opzionale degli altri usi sopra, altrimenti legalCommands esplode.
@@ -1949,6 +1962,7 @@ function cloneSearchDept(dept, side) {
   return copy;
 }
 function cloneSearchPlayer(player, cmd) {
+  if (cmd.type === 'advanceRoundRondel' || cmd.type === 'keepRoundRondel') return cloneActingPlayer(player);
   const copy = { ...player, resources: { ...player.resources } };
   if (cmd.type === 'completeContract') copy.contractsWon = player.contractsWon.slice();
   if (cmd.type === 'activate') copy.tileGains = deepClone(player.tileGains);
@@ -1980,7 +1994,7 @@ function cloneActingPlayer(player) {
 }
 // Nel regolamento a righe queste azioni toccano solo il giocatore e le collezioni elencate.
 // Gli altri comandi e le modalità storiche mantengono la copia generale.
-const LOCAL_ROW_COMMANDS = new Set(['move','hire','activate','investWelfare','repress','spendWelfareToken','skipWelfareToken','resolveEffect','refreshMarket','completeContract','endTurn','pass','borsaExit','exchange']);
+const LOCAL_ROW_COMMANDS = new Set(['move','hire','activate','investWelfare','repress','spendWelfareToken','skipWelfareToken','resolveEffect','refreshMarket','completeContract','endTurn','pass','borsaExit','exchange','advanceRoundRondel','keepRoundRondel']);
 function cloneLocalRows(prev, cmd) {
   const players = prev.players.slice(), p = prev.players[prev.current];
   const s = { ...prev, players, log: prev.headless || prev[SEARCH_ONLY] ? prev.log : prev.log.slice() };
@@ -2079,7 +2093,8 @@ export function applyCommand(prev, cmd) {
       const cost = roundMode ? cmd.count*state.roundRondel.tokenCost : rondel ? cmd.steps : state.rowEconomy.welfareCost;
       const gainedTokens = roundMode ? cmd.count : rondel ? cmd.steps : 3;
       spendCoins(p, 'welfare', cost);
-      if(state.rowEconomy.welfareBank)state.welfareBank=(state.welfareBank||0)+cost;
+      if(fundBalances(state))for(const f of WELFARE_FUNDS)changeFund(state,f.id,cmd.funds[f.id]);
+      else if(state.rowEconomy.welfareBank)state.welfareBank=(state.welfareBank||0)+cost;
       const factory = state.rowEconomy.welfareScope === 'factory';
       if (tokenWelfare(state)) {
         p.welfareTokens = (p.welfareTokens || 0) + gainedTokens;
@@ -2092,7 +2107,7 @@ export function applyCommand(prev, cmd) {
         if (!state[SEARCH_ONLY]) p.welfareRondelStats.visits.push({ turn: state.turn, position: cmd.position, steps: cmd.steps });
       }
       p.industrialStats.welfareBuys++; p.industrialStats.welfareSpent += cost;
-      log(state, `${p.name}: investe ${cost} marchi in welfare, ${tokenWelfare(state) ? `${gainedTokens} gettoni utilizzabili dal prossimo turno${rondel&&!roundMode ? '; politica ' + WELFARE_POLICIES[cmd.position].name : ''}` : factory ? 'tutti e tre i reparti' : p.depts[cmd.role].sector}.`);
+      log(state, `${p.name}: investe ${cost} marchi in welfare, ${tokenWelfare(state) ? `${gainedTokens} gettoni utilizzabili dal prossimo turno${cmd.funds?'; fondi: '+allocationLabel(cmd.funds):''}${rondel&&!roundMode ? '; politica ' + WELFARE_POLICIES[cmd.position].name : ''}` : factory ? 'tutti e tre i reparti' : p.depts[cmd.role].sector}.`);
       finishTurn(state); return state;
     }
     case 'repress': {
@@ -2100,7 +2115,7 @@ export function applyCommand(prev, cmd) {
       spendCoins(p, 'repressione', cost);
       d.tension = tokenWelfare(state) ? 0 : Math.max(0, d.tension - 2);
       let loot=0;
-      if(state.rowEconomy.welfareBank){loot=Math.min(tensionBefore-d.tension,state.welfareBank||0);state.welfareBank-=loot;addCoins(state,p,loot,'welfareLoot');}
+      if(state.rowEconomy.welfareBank){loot=Math.min(tensionBefore-d.tension,fundBalances(state)?fundBalances(state)[cmd.fund]:state.welfareBank||0);if(fundBalances(state))changeFund(state,cmd.fund,-loot);else state.welfareBank-=loot;addCoins(state,p,loot,'welfareLoot');}
       if (tokenWelfare(state)) for (const role of DEPT_ROLES) {
         if (role === cmd.role) continue;
         const other = p.depts[role], before = other.tension;
@@ -2108,7 +2123,7 @@ export function applyCommand(prev, cmd) {
         p.industrialStats.tensionExternal += other.tension - before;
       }
       p.repressions++; p.industrialStats.repressions++; p.industrialStats.repressionSpent += cost;
-      log(state, `${p.name}: repressione ${d.sector}, paga ${cost} marchi${state.rowEconomy.welfareBank?`, ruba ${loot} marchi dalla banca Welfare (restano ${state.welfareBank})`:''}, tensione a ${d.tension}${tokenWelfare(state) ? '; altri reparti: ' + DEPT_ROLES.filter(role => role !== cmd.role).map(role => `${p.depts[role].sector} ${p.depts[role].tension}`).join(', ') : ''}.`);
+      log(state, `${p.name}: repressione ${d.sector}, paga ${cost} marchi${state.rowEconomy.welfareBank?`, ruba ${loot} marchi ${cmd.fund?'dal fondo '+WELFARE_FUNDS.find(f=>f.id===cmd.fund).name:'dalla banca Welfare'} (cassa totale ${state.welfareBank})`:''}, tensione a ${d.tension}${tokenWelfare(state) ? '; altri reparti: ' + DEPT_ROLES.filter(role => role !== cmd.role).map(role => `${p.depts[role].sector} ${p.depts[role].tension}`).join(', ') : ''}.`);
       finishTurn(state); return state;
     }
     case 'buyPolicy': return doBuyPolicy(state, p, cmd);
@@ -2306,8 +2321,8 @@ function doHire(state, p, cmd) {
     if (dept.slotTurn.sopra[dept.sopra.length - 1] == null) dept.slotTurn.sopra[dept.sopra.length - 1] = state.turn;
     log(state, `${p.name} assume ${w.nation} ${w.sector} [V${w.v}] Sopra in ${dept.sector}.`);
     const development = state.rowTrack ? (state.rowEconomy?.enabled ? w.v : paid) : state.industrial.enabled && state.industrial.development === 'workers' ? 1 : w.v;
-    const training = policy === 'formation' ? 1 : 0;
-    if (training) recordWelfareBenefit(p, policy, Math.min(1, Math.max(0, state.trackMax - dept.prod - development)));
+    const training = policy === 'formation' ? (policyBoosted(state,policy)?2:1) : 0;
+    if (training) recordWelfareBenefit(p, policy, Math.min(training, Math.max(0, state.trackMax - dept.prod - development)));
     advanceTrack(state, p, dept, development + training, 'assunzione Sopra');
   } else {
     dept.sotto.push(w.id);
@@ -2362,13 +2377,14 @@ function doActivate(state, p, sector, intensity = 1, sustainableRow = null, welf
   const trackAmt = (p.coins - ct0) + (totalResources(p) - rt0);
   const policy = welfarePolicy(state, p)?.id;
   if (policy === 'cooperation' && new Set(dept.sopra.map(id => WORKER_BY_ID[id]?.nation)).size >= 2) {
-    addCoins(state, p, 1, 'politicaWelfare');
-    recordWelfareBenefit(p, policy, 1);
+    const amount=policyBoosted(state,policy)?2:1;
+    addCoins(state, p, amount, 'politicaWelfare');
+    recordWelfareBenefit(p, policy, amount);
   }
   if (policy === 'mutualAid' && totalResources(p) > rt0) {
     const card = { id: 'welfare-mutual-aid', sector, effectText: 'Mutuo soccorso: converti una risorsa appena prodotta', effect: { verbo: 'scambia', f1: { q: 1, tipo: 'risorsa', settore: sector }, f2: { q: 1, tipo: 'risorsa', settore: 'scelta' } } };
-    p.convAttempts.risorsaRisorsa++;
-    state.pendingQueue.push({ type: 'effect', playerId: p.id, role: dept.role, card, welfareRondel: true });
+    const count=Math.min(policyBoosted(state,policy)?2:1,totalResources(p)-rt0);
+    for(let i=0;i<count;i++){p.convAttempts.risorsaRisorsa++;state.pendingQueue.push({ type: 'effect', playerId: p.id, role: dept.role, card, welfareRondel: true });}
     advancePending(state);
   }
   // 3. Carte Sotto non bloccate. Se factoryActivates è ON, ogni carta scatta N volte = fabbriche del settore
@@ -2777,8 +2793,9 @@ function doContract(state, p, cmd) {
   const pv = slot.card.pv[place];
   if (state.rowEconomy?.enabled) addCoins(state, p, state.rowEconomy.contractCoins[cmd.size], 'commessa');
   if (welfarePolicy(state, p)?.id === 'reliability') {
-    addCoins(state, p, 2, 'politicaWelfare');
-    recordWelfareBenefit(p, 'reliability', 2);
+    const amount=policyBoosted(state,'reliability')?4:2;
+    addCoins(state, p, amount, 'politicaWelfare');
+    recordWelfareBenefit(p, 'reliability', amount);
   }
   p.contractsWon.push({ cardId: slot.card.id, size: cmd.size, place, pv, reqIndex: cmd.reqIndex, req: [...req], turn: state.turn });
   // carta-motore sotto la Direzione: da ora produce ogni turno la risorsa dominante × forza-settore (config)

@@ -1,3 +1,4 @@
+import {WELFARE_FUNDS,fundBalances} from '../game/welfare-funds.js';
 import { initGame, scorePlayer } from '../game/engine.js';
 import { withoutTrackPoints } from './config.js';
 import { welfarePolicies, rondelEnabled } from '../game/welfare-rondel.js';
@@ -11,6 +12,7 @@ function validState(state,config) {
     &&state.nPlayers===state.players.length&&Number.isInteger(state.current)&&state.current>=0&&state.current<state.players.length
     &&Number.isInteger(state.turn)&&state.turn>0&&['move','action','borsa','resolving','roundRondel','done'].includes(state.phase)
     &&(state.phase!=='roundRondel'||(state.roundRondel?.active&&Array.isArray(state.roundRondel.log)&&Array.isArray(state.roundRondel.completed)&&state.roundRondel.active.order[state.roundRondel.active.at]===state.current))
+    &&(!state.roundRondel?.fundThresholds||(fundBalances(state)&&Object.keys(fundBalances(state)).length===3&&WELFARE_FUNDS.every(f=>Number.isInteger(fundBalances(state)[f.id])&&fundBalances(state)[f.id]>=0)&&Object.values(fundBalances(state)).reduce((a,b)=>a+b,0)===state.welfareBank))
     &&state.banks&&state.tracks&&state.contracts&&Array.isArray(state.log)&&Array.isArray(state.pendingQueue)
     &&state.players.every(p=>p.resources&&p.depts&&ROLES.every(role=>Array.isArray(p.depts[role]?.sopra)&&Array.isArray(p.depts[role]?.sotto)))
     &&(!rondelEnabled(state)||state.players.every(p=>(p.welfarePosition===null||(Number.isInteger(p.welfarePosition)&&p.welfarePosition>=0&&p.welfarePosition<welfarePolicies(state).length))

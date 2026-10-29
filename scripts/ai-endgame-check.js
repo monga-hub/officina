@@ -69,7 +69,7 @@ for (const mode of ['normal', 'rotated', 'snake']) {
 // Differential check: restore only the former repeated action calculation, with the same corrected policy.
 const url = new URL('../src/game/ai.js', import.meta.url);
 let source = fs.readFileSync(url, 'utf8').replace('const GREEDY_CACHE_LIMIT = 5000;', 'const GREEDY_CACHE_LIMIT = 0;');
-const start = source.indexOf('function forwardStep(state) {'), stop = source.indexOf('\nfunction playForward', start);
+const start = source.indexOf('function forwardStep('), stop = source.indexOf('\nfunction playForward', start);
 assert.ok(start > 0 && stop > start);
 source = source.slice(0, start) + `function forwardStep(state) {
   const cmd = chooseCommand(state);

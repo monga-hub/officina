@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { initGame, applyCommand } from './game/engine.js';
-import { chooseCommand, deciderId } from './game/ai.js';
+import { chooseTimedCommand as chooseCommand, deciderId } from './game/ai.js';
 import SetupScreen from './components/SetupScreen.jsx';
 import GameScreen from './components/GameScreen.jsx';
 import EndScreen from './components/EndScreen.jsx';

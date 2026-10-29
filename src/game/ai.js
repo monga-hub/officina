@@ -13,6 +13,55 @@ import {
 import { activeWorkers, policiesOf, welfareEfficiency, wellbeing } from './industrial.js';
 import { machinesOperational, tensionMachineIncome, tokenWelfare } from './row-economy.js';
 
+// One clock and one forecast horizon for the whole real decision, including nested probes.
+const SEARCH_TIMEOUT = Symbol('search timeout');
+let timedSearch = null, forecastEnd = Infinity, welfareProbe = false;
+function checkSearchTime() {
+  if (timedSearch && performance.now() >= timedSearch.deadline) throw SEARCH_TIMEOUT;
+}
+function withinForecast(end, run) {
+  const previous = forecastEnd;
+  forecastEnd = Math.min(previous, end);
+  try { return run(); } finally { forecastEnd = previous; }
+}
+export let lastDecision = null;
+// Legacy chooseCommand remains available for paired reference checks and frozen studies.
+export function chooseTimedCommand(state, { budgetMs } = {}) {
+  if (timedSearch) return chooseCommand(state);
+  if (budgetMs !== undefined && (!Number.isFinite(budgetMs) || budgetMs <= 0)) throw new Error('Invalid AI budget');
+  if (state.gameOver) return null;
+  if (state.phase === 'action' && plannedAction?.key === planKey(state)) {
+    const started = performance.now(), command = chooseCommand(state);
+    lastDecision = { ms: performance.now() - started, completedDepth: 0, timedOut: false, reusedPlan: true };
+    return command;
+  }
+  const started = performance.now(), legal = legalCommands(state);
+  // Compare the whole movement plan: extra Welfare time at arrival would reuse a shallow choice.
+  budgetMs ??= !state.pending && state.aiRollout && state.contractsOnly && tokenWelfare(state)
+    && legal.some(c => c.type === 'investWelfare' || (state.phase === 'move' && c.type === 'move' && c.node === 'Servizi'))
+    ? 15000 : 3000;
+  let command = legal[0] || null, savedPlan = null, completedDepth = -1, timedOut = false;
+  const requested = state.aiRollout?.depth ?? 0;
+  // Reserve time for the final engine operation and returning the completed choice.
+  timedSearch = { deadline: started + Math.max(0, budgetMs - 20), moveForecast: state.phase === 'move' && state.contractsOnly && tokenWelfare(state) };
+  try {
+    for (let depth = 0; depth <= requested; depth++) {
+      checkSearchTime();
+      plannedAction = null;
+      const candidate = chooseCommand({ ...state, ...(depth === 0 && state.phase === 'roundRondel' ? { aiRoundRondelProbe: true } : {}), aiRollout: depth ? { ...state.aiRollout, depth } : null });
+      if (candidate) { command = candidate; savedPlan = plannedAction && state.phase === 'move' ? { ...plannedAction, key: planKey(applyCommand(state, candidate)) } : plannedAction; completedDepth = depth; }
+    }
+  } catch (error) {
+    if (error !== SEARCH_TIMEOUT) throw error;
+    timedOut = true;
+  } finally {
+    timedSearch = null; forecastEnd = Infinity; welfareProbe = false;
+    plannedAction = savedPlan;
+    lastDecision = { ms: performance.now() - started, budgetMs, completedDepth, requestedDepth: requested, timedOut };
+  }
+  return command;
+}
+
 // profiler artigianale per il rollout: contatori + tempo per bucket, azzerati a mano con resetRolloutStats().
 // Copre le chiamate applyCommand fatte da ai.js (playForward, bestActionAt, bestActionAtRollout) — non quelle
 // altrove nel motore (UI, altri path) — sufficiente a capire dove va il tempo dentro un rollout.
@@ -23,12 +72,13 @@ export const rolloutStats = {
   msApplyCommand: 0,
   perDecisionLog: [], // {turn, node, nCandidates, ms} — una riga per ogni decisione rollout (bestActionAtRollout)
   beamCalls: 0, beamExpanded: 0, beamLayers: 0, beamForecasts: 0,
-  tokenDeferredForecasts: 0, tokenRecoveryBranches: 0, reusedMovePlans: 0, greedyCacheHits: 0, greedyCacheMisses: 0, greedyCacheEvictions: 0, needCacheHits: 0, moveCacheHits: 0, moveCacheMisses: 0, sharedPrefixSteps: 0,
+  tokenDeferredForecasts: 0, tokenRecoveryBranches: 0, reusedMovePlans: 0, greedyCacheHits: 0, greedyCacheMisses: 0, greedyCacheEvictions: 0, needCacheHits: 0, moveCacheHits: 0, moveCacheMisses: 0, sharedPrefixSteps: 0, roundCacheHits: 0,
 };
 export function resetRolloutStats() {
   for (const k in rolloutStats) rolloutStats[k] = Array.isArray(rolloutStats[k]) ? [] : 0;
 }
 function timedApply(state, cmd) {
+  checkSearchTime();
   const t0 = performance.now();
   const s = applyCommand(state, cmd);
   rolloutStats.msApplyCommand += performance.now() - t0;
@@ -354,29 +404,41 @@ function decisionPart(value) {
   }
   return part;
 }
+function roundRondelPart(round) {
+  let part = decisionCache.rondels.get(round);
+  if (part === undefined) {
+    // History and checkpoint snapshots are reporting data, not inputs to greedy choices.
+    const { log, active, ...rules } = round;
+    const { snapshots, ...checkpoint } = active || {};
+    part = decisionPart({ ...rules, active: active ? checkpoint : null });
+    decisionCache.rondels.set(round, part);
+  }
+  return part;
+}
 function greedyActionKey(state) {
   const p = currentPlayer(state), own = decisionCache.playerKeys[p.id].map(k => decisionPart(p[k]));
   let contracts = decisionCache.contracts.get(state.contracts);
-  if (contracts === undefined) { contracts = decisionCache.nextId++; decisionCache.contracts.set(state.contracts, contracts); }
+  if (contracts === undefined) { contracts = decisionPart(state.contracts); decisionCache.contracts.set(state.contracts, contracts); }
   let banks = decisionCache.banks.get(state.banks);
   if (banks === undefined) { banks = decisionPart(state.bankIds.map(bank => bankMarket(state, bank))); decisionCache.banks.set(state.banks, banks); }
   // In questa variante l'azione non muove né modifica gli avversari; conta il loro ordine, non le loro scorte.
-  return JSON.stringify([own, contracts, banks, state.turn, state.clock,
+  return JSON.stringify([timedSearch ? [forecastEnd, welfareProbe] : null, own, contracts, banks, state.turn, state.clock,
     state.current, state.welfareBank, state.roundStart, state.roundTurns, state.dir, state.phase, decisionPart(state.turnFlags), defersToken(state, p.id),
     ...(state.roundAwards ? [decisionPart(state.roundAwards), decisionPart(state.players.map(q=>q.depts))] : []),
-    ...(state.roundRondel ? [decisionPart(state.roundRondel),Boolean(state.aiRoundRondelProbe)] : []),
+    ...(state.roundRondel ? [roundRondelPart(state.roundRondel),Boolean(state.aiRoundRondelProbe)] : []),
     state.finalRound, state.endImmediate, decisionPart(state.pendingQueue), decisionPart(state.trackTileStock)]);
 }
 export function chooseCommand(state) {
   const root = !decisionCache && GREEDY_CACHE_LIMIT > 0 && state.aiRollout && state.contractsOnly && state.rowTrack && state.rowEconomy?.enabled
     && !state.contractEngine && !state.borsaFabbriche?.enabled && !state.borsaIndici?.enabled && !state.raceObjectives?.enabled
     && !state.industrial.opponentPressure && state.industrial.welfareScoring !== 'quarter' && state.players.every(p => p.direzione.sotto.length === 0);
-  if (root) decisionCache = { actions: new Map(), moves: new Map(), contracts: new WeakMap(), needs: new WeakMap(), banks: new WeakMap(), parts: new WeakMap(), partValues: new Map(), nextId: 0,
+  if (root) decisionCache = { actions: new Map(), moves: new Map(), rounds: new Map(), contracts: new WeakMap(), needs: new WeakMap(), banks: new WeakMap(), parts: new WeakMap(), rondels: new WeakMap(), partValues: new Map(), nextId: 0,
     playerKeys: state.players.map(p => Object.keys(p).filter(k => !GREEDY_METRICS.has(k))) };
   try { return chooseCommandInner(state); }
   finally { if (root) decisionCache = null; }
 }
 function chooseCommandInner(state) {
+  checkSearchTime();
   if (state.gameOver) return null;
   if (state.phase === 'roundRondel') return chooseRoundRondel(state);
   if (state.phase === 'roundAwards') return chooseRoundAward(state);
@@ -611,20 +673,27 @@ function chooseAction(state, p) {
 
 // rollout: invece di valutare subito dopo 1 mossa, gioca `depth` turni in self-play greedy
 // (chooseCommand su tutti i giocatori) e valuta lì — media su `rollouts` run. Costoso: vedi state.aiRollout.
-function forwardStep(state) {
+function forwardStep(state, commands) {
+  checkSearchTime();
   const plan = !state.pending && state.phase === 'move' ? chooseMove(state, currentPlayer(state)) : null;
   const cmd = plan?.cmd ?? chooseCommand(state);
   if (!cmd) return state;
   let after = timedApply(state, cmd);
+  commands?.push(cmd);
   rolloutStats.stepsSimulated++;
   // Movimento e azione consecutivi: stesso stato deterministico, nessuna cache fra partite.
   if (plan?.action && !after.pending && after.phase === 'action') {
     after = timedApply(after, plan.action);
+    commands?.push(plan.action);
     rolloutStats.stepsSimulated++;
   }
   return after;
 }
-function playForward(state, turns, prefixSteps = 0) {
+function playForward(state, turns, prefixSteps = 0, commands) {
+  if (timedSearch) return withinForecast(state.turn + turns, () => playForwardInner(state, Math.max(0, forecastEnd - state.turn), prefixSteps, commands));
+  return playForwardInner(state, turns, prefixSteps, commands);
+}
+function playForwardInner(state, turns, prefixSteps = 0, commands) {
   state = forkForSearch(state);
   rolloutStats.playForwardCalls++;
   const startTurn = state.turn;
@@ -633,7 +702,7 @@ function playForward(state, turns, prefixSteps = 0) {
   let s = state.aiRollout ? { ...state, aiRollout: null } : state;
   let guard = prefixSteps;
   while (!s.gameOver && (s.turn - startTurn) < turns && guard++ < 4000) {
-    const after = forwardStep(s);
+    const after = forwardStep(s, commands);
     if (after === s) break;
     s = after;
     if (s.aiRollout) s = { ...s, aiRollout: null };
@@ -677,12 +746,13 @@ function pendingOutcomes(state, playerId, branchTokens) {
   }
   return [s];
 }
-function deferredTokenValue(state, depth, playerId, fallback) {
+function deferredTokenValue(state, depth, playerId, fallback, trace) {
   if (state.gameOver || !plansTokens(state, playerId) || !state.players[playerId].welfareTokens) return fallback;
   let best = fallback;
   const endTurn = state.turn + depth;
   let prefix = { ...forkForSearch(state), aiRollout: null, aiTokenPlan: { playerId, notBeforeTurn: endTurn } };
   let prefixSteps = 0, stopped = false;
+  const prefixCommands = trace ? [] : undefined;
   // shortcut: vary the first spending turn, then continue greedily; replan on every real decision.
   // The final schedule holds all tokens through the window. No token value is added to evaluate().
   for (let delay = 1; delay <= depth; delay++) {
@@ -690,21 +760,25 @@ function deferredTokenValue(state, depth, playerId, fallback) {
     rolloutStats.sharedPrefixSteps += prefixSteps;
     // Fino alla scadenza tutti i piani conservano i gettoni: questo prefisso è identico.
     while (!prefix.gameOver && prefix.turn < notBeforeTurn && prefixSteps < 4000 && !stopped) {
-      const after = forwardStep(prefix);
+      const after = forwardStep(prefix, prefixCommands);
       prefixSteps++;
       if (after === prefix) stopped = true;
       prefix = after;
     }
     const planned = { ...prefix, aiTokenPlan: { playerId, notBeforeTurn } };
-    const leaf = stopped ? planned : playForward(planned, endTurn - prefix.turn, prefixSteps);
-    best = Math.max(best, evaluate(leaf, playerId, true));
+    const commands = trace ? [...prefixCommands] : undefined;
+    const leaf = stopped ? planned : playForward(planned, endTurn - prefix.turn, prefixSteps, commands);
+    const value = evaluate(leaf, playerId, true);
+    if (trace && value > best) trace.commands = commands;
+    best = Math.max(best, value);
     rolloutStats.tokenDeferredForecasts++;
   }
   return best;
 }
 
-function tokenFutureValue(state, depth, playerId) {
-  return deferredTokenValue(state, depth, playerId, evaluate(playForward(state, depth), playerId, true));
+function tokenFutureValue(state, depth, playerId, trace) {
+  if (trace) trace.commands = [];
+  return deferredTokenValue(state, depth, playerId, evaluate(playForward(state, depth, 0, trace?.commands), playerId, true), trace);
 }
 function pendingOutcomeForRollout(state, depth, playerId) {
   const outcomes = pendingOutcomes(state, playerId, plansTokens(state, playerId));
@@ -720,6 +794,11 @@ function pendingOutcomeForRollout(state, depth, playerId) {
 
 // Stesso orizzonte e stessa valutazione del rollout precedente, senza quote per tipo di azione.
 export function continuationValue(state, depth, playerId) {
+  if (timedSearch) return withinForecast(state.turn + depth, () => continuationValueInner(state, Math.max(0, forecastEnd - state.turn), playerId));
+  return continuationValueInner(state, depth, playerId);
+}
+function continuationValueInner(state, depth, playerId) {
+  checkSearchTime();
   state = forkForSearch(state);
   const fallback = tokenFutureValue(state, depth, playerId);
   const mode = state.players[playerId].aiContinuation;
@@ -769,10 +848,31 @@ export function continuationValue(state, depth, playerId) {
   return best;
 }
 
+function followCommands(state, commands) {
+  let next = forkForSearch(state);
+  for (const command of commands) {
+    checkSearchTime();
+    // Without tokens the optional recovery prompt is absent, not an unavailable future benefit.
+    if (command.type === 'skipWelfareToken' && !next.pending) continue;
+    try { next = timedApply(next, command); }
+    catch (error) { if (error === SEARCH_TIMEOUT) throw error; return null; }
+  }
+  return next;
+}
+
 function bestActionAtRollout(state, { depth, rollouts }) {
   const __t0 = performance.now();
   const p = currentPlayer(state);
   const candidates = actionCandidates(state, p);
+  const welfareForecast = Boolean(timedSearch && tokenWelfare(state) && candidates.some(c => c.type === 'investWelfare'));
+  // Compare destinations on the same affordable forecast; a beam at other nodes must not cap Welfare's horizon.
+  const sharedForecast = welfareForecast || Boolean(timedSearch?.moveForecast);
+  const horizonEnd = Math.min(forecastEnd, state.turn + depth + Number(state.roundTurns + 1 >= state.nPlayers));
+  const compared = [];
+  const skipPurchase = welfareForecast && candidates.find(c => c.type === 'pass');
+  let withoutPurchase = null;
+  if (skipPurchase) withoutPurchase = timedApply(forkForSearch(state), skipPurchase);
+  let attainableWithoutPurchase = -Infinity;
   if (candidates.length === 1 && !state.industrial?.enabled) {
     rolloutStats.perDecisionLog.push({ turn: state.turn, node: p.node, nCandidates: 1, ms: performance.now() - __t0 });
     return { cmd: candidates[0], score: 0 }; // nulla da confrontare: salta il rollout
@@ -780,14 +880,31 @@ function bestActionAtRollout(state, { depth, rollouts }) {
   let best = null;
   for (const cmd of candidates) {
     let s2;
-    try { s2 = timedApply(state, cmd); } catch { continue; }
+    try { s2 = timedApply(state, cmd); } catch (error) { if (error === SEARCH_TIMEOUT) throw error; continue; }
     const outcome = pendingOutcomeForRollout(s2, depth, p.id);
-    let total = 0;
-    for (let r = 0; r < rollouts; r++) total += continuationValue(outcome, depth, p.id);
+    let total = 0, withoutValue = 0, canFollowWithout = Boolean(withoutPurchase && cmd.type === 'investWelfare');
+    // shortcut: compare complete token-use forecasts, without branching every subsequent hire.
+    for (let r = 0; r < rollouts; r++) {
+      const trace = welfareForecast && cmd.type === 'investWelfare' ? {} : null;
+      total += sharedForecast
+        ? withinForecast(horizonEnd, () => tokenFutureValue(outcome, Math.max(0, forecastEnd - outcome.turn), p.id, trace))
+        : continuationValue(outcome, depth, p.id);
+      if (canFollowWithout) {
+        const alternative = followCommands(withoutPurchase, trace.commands);
+        if (alternative) withoutValue += evaluate(alternative, p.id, true);
+        else canFollowWithout = false;
+      }
+    }
     const score = total / rollouts;
+    if (canFollowWithout) attainableWithoutPurchase = Math.max(attainableWithoutPurchase, withoutValue / rollouts);
+    if (welfareForecast) compared.push({ command: cmd, value: score,
+      ...(cmd.type === 'investWelfare' ? { withoutPurchaseValue: canFollowWithout ? withoutValue / rollouts : null } : {}) });
     if (!best || score > best.score) best = { cmd, score };
   }
-  rolloutStats.perDecisionLog.push({ turn: state.turn, node: p.node, nCandidates: candidates.length, ms: performance.now() - __t0 });
+  // Paying must improve an attainable plan: a cheaper balance must not merely perturb greedy choices.
+  if (skipPurchase && attainableWithoutPurchase >= best.score) best = { cmd: skipPurchase, score: attainableWithoutPurchase };
+  rolloutStats.perDecisionLog.push({ turn: state.turn, seat: p.id, node: p.node, depth, ...(sharedForecast ? { horizonEnd } : {}), nCandidates: candidates.length,
+    ...(welfareForecast ? { compared, chosen: best, withoutPurchaseBest: Number.isFinite(attainableWithoutPurchase) ? attainableWithoutPurchase : null } : {}), ms: performance.now() - __t0 });
   return best;
 }
 
@@ -814,7 +931,7 @@ export function logDecision(state, rolloutOpts = { depth: 4, rollouts: 1 }, topN
   const greedy = [], rollout = [];
   for (const cmd of candidates) {
     let s2;
-    try { s2 = applyCommand(state, cmd); } catch { continue; }
+    try { s2 = applyCommand(state, cmd); } catch (error) { if (error === SEARCH_TIMEOUT) throw error; continue; }
     const greedyOutcome = pendingOutcomes(s2, p.id, false)[0];
     greedy.push({ label: labelCmd(cmd), score: evaluate(greedyOutcome, p.id) - base });
     const outcome = pendingOutcomeForRollout(s2, rolloutOpts.depth, p.id);
@@ -856,16 +973,31 @@ function bestActionAtInner(state) {
   if (candidates.length === 1) return { cmd: candidates[0], score: 0 }; // nulla da confrontare: salta apply+evaluate
   const base = evaluate(state, p.id);
   let best = null;
+  const welfareCounts = new Set();
+  const previewWelfare = timedSearch && !welfareProbe && state.turn < forecastEnd
+    && candidates.some(c => c.type === 'investWelfare');
   for (const cmd of candidates) {
+    // Greedy evaluation values tokens and coins, not fund allocation: keep its first tied choice.
+    // Full forecasts still compare every allocation and its future policy effects.
+    if (cmd.type === 'investWelfare' && cmd.funds && state.contractsOnly && !previewWelfare) {
+      if (welfareCounts.has(cmd.count)) continue;
+      welfareCounts.add(cmd.count);
+    }
     let s2;
-    try { s2 = timedApply(state, cmd); } catch { continue; }
+    try { s2 = timedApply(state, cmd); } catch (error) { if (error === SEARCH_TIMEOUT) throw error; continue; }
     // risolvi greedy i pending per valutare lo stato finale
     let guard = 0;
     while (s2.pending && guard++ < 20) {
       const dec = chooseCommandForPending({ ...s2, aiRollout: null });
       s2 = timedApply(s2, dec);
     }
-    const score = evaluate(s2, p.id) - base;
+    let leaf = s2;
+    if (previewWelfare) {
+      welfareProbe = true;
+      try { leaf = playForward(s2, Math.min(1, forecastEnd - s2.turn)); }
+      finally { welfareProbe = false; }
+    }
+    const score = evaluate(leaf, p.id) - base;
     if (!best || score > best.score) best = { cmd, score };
   }
   return best;
@@ -1085,10 +1217,25 @@ function chooseRoundAward(state) {
 // Paid policies have no immediate payoff: simulated choices must inspect future uses too.
 // shortcut: a 3-turn greedy probe, with other round choices held, bounds recursive previews.
 function chooseRoundRondel(state) {
+  if (!decisionCache || state.aiRollout) return chooseRoundRondelInner(state);
+  // The three-turn probe includes opponents: unlike immediate choices, key every player's game data.
+  const key = JSON.stringify([greedyActionKey(state),
+    state.players.map((p,i) => decisionCache.playerKeys[i].map(k => decisionPart(p[k]))),
+    decisionPart(state.aiTokenPlan || null), decisionPart(state.producedThisTurn), timedSearch ? forecastEnd : null]);
+  if (decisionCache.rounds.has(key)) {
+    rolloutStats.roundCacheHits++;
+    return decisionCache.rounds.get(key);
+  }
+  const command = chooseRoundRondelInner(state);
+  if (decisionCache.rounds.size >= GREEDY_CACHE_LIMIT) decisionCache.rounds.delete(decisionCache.rounds.keys().next().value);
+  decisionCache.rounds.set(key, command);
+  return command;
+}
+function chooseRoundRondelInner(state) {
   const owner=state.current;let best=null,bestValue=-Infinity;
   for(const command of legalCommands(state)){
     const next=timedApply(state,command);
-    const value=state.aiRollout?continuationValue(next,state.aiRollout.depth,owner):state.aiRoundRondelProbe?evaluate(next,owner):evaluate(playForward({...next,aiRoundRondelProbe:true},3),owner);
+    const value=state.aiRollout?continuationValue(next,state.aiRollout.depth,owner):state.aiRoundRondelProbe?evaluate(next,owner):evaluate(playForward({...next,aiRoundRondelProbe:true},timedSearch ? Math.min(3, Math.max(0, forecastEnd-next.turn)) : 3),owner);
     if(value>bestValue){bestValue=value;best=command;}
   }
   return best;

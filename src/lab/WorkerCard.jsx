@@ -1,3 +1,4 @@
+import {policyBoosted} from '../game/welfare-funds.js';
 import { welfarePolicy } from '../game/welfare-rondel.js';
 import React from 'react';
 import { Amount, Development, MachineEffect } from './GameSymbols.jsx';
@@ -22,7 +23,7 @@ export function HireChoices({worker:w,options,state,player,dispatch}) {
     const sector=player.depts[cmd.role].sector, cost=hireCost(state,player,w,cmd.role,cmd.side);
     return <button key={i} className={cmd.side==='sopra'?'lab-primary':''} onClick={()=>dispatch(cmd)}>
       {cmd.side==='sopra'?`Sopra · assumi in ${sector}`:`Sotto · installa in ${sector}`} · <Amount kind="coin" value={cost}/>
-      <small>{cmd.side==='sopra'?`Sviluppo +${Math.min(state.trackMax-player.depts[cmd.role].prod,w.v+(welfarePolicy(state,player)?.id==='formation'?1:0))}`:machineText(w)}</small>
+      <small>{cmd.side==='sopra'?`Sviluppo +${Math.min(state.trackMax-player.depts[cmd.role].prod,w.v+(welfarePolicy(state,player)?.id==='formation'?(policyBoosted(state,'formation')?2:1):0))}`:machineText(w)}</small>
     </button>;
   })}</div>;
 }

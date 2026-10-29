@@ -1,3 +1,4 @@
+import {WELFARE_FUNDS,fundBalances,policyBoosted} from '../game/welfare-funds.js';
 import { researchSummary } from './research.js';
 import { welfarePolicies, welfareDisplayPolicies, welfareMaxSteps, freeWelfareEntry } from '../game/welfare-rondel.js';
 import { bankMarket, hireCost, legalCommands, WORKER_BY_ID } from '../game/engine.js';
@@ -26,7 +27,7 @@ export function observeStudy(out,before,cmd,after) {
   const role=cmd.role||roles.find(r=>p.depts[r].sector===cmd.sector);
   const card=id=>out.cards[id]??=( {id,nation:WORKER_BY_ID[id].nation,sector:WORKER_BY_ID[id].sector,value:WORKER_BY_ID[id].v,appeared:0,sopra:0,sotto:0} );
   for(const bank of before.bankIds)for(const id of bankMarket(before,bank))if(!out.seen.includes(id)){out.seen.push(id);card(id).appeared++;}
-  if(before.phase==='move'&&!before.pending)out.starts.push({turn:before.turn,seat:p.id,coins:p.coins,resources:total(p.resources)});
+  if(before.phase==='move'&&!before.pending)out.starts.push({turn:before.turn,seat:p.id,coins:p.coins,resources:total(p.resources),...(fundBalances(before)?{funds:{...fundBalances(before)}}:{})});
   if(before.phase==='action'&&!before.pending) {
     const hires=legalCommands(before).filter(c=>c.type==='hire');
     if(hires.length){const offer=out.offers[`${p.id}:${before.turn}`]??={seat:p.id,turn:before.turn,picked:false,alternatives:[]};if(cmd.type==='hire')offer.picked=true;else if(!offer.alternatives.includes(cmd.type))offer.alternatives.push(cmd.type);}
@@ -44,6 +45,14 @@ export function observeStudy(out,before,cmd,after) {
     if(cmd.type==='investWelfare'){event.steps=before.roundRondel?null:cmd.steps;event.tokensGained=q.welfareTokens-p.welfareTokens;}
     if(before.phase==='roundRondel'){event.roundRondel=after.roundRondel.log.at(-1);event.steps=event.roundRondel.steps;event.tokensGained=0;event.availablePolicies=[...new Set(legalCommands(before).filter(c=>c.type==='advanceRoundRondel').map(c=>c.position))];}
     event.policyBenefits=Object.fromEntries(welfarePolicies(before).map(policy=>[policy.id,q.welfareRondelStats.benefits[policy.id]-p.welfareRondelStats.benefits[policy.id]]).filter(([,n])=>n));
+  }
+  if(fundBalances(before)){
+    event.fundsBefore={...fundBalances(before)};event.fundsAfter={...fundBalances(after)};
+    if(cmd.funds)event.fundDeposits={...cmd.funds};if(cmd.fund)event.fundTarget=cmd.fund;
+    const id=welfarePolicies(before)[p.welfarePosition]?.id;
+    event.boostedPolicy=policyBoosted(before,id)?id:null;
+    event.fundActivated=WELFARE_FUNDS.filter(f=>event.fundsBefore[f.id]<f.threshold&&event.fundsAfter[f.id]>=f.threshold).map(f=>f.id);
+    event.fundDeactivated=WELFARE_FUNDS.filter(f=>event.fundsBefore[f.id]>=f.threshold&&event.fundsAfter[f.id]<f.threshold).map(f=>f.id);
   }
   if(cmd.type==='hire') {
     const w=WORKER_BY_ID[cmd.cardId];card(w.id)[cmd.side]++;
@@ -99,6 +108,14 @@ export function finishStudy(out,state) {
   }
   out.verified={completed:true,money:state.nPlayers,resources:state.nPlayers,machineIncome:state.nPlayers};
   if(state.rowEconomy.welfareBank){const deposits=sum(state.players,p=>p.coinsSpentBy.welfare),loot=sum(state.players,p=>p.coinsGainedBy.welfareLoot||0);if(state.welfareBank!==deposits-loot||state.welfareBank<0)throw new Error('Bilancio banca Welfare non valido.');out.bankVerified={deposits,loot,remaining:state.welfareBank};}
+  if(fundBalances(state)){
+    out.fundsVerified=Object.fromEntries(WELFARE_FUNDS.map(f=>{
+      const deposits=sum(out.events,e=>e.fundDeposits?.[f.id]||0),loot=sum(out.events,e=>e.fundTarget===f.id?e.bankLoot||0:0),remaining=fundBalances(state)[f.id];
+      if(remaining!==deposits-loot||remaining<0||out.events.some(e=>e.fundsAfter&&e.fundsAfter[f.id]<0))throw new Error('Bilancio fondo Welfare non valido: '+f.name);
+      return [f.id,{deposits,loot,remaining}];
+    }));
+    if(total(fundBalances(state))!==state.welfareBank)throw new Error('Somma fondi diversa dalla banca.');
+  }
   delete out.seen;
   return out;
 }
@@ -172,6 +189,7 @@ export function detailedReport(config,games,status) {
     '\n## Andamento nei quarti di partita\n',table(['Turni','Marchi a inizio turno','Produzioni','Righe accessibili medie','Rendite marchi (escluse conversioni)'],Array.from({length:4},(_,i)=>{const from=Math.floor(i*config.turns/4)+1,to=Math.floor((i+1)*config.turns/4),starts=studies.flatMap(s=>s.starts).filter(e=>e.turn>=from&&e.turn<=to),ps=prods.filter(e=>e.turn>=from&&e.turn<=to);return [`${from}–${to}`,mean(starts,e=>e.coins),ps.length,mean(ps,e=>e.available),sum(ps,e=>e.machineIncome)];})),
     '\n## Gruppi osservati: correlazioni, non effetti causali\n',table(['Gruppo','N','PV medi','Commesse','Welfare','Repressioni'],[['Senza macchinari da tensione',people.filter(p=>!p.game.study?.machines.some(m=>m.seat===p.playerId&&m.kind==='tensione'))],['Con coppia attivata',people.filter(p=>p.game.study?.productions.some(m=>m.seat===p.playerId&&m.targets>=2))],['Con welfare',people.filter(p=>p.stats.welfareBuys>0)],['Senza welfare',people.filter(p=>!p.stats.welfareBuys)],['Con repressione',people.filter(p=>p.stats.repressions>0)],['Senza repressione',people.filter(p=>!p.stats.repressions)]].map(([label,ps])=>[label,...cohort(ps)])),
     '\n## Singole carte: apparizioni e scelta\n',table(['Carta','Nazione','Settore','Apparsa','Sopra','Sotto'],Object.values(studies.reduce((all,s)=>{for(const c of Object.values(s.cards)){const a=all[c.id]??={...c,appeared:0,sopra:0,sotto:0};for(const k of ['appeared','sopra','sotto'])a[k]+=c[k];}return all;},{})).map(c=>[c.id,c.nation,c.sector,c.appeared,c.sopra,c.sotto])),
+    ...(config.roundRondel?.fundThresholds?['\n## Fondi Welfare\n',table(['Fondo','Soglia','Versamenti','Bottini','Saldo finale','Attivazioni','Disattivazioni'],WELFARE_FUNDS.map(f=>[f.name,f.threshold,sum(events,e=>e.fundDeposits?.[f.id]||0),sum(events,e=>e.fundTarget===f.id?e.bankLoot||0:0),sum(games,g=>fundBalances(g.finalState)?.[f.id]||0),events.filter(e=>e.fundActivated?.includes(f.id)).length,events.filter(e=>e.fundDeactivated?.includes(f.id)).length]))]:[]),
     '\n## Risultati per seme e giocatore\n',table(['Seme','Posto','PV',...(config.finalResourcePV?['PV commesse','PV marchi','PV risorse']:[]),'Commesse','Marchi','Operai','Macchinari','Welfare','Repressioni'],people.map(p=>[p.seed,p.playerId+1,p.total,...(config.finalResourcePV?[p.pvContracts,p.pvCoins,p.pvResources]:[]),p.nContracts,p.coins,p.final?sum(roles,r=>p.final.depts[r].sopra.length):null,p.final?sum(roles,r=>p.final.depts[r].sotto.length):null,p.stats.welfareBuys,p.stats.repressions])),
     '\n## Cronologia delle produzioni in coppia\n',table(['Seme','Posto','Turno','Reparto','Tensione','Righe','Macchinari da tensione','Marchi','Protetta'],games.flatMap(g=>(g.study?.productions||[]).filter(p=>p.targets>=2).map(p=>[g.seed,p.seat+1,p.turn,p.sector,p.tension,p.available,p.targets,p.targetIncome,p.protected?'sì':'no']))),
     '\n## Configurazione completa\n\n```json\n'+JSON.stringify(config,null,2)+'\n```',

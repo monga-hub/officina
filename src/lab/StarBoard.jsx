@@ -1,3 +1,4 @@
+import {WELFARE_FUNDS,fundBalances} from '../game/welfare-funds.js';
 import React, { useEffect, useRef, useState } from 'react';
 import { currentPlayer, legalCommands, bankMarket, WORKER_BY_ID, welfareRecoveryCommands } from '../game/engine.js';
 import { rowNodeLabel } from '../game/row-economy.js';
@@ -65,7 +66,7 @@ export default function StarBoard({state,dispatch,onActions,onNodeAction}) {
           <small className="node-entry">{p.node===node?<span role="img" aria-label="Sei qui" title="Sei qui">●</span>:command?<Amount kind="coin" value={command.cost} label={`Ingresso: ${command.cost} marchi`}/>:here.length>=2&&node!=='Borsa'?<span role="img" aria-label="Posti occupati" title="Posti occupati">×</span>:null}</small>
         </button>;
       })}
-      {state.rowEconomy?.welfareBank&&<div className="star-welfare-bank" role="status" aria-live="polite" aria-label={`Banca Welfare: ${state.welfareBank||0} marchi`} title="Fondi comuni disponibili per il saccheggio con la repressione" style={{left:`${STAR_PLACES.Servizi.x}%`,top:'96%'}}><span>Cassa</span><Amount kind="coin" value={state.welfareBank||0}/></div>}
+      {state.rowEconomy?.welfareBank&&<div className="star-welfare-bank" role="status" aria-live="polite" aria-label={`Banca Welfare: ${state.welfareBank||0} marchi`} title="Fondi comuni disponibili per il saccheggio con la repressione" style={{left:`${STAR_PLACES.Servizi.x}%`,top:'96%'}}>{fundBalances(state)?WELFARE_FUNDS.map(f=><span key={f.id} className={fundBalances(state)[f.id]>=f.threshold?'fund-powered':''} title={`${f.name}: ${fundBalances(state)[f.id]} marchi, soglia ${f.threshold}. ${fundBalances(state)[f.id]>=f.threshold?'Abilità potenziate':'Abilità base'}`}><b>{f.name}</b> {fundBalances(state)[f.id]}/{f.threshold}</span>):<><span>Cassa</span><Amount kind="coin" value={state.welfareBank||0}/></>}</div>}
       {STAR_MARKETS.map(({bank,nodes,x,y})=><div key={bank} className={`star-market ${canChoose&&state.nodeBanks[p.node]?.includes(bank)?'star-market-active':''}`} style={{left:`${x}%`,top:`${y}%`}}>
         <div className="star-market-label" title={nodes.map(n=>rowNodeLabel(state,n)).join(' / ')}><span aria-label={`${state.banks[bank].length} carte nel mazzo`}>▤ {state.banks[bank].length}</span></div>
         {bankMarket(state,bank).map(id=><WorkerCard key={id} worker={WORKER_BY_ID[id]} onInspect={()=>setSelected({id,bank})}/>)}

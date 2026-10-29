@@ -1,7 +1,7 @@
 import { researchSummary } from './research.js';
 import { newStudy, observeStudy, finishStudy, detailedReport } from './study.js';
 import { initGame, applyCommand, scorePlayer } from '../game/engine.js';
-import { chooseCommand } from '../game/ai.js';
+import { chooseTimedCommand } from '../game/ai.js';
 import { newRowPressure, observeRowPressure, sampleRowPressureStart } from '../game/row-pressure.js';
 export async function runGame(config, progress = () => {}) {
   let s = initGame(config), count = 0, last = '';
@@ -12,7 +12,7 @@ export async function runGame(config, progress = () => {}) {
     const stamp = `${s.turn}:${s.current}`;
     if (stamp !== last) { progress({ turn: s.turn, seat: s.current }); last = stamp; }
     sampleRowPressureStart(pressure, s);
-    const cmd = chooseCommand(s);
+    const cmd = chooseTimedCommand(s);
     if (!cmd) throw new Error(`Nessuna mossa al turno ${s.turn}.`);
     const before = s; s = applyCommand(s, cmd);
     observeStudy(study, before, cmd, s);

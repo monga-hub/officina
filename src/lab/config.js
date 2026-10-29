@@ -1,3 +1,4 @@
+import {validFundThresholds} from '../game/welfare-funds.js';
 import reference from './reference.json' with { type: 'json' };
 import { TRACK_MODELS, SECTORS, NATIONS_NUOVO } from '../game/data.js';
 import { WELFARE_POLICIES } from '../game/welfare-rondel.js';
@@ -46,6 +47,7 @@ export function validate(c) {
   if (c.conversionMachines !== undefined) check(typeof c.conversionMachines === 'boolean', 'Opzione conversioni non valida.');
   if (c.roundRondel?.enabled) {
     const r=c.roundRondel;
+    if(r.fundThresholds)check(c.welfareBank&&r.startingPolicy==='affinity'&&validFundThresholds(r.fundThresholds),'I fondi Welfare richiedono soglie Economia 3, Personale 4, Produzione 3.');
     if(r.startingPolicy!==undefined)check(r.startingPolicy==='affinity'&&r.extraStepCost===1&&r.mandatoryMove===true&&r.freeEntry===false,'Casella iniziale o movimento obbligatorio non validi.');
     check(c.players===3 && c.turns===28, 'La rondella di fine round testata richiede 3 giocatori e 28 turni.');
     check(c.welfareRondel===true && JSON.stringify(r.bounds)==='[9,18]' && JSON.stringify(r.firstSeats)==='[0,1]' && r.maxSteps===3 && [0,1].includes(r.stepCost) && r.tokenCost===1 && r.tokenMax===3 && (r.freeEntry===undefined || typeof r.freeEntry==='boolean'), 'Impostazioni della rondella di fine round non valide.');

@@ -1,3 +1,4 @@
+import {policyDescription,policyFund,fundBalances} from '../game/welfare-funds.js';
 import React from 'react';
 import {roundRondelCost} from '../game/round-rondel.js';
 import { welfarePolicies } from '../game/welfare-rondel.js';
@@ -12,9 +13,10 @@ export default function RoundRondelChoice({state,player,legal,dispatch}) {
     <p>{paid?'Devi avanzare da 1 a 6 passi in senso orario: i primi 3 sono gratis, ogni passo aggiuntivo costa 1 marco. Nessun gettone.':<>{first?'Primo ingresso libero: scegli qualsiasi casella attiva.':'Puoi restare o avanzare in senso orario di uno, due o tre passi.'} Gratis, senza gettoni.</>}</p>
     <p>Politica attuale: <b>{WELFARE_POLICIES[player.welfarePosition]?.name||'nessuna'}</b>. Le caselle sono condivise.</p>
     <div className="round-rondel-options">{legal.map(command=>{
-      const keep=command.type==='keepRoundRondel',policy=WELFARE_POLICIES[keep?player.welfarePosition:command.position];
+      const keep=command.type==='keepRoundRondel',base=WELFARE_POLICIES[keep?player.welfarePosition:command.position],policy=base?policyDescription(state,base):null;
       return <button key={keep?'keep':command.position} className="production-choice" onClick={()=>dispatch(command)}>
         <strong>{keep?(first?'Rinvia il primo ingresso':`Resta su ${WELFARE_POLICIES[player.welfarePosition].name}`):policy.name}</strong>
+        {fundBalances(state)&&policyFund(policy?.id)&&<small>{policyFund(policy.id).name}: {fundBalances(state)[policyFund(policy.id).id]}/{policyFund(policy.id).threshold} · {policy.upgraded?'potenziata':'base'}</small>}
         <small className="round-policy-effect">{policy?.description||'Conserva la situazione attuale fino alla prossima scelta.'}</small>
         {!keep&&!first&&<small>{command.steps} {command.steps===1?'passo':'passi'} · {roundRondelCost(state.roundRondel,command.steps)===0?'gratis':`${roundRondelCost(state.roundRondel,command.steps)} ${roundRondelCost(state.roundRondel,command.steps)===1?'marco':'marchi'}`}</small>}
       </button>;

@@ -2055,7 +2055,12 @@
     "freeEntry": false,
     "startingPolicy": "affinity",
     "extraStepCost": 1,
-    "mandatoryMove": true
+    "mandatoryMove": true,
+    "fundThresholds": {
+      "economy": 3,
+      "personnel": 4,
+      "production": 3
+    }
   },
   "finalResourcePV": true
 }

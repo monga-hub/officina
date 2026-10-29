@@ -1,3 +1,4 @@
+import {allocationLabel,WELFARE_FUNDS,fundBalances} from '../game/welfare-funds.js';
 import WelfareRondel from './WelfareRondel.jsx';
 import RoundRondelChoice from './RoundRondelChoice.jsx';
 import { rondelEnabled } from '../game/welfare-rondel.js';
@@ -356,8 +357,8 @@ export function RowEconomyActions({state,legal,dispatch}) {
         {legal.filter(c => (c.type === 'investWelfare' && (!rondelEnabled(state)||state.roundRondel))||c.type === 'repress').map(c => {
           const welfare=c.type==='investWelfare',preview=rowActionPreview(state,c);
           const first=preview.departments[0];
-          if(tokenWelfare(state))return <button key={`${c.type}-${c.count||c.role||c.scope}`} className="production-choice" onClick={()=>dispatch(c)}>
-            <strong>{welfare?'Welfare':`Repressione — ${first.before.sector}`}</strong>
+          if(tokenWelfare(state))return <button key={JSON.stringify(c)} className="production-choice" onClick={()=>dispatch(c)}>
+            <strong>{welfare?'Welfare':`Repressione — ${first.before.sector}${c.fund?' · '+WELFARE_FUNDS.find(f=>f.id===c.fund).name:''}`}</strong>{c.funds&&<small>Versamento: {allocationLabel(c.funds)}</small>}
             <span className="production-yield">Paghi <Amount kind="coin" value={preview.cost}/>{preview.income>0&&<span> · Incassi <Amount kind="coin" value={preview.income}/></span>}
               {welfare?<span>🌿 <b>+{preview.welfareTokens.after-preview.welfareTokens.before} gettoni</b></span>:<span>Tensione <b>{first.before.tension} → {first.after.tension}</b></span>}
             </span>
@@ -365,14 +366,14 @@ export function RowEconomyActions({state,legal,dispatch}) {
               <small>Gettoni: <b>{preview.welfareTokens.before} → {preview.welfareTokens.after}</b> · i nuovi dal prossimo turno.</small>
               <small>Solo nel reparto visitato: 1 gettone protegge la produzione; senza produrre puoi curare con più gettoni, −1 tensione ciascuno.</small>
             </>:<>
-              {preview.bank&&<small>Banca Welfare: <b>{preview.bank.before} → {preview.bank.after} marchi</b>.</small>}
+              {c.fund&&<small>Fondo {WELFARE_FUNDS.find(f=>f.id===c.fund).name}: {fundBalances(state)[c.fund]} → {fundBalances(state)[c.fund]-preview.income} marchi · soglia {WELFARE_FUNDS.find(f=>f.id===c.fund).threshold}.</small>}{preview.bank&&<small>Banca Welfare: <b>{preview.bank.before} → {preview.bank.after} marchi</b>.</small>}
               <small>Righe utilizzabili: <b>{first.before.available} → {first.after.available}</b>.</small>
               {preview.departments.slice(1).map(({before,after})=><small key={before.sector}>{before.sector}: tensione <b>{before.tension} → {after.tension}</b> · righe <b>{before.available} → {after.available}</b></small>)}
             </>}
           </button>;
           const uniform=preview.departments.every(d=>d.before.welfare===first.before.welfare&&d.after.welfare===first.after.welfare);
           const benefits=uniform?[first]:preview.departments;
-          return <button key={`${c.type}-${c.count||c.role||c.scope}`} className="production-choice" onClick={()=>dispatch(c)}>
+          return <button key={JSON.stringify(c)} className="production-choice" onClick={()=>dispatch(c)}>
             <strong>{welfare?'Welfare':'Repressione'} — {preview.departments.length===3?'tutti e tre i reparti':first.before.sector}</strong>
             <span className="production-yield">Paghi <Amount kind="coin" value={preview.cost}/>{preview.income>0&&<span> · Incassi <Amount kind="coin" value={preview.income}/></span>}
               {!welfare&&<span>Tensione <b>{first.before.tension} → {first.after.tension}</b></span>}

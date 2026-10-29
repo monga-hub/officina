@@ -31,7 +31,7 @@ async function load(text) {
  text = text.replace(/from '(\.\/[^']+)'/g, (_, p) => `from '${new URL(p, url).href}'`);
  return import(`data:text/javascript;base64,${Buffer.from(text + capture).toString('base64')}`);
 }
-const currentSource = source.replace('evaluate(leaf, playerId, true));', 'capture(leaf, playerId, true));');
+const currentSource = source.replace('const value = evaluate(leaf, playerId, true);', 'const value = capture(leaf, playerId, true);');
 const referenceSource = source.slice(0, start) + original + source.slice(stop);
 const current = await load(currentSource);
 const reference = await load(referenceSource);
@@ -69,7 +69,7 @@ assert.ok(savedSteps > 0);
 // Preserve termination and the existing 4000-step budget, including a stalled forecast.
 for (const step of ['return state;', 'rolloutStats.stepsSimulated++; return {...state, guardCount:(state.guardCount||0)+1};']) {
  async function withStep(text) {
-  const a = text.indexOf('function forwardStep(state) {'), b = text.indexOf('\nfunction playForward(', a);
+  const a = text.indexOf('function forwardStep('), b = text.indexOf('\nfunction playForward(', a);
   assert.ok(a > 0 && b > a);
   return load(text.slice(0,a) + `function forwardStep(state) {${step}}\n` + text.slice(b));
  }

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {gameConfig,validate,parseConfig} from '../src/lab/config.js';
 import {initGame,applyCommand,legalCommands,hireCost,WORKER_BY_ID,forkForSearch} from '../src/game/engine.js';
-import {WELFARE_FUNDS,policyBoosted,welfareAllocations,changeFund} from '../src/game/welfare-funds.js';
+import {WELFARE_FUNDS,policyBoosted,welfareAllocations,changeFund,policyFund,policyDescription} from '../src/game/welfare-funds.js';
 import {WELFARE_POLICIES} from '../src/game/welfare-rondel.js';
 import {saveGame,loadGame,gameSession} from '../src/lab/saved-game.js';
 const c=JSON.parse(fs.readFileSync(new URL('../src/lab/latest-playtest.json',import.meta.url)));
@@ -20,7 +20,7 @@ for(let n=1;n<=3;n++)for(const allocation of welfareAllocations(n)){
 for(const funds of [{economy:4,personnel:0,production:0},{economy:-1,personnel:1,production:1}])assert.throws(()=>applyCommand(empty,{type:'investWelfare',count:1,funds}));
 assert.throws(()=>applyCommand(empty,{type:'investWelfare',count:1}));
 let s=fixture('Sindacato');fund(s,'economy',3);fund(s,'personnel',4);fund(s,'production',3);s.players[0].depts.terziario.tension=2;
-assert.ok(policyBoosted(s,'innovation'));assert.ok(!policyBoosted(s,'affinity'));
+assert.ok(policyBoosted(s,'innovation'));assert.ok(!policyBoosted(s,'affinity'));assert.equal(policyFund('affinity').id,'personnel');assert.ok(!policyDescription(s,{id:'affinity',description:'Sconto fisso'}).upgraded);
 const before=plain(s),repressed=applyCommand(s,{type:'repress',role:'terziario',fund:'economy'});
 assert.deepEqual(plain(s),before);assert.equal(repressed.roundRondel.funds.economy,1);assert.equal(repressed.roundRondel.funds.personnel,4);assert.equal(repressed.roundRondel.funds.production,3);assert.equal(repressed.welfareBank,8);assert.equal(repressed.players[0].coins,22);assert.ok(!policyBoosted(repressed,'innovation'));
 assert.equal(repressed.players[0].depts.terziario.tension,0);assert.equal(repressed.players[0].depts.secondario.tension,1);

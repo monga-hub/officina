@@ -405,3 +405,4 @@
 @media(max-width:420px){.guided-options,.guided-fund-cards{gap:5px}.guided-fund-card{padding:8px 3px}.guided-counter{gap:3px}.lab-shell .guided-counter button{width:30px}.guided-fund-card>strong{font-size:13px}}
 .lab-shell .guided-welfare .guided-options>button[aria-pressed="true"]{background:#e5efdf;color:#244c39}
 .lab-shell .guided-welfare .guided-options>button[data-welfare-fund][aria-pressed="true"]{background:var(--fund-bg);color:var(--fund-ink)}
+.policy-tooltip>small{display:block;margin-top:6px;color:inherit}

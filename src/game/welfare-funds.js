@@ -1,11 +1,11 @@
 export const WELFARE_FUNDS=[
   {id:'economy',name:'Economia',threshold:3,policies:['innovation','reliability']},
-  {id:'personnel',name:'Personale',threshold:4,policies:['integration','formation']},
+  {id:'personnel',name:'Personale',threshold:4,policies:['affinity','integration','formation']},
   {id:'production',name:'Produzione',threshold:3,policies:['cooperation','mutualAid']},
 ];
 export const fundBalances=state=>state.roundRondel?.funds;
 export const policyFund=id=>WELFARE_FUNDS.find(f=>f.policies.includes(id));
-export const policyBoosted=(state,id)=>{const f=policyFund(id);return !!f&&!!fundBalances(state)&&(fundBalances(state)[f.id]||0)>=f.threshold;};
+export const policyBoosted=(state,id)=>{const f=policyFund(id);return id!=='affinity'&&!!f&&!!fundBalances(state)&&(fundBalances(state)[f.id]||0)>=f.threshold;};
 export const boostedDescription={
   integration:'Assumere Sopra una nazionalità assente nel reparto costa 2 marchi in meno, minimo 1.',
   formation:'Ogni operaio assunto Sopra sviluppa il suo reparto di 2 passi aggiuntivi.',

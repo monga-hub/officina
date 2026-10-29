@@ -17,6 +17,6 @@ export default function PolicyHint({policy,children,fund}) {
     onPointerUp={()=>{if(touch.current)hide();}} onPointerCancel={hide}
     onContextMenu={e=>e.preventDefault()} onClickCapture={e=>{if(held.current){e.preventDefault();e.stopPropagation();held.current=false;}}}>
     {children}
-    {position&&createPortal(<span id={id} role="tooltip" className="policy-tooltip" style={position}><b>{policy.name}</b>{fund&&<span className="fund-label" data-welfare-fund={fund.id}>Fondo {fund.name}</span>}{policy.description}</span>,document.body)}
+    {position&&createPortal(<span id={id} role="tooltip" className="policy-tooltip" style={position}><b>{policy.name}</b>{fund&&<span className="fund-label" data-welfare-fund={fund.id}>Fondo {fund.name}</span>}{policy.description}{fund&&policy.id==='affinity'&&<small>Sconto fisso: non dipende dal saldo del fondo.</small>}</span>,document.body)}
   </span>;
 }

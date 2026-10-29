@@ -16,7 +16,7 @@ export default function RoundRondelChoice({state,player,legal,dispatch}) {
       const keep=command.type==='keepRoundRondel',base=WELFARE_POLICIES[keep?player.welfarePosition:command.position],policy=base?policyDescription(state,base):null;
       return <button key={keep?'keep':command.position} data-welfare-fund={fundBalances(state)?policyFund(policy?.id)?.id:undefined} className="production-choice" onClick={()=>dispatch(command)}>
         <strong>{keep?(first?'Rinvia il primo ingresso':`Resta su ${WELFARE_POLICIES[player.welfarePosition].name}`):policy.name}</strong>
-        {fundBalances(state)&&policyFund(policy?.id)&&<small>{policyFund(policy.id).name}: {fundBalances(state)[policyFund(policy.id).id]}/{policyFund(policy.id).threshold} · {policy.upgraded?'potenziata':'base'}</small>}
+        {fundBalances(state)&&policyFund(policy?.id)&&<small>{policy.id==='affinity'?'Personale · sconto fisso, indipendente dal fondo':<>{policyFund(policy.id).name}: {fundBalances(state)[policyFund(policy.id).id]}/{policyFund(policy.id).threshold} · {policy.upgraded?'potenziata':'base'}</>}</small>}
         <small className="round-policy-effect">{policy?.description||'Conserva la situazione attuale fino alla prossima scelta.'}</small>
         {!keep&&!first&&<small>{command.steps} {command.steps===1?'passo':'passi'} · {roundRondelCost(state.roundRondel,command.steps)===0?'gratis':`${roundRondelCost(state.roundRondel,command.steps)} ${roundRondelCost(state.roundRondel,command.steps)===1?'marco':'marchi'}`}</small>}
       </button>;

@@ -43,8 +43,8 @@ try {
   for(const role of roles)funds.players[0].depts[role].tension=0;
   funds.roundRondel.funds.economy=0;funds.welfareBank=0;funds.phase='move';funds.players[0].node='Citta';
   const rondel=render(Rondel,{state:funds,player:funds.players[0]});
-  for(const id of ['economy','personnel','production'])assert.equal((rondel.match(new RegExp(`data-welfare-fund="${id}"`,'g'))||[]).length,2,'Two policies per fund; Affinity stays neutral');
-  assert.match(rondel,/Innovazione · Fondo Economia/);assert.match(rondel,/Formazione · Fondo Personale/);assert.match(rondel,/Cooperazione · Fondo Produzione/);
+  for(const id of ['economy','personnel','production'])assert.equal((rondel.match(new RegExp(`data-welfare-fund="${id}"`,'g'))||[]).length,id==='personnel'?3:2,'Affinity belongs to Personnel; other categories retain two policies');
+  assert.match(rondel,/Affinità · Fondo Personale/);assert.match(rondel,/Innovazione · Fondo Economia/);assert.match(rondel,/Formazione · Fondo Personale/);assert.match(rondel,/Cooperazione · Fondo Produzione/);
   const bank=render(Board,{state:funds,dispatch(){}});
   for(const id of ['economy','personnel','production'])assert.ok(bank.includes(`data-welfare-fund="${id}"`),'Bank balances use the same category IDs');
   funds.turn=8;beginRoundRondel(funds,7);

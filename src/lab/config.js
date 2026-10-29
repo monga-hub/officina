@@ -44,7 +44,7 @@ export function defaults() {
     machineSlots: [2, 2, 2], productionThresholds: [1, 5, 9, 13], productionUnlock: 'rows', tensionDirection: 'opposed', milestoneResource: false, machineImmediate: false,
     workers: reference.workers.filter(w => !w.power && w.deck !== 'Impiegati').map(tensionMachineCard), contracts: { ...reference.contracts, large: reference.contracts.large.map(card => ({ ...card, pv: [13, card.pv[1]] })) },
     contractCount: Object.fromEntries([2,3,4].map(n=>[n,Object.fromEntries(SIZES.map(size=>[size,reference.contracts[size].length]))])), contractMarket: 2,
-    cityIncome: reference.borsaExit.coins, cityRefresh: true,
+    cityIncome: reference.borsaExit.coins, cityRefresh: false,
     simulation: { games: 3, seed: 1907, ai: 'forecast2', depth: 6, rollouts: 1 },
   });
 }
@@ -63,6 +63,7 @@ export function validate(c) {
   if (c.conversionMachines !== undefined) check(typeof c.conversionMachines === 'boolean', 'Opzione conversioni non valida.');
   if (c.roundRondel?.enabled) {
     const r=c.roundRondel;
+    if(r.refreshWorkers!==undefined)check(typeof r.refreshWorkers==='boolean','Ricambio operai di fine round non valido.');
     if(r.policyOrder!==undefined)check(r.startingPolicy==='affinity'&&validPolicyOrder(r.policyOrder),'L’ordine della rondella deve contenere tutte le sette abilità una sola volta.');
     if(r.fundThresholds)check(c.welfareBank&&r.startingPolicy==='affinity'&&validFundThresholds(r.fundThresholds),'I fondi Welfare richiedono soglie Economia 3, Personale 4, Produzione 3.');
     if(r.startingPolicy!==undefined)check(r.startingPolicy==='affinity'&&r.extraStepCost===1&&r.mandatoryMove===true&&r.freeEntry===false,'Casella iniziale o movimento obbligatorio non validi.');
@@ -154,7 +155,7 @@ export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
     rowEconomy: { ...reference.rowEconomy, ...(c.machinesRequireOpenRow ? { machinesRequireOpenRow: true } : {}), ...(c.conversionMachines === false ? { conversionMachines: false } : {}), welfareMode: 'tokens', welfareScope: 'factory', welfareHireDiscount: false, sameNationHireDiscount: c.roundRondel?.startingPolicy!=='affinity', tensionMachineCash: true, productionThresholds: [...c.productionThresholds], productionUnlock: c.productionUnlock || 'rows', tensionDirection: c.tensionDirection || 'opposed', milestoneResource: c.productionUnlock === 'cells' ? false : c.milestoneResource, machineImmediate: c.machineImmediate,
       welfareCost: c.welfareCost, welfareBank: c.welfareBank===true, welfareRondel: c.welfareRondel, welfareFreeEntry: c.welfareFreeEntry === true, welfareMaxSteps: c.welfareMaxSteps ?? 3, welfarePoliciesEnabled: {...(c.welfarePoliciesEnabled||defaults().welfarePoliciesEnabled)}, repressionBase: c.repressionBase, repressionStep: 0, contractCoins: { ...c.contractCoins } },
     slots: { ...Object.fromEntries(ROLES.map((r,i) => [r, { sopra: 3, sotto: c.machineSlots[i] }])), direzione: { sopra: 0, sotto: 0 } },
-    borsaExit: { enabled: true, coins: c.cityIncome }, borsaRefresh: { enabled: c.cityRefresh },
+    borsaExit: { enabled: true, coins: c.cityIncome }, borsaRefresh: { enabled: false },
     ...(c.finalCoinPV ? { finalCoinPV: true } : {}),
     ...(c.finalResourcePV ? { finalResourcePV: true } : {}),
     contractsOnly: true, pianoEnabled: false, raceObjectives: { enabled: false, list: [] }, raceIncentive: 0,
@@ -167,6 +168,8 @@ export function parseConfig(raw) {
   const c = JSON.parse(raw);
   // Editor migrations preserve custom prices; current rules apply to all lab configurations.
   if (c?.schema === 'officina-lab-1') {
+    c.cityRefresh=false;
+    if(c.roundRondel?.fundThresholds)c.roundRondel.refreshWorkers??=true;
     const migrateLargePV = c.presetRevision == null || c.presetRevision === 1;
     const migrateMachines = c.rulesRevision == null || [1, 2, 3].includes(c.rulesRevision);
     c.productionThresholds ??= Array.from({length: TRACK_MODELS[c.trackModel]?.rows || 4}, (_, i) => i * (TRACK_MODELS[c.trackModel]?.columns || 4) + 1);

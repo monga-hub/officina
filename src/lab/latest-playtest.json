@@ -2026,7 +2026,7 @@
   },
   "contractMarket": 2,
   "cityIncome": 2,
-  "cityRefresh": true,
+  "cityRefresh": false,
   "simulation": {
     "games": 5,
     "seed": 1907,
@@ -2040,6 +2040,7 @@
   "machinesRequireOpenRow": true,
   "roundRondel": {
     "enabled": true,
+    "refreshWorkers": true,
     "bounds": [
       7,
       14,

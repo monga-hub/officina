@@ -1,5 +1,5 @@
 import React from 'react';
-import {Card,NumberField} from './Editors.jsx';
+import {Card,NumberField,Toggle} from './Editors.jsx';
 
 export default function RoundsEditor({c,set}) {
   const bounds=c.roundRondel.bounds;
@@ -14,6 +14,9 @@ export default function RoundsEditor({c,set}) {
     </div>
     <p><b>{ends.length} periodi</b> · {bounds.length} scelte della rondella per giocatore.</p>
     <ol className="rounds-summary">{ends.map((end,i)=><li key={end}>Turni {(ends[i-1]||0)+1}–{end}: {i===ends.length-1?'fine partita':`rondella · sceglie per primo il giocatore ${c.roundRondel.firstSeats[i]+1}`}</li>)}</ol>
+    <h3>Cosa succede a fine round</h3>
+    <Toggle label="Ricambio dei mazzi operai" value={c.roundRondel.refreshWorkers===true} onChange={refreshWorkers=>set({roundRondel:{...c.roundRondel,refreshWorkers}})}/>
+    <p>Alle scadenze selezionate, prima della scelta della rondella, la prima carta di ogni mazzo operai va in fondo allo stesso mazzo. Il ricambio non si può più fare in Città e non avviene dopo la fine della partita.</p>
     <p className="lab-muted">Le impostazioni valgono per le nuove partite e le simulazioni. Le partite già salvate mantengono il proprio calendario. Accorciando la partita, le scadenze fuori calendario vengono rimosse.</p>
   </Card>;
 }

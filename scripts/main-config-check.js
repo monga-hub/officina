@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {mainDefaults,loadMainConfig,validateMainConfig,defaults,parseConfig,gameConfig,STORAGE_KEY,PREVIOUS_STORAGE_KEY} from '../src/lab/config.js';
-import {initGame,applyCommand,legalCommands} from '../src/game/engine.js';
+import {initGame,applyCommand,legalCommands,forkForSearch} from '../src/game/engine.js';
 import {beginRoundRondel,roundRondelCommands,roundRondelCost} from '../src/game/round-rondel.js';
 import {DEFAULT_ROUND_POLICY_ORDER,movePolicy,welfareDisplayPolicies,welfarePolicies,welfarePolicy} from '../src/game/welfare-rondel.js';
 import {gameSession,saveGame,loadGame,GAME_SAVE_KEY} from '../src/lab/saved-game.js';
@@ -41,6 +41,37 @@ for(const bounds of [[0],[28],[7,7],[14,7],[7.5]]){
  const invalid=mainDefaults();invalid.roundRondel.bounds=bounds;invalid.roundRondel.firstSeats=bounds.map(()=>0);
  assert.throws(()=>gameConfig(invalid),/scadenze/);assert.throws(()=>initGame({...gameConfig(fresh),roundRondel:invalid.roundRondel}),/schedule/);
 }
+for(const enabled of [false,true])for(const search of [false,true]){
+ const c=mainDefaults();c.turns=4;c.roundRondel={...c.roundRondel,bounds:[1,3],firstSeats:[0,1],refreshWorkers:enabled};
+ const config=gameConfig(c);config.borsaFabbriche.enabled=false;
+ let state=initGame(config);state.banks.A=[];state.banks.B=state.banks.B.slice(0,1);state.banks.C=state.banks.C.slice(0,2);
+ if(search)state=forkForSearch(state);
+ let refreshed=0;
+ while(!state.gameOver){
+  const before=structuredClone(state.banks),legal=legalCommands(state);
+  const command=legal.find(c=>['pass','endTurn','skipWelfareToken'].includes(c.type))||legal[0];
+  for(const deck of Object.values(state.banks))Object.freeze(deck);Object.freeze(state.banks);
+  const next=applyCommand(state,command);
+  const boundary=next.phase==='roundRondel'&&state.phase!=='roundRondel';
+  if(boundary){
+   refreshed++;
+   const repeated=structuredClone(next),order=structuredClone(next.banks);
+   assert.equal(beginRoundRondel(repeated,next.roundRondel.active.endTurn),false);
+   assert.deepEqual(repeated.banks,order,'Opening an already active boundary cannot refresh twice');
+  }
+  for(const [id,deck] of Object.entries(before)){
+   const expected=enabled&&boundary&&deck.length>1?[...deck.slice(1),deck[0]]:deck;
+   assert.deepEqual(next.banks[id],expected,`one card per deck, only at selected boundaries; ${id}`);
+   assert.deepEqual(state.banks[id],deck,'The previous state and other search branches keep their deck order');
+  }
+  state=next;
+ }
+ assert.equal(refreshed,2);
+}
+const city=initGame(gameConfig(fresh));city.phase='borsa';city.players[0].node='Borsa';
+assert.ok(!legalCommands(city).some(c=>c.type==='refreshMarket'));
+assert.throws(()=>applyCommand(city,{type:'refreshMarket',target:'workers'}));
+assert.throws(()=>applyCommand(city,{type:'refreshMarket',target:'welfare'}));
 assert.deepEqual(loadMainConfig(storage()),fresh);
 const old=storage(),legacy=JSON.stringify(defaults());old.setItem(PREVIOUS_STORAGE_KEY,legacy);
 assert.deepEqual(loadMainConfig(old),fresh);assert.equal(old.getItem(PREVIOUS_STORAGE_KEY),legacy,'old settings kept intact');
@@ -79,12 +110,18 @@ assert.equal(income.resources.Tessuti,12);assert.equal(income.resources.Acciaio,
 const cappedSave={version:1,savedAt:new Date().toISOString(),config:gameConfig(fresh),state:structuredClone(warehouse),history:[structuredClone(warehouse)],paused:true};
 for(const rules of [cappedSave.config,cappedSave.state,...cappedSave.history]){
  rules.borsaFabbriche.resourceCap.enabled=true;
+ rules.borsaRefresh.enabled=true;
+ delete rules.roundRondel.refreshWorkers;
  for(const player of rules.players)if(player.resCap)player.resCap.enabled=true;
 }
 const capStore=storage(),oldSave=JSON.stringify(cappedSave);capStore.setItem(GAME_SAVE_KEY,oldSave);
 const restored=loadGame(capStore);assert.equal(capStore.getItem(GAME_SAVE_KEY),oldSave,'Loading preserves the original stored data until the next save');
 assert.equal(restored.config.borsaFabbriche.resourceCap.enabled,false);
+assert.equal(restored.config.borsaRefresh.enabled,false);
+assert.equal(restored.config.roundRondel.refreshWorkers,true);
 for(const state of [restored.state,...restored.history]){
+ assert.equal(state.roundRondel.refreshWorkers,true);
+ assert.equal(state.borsaRefresh.enabled,false,'City refresh stays removed after resume and undo');
  assert.ok(state.players.every(p=>!p.resCap.enabled));
  assert.equal(productionPreview(state,produce).resources.Tessuti,4,'Resumed and undo states have unlimited storage');
  assert.deepEqual(state.players[0].resources,owner.resources,'Migration preserves existing resources');

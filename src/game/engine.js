@@ -1573,7 +1573,10 @@ function finishTurn(state) {
       : (state.current + 1) % state.nPlayers;
   }
   if (lastOfRound && beginRoundAwards(state,state.turn-1)) return;
-  if (lastOfRound && beginRoundRondel(state,state.turn-1)) return;
+  if (lastOfRound && beginRoundRondel(state,state.turn-1)) {
+    if(state.roundRondel.refreshWorkers)log(state, 'Fine round: la prima carta di ogni mazzo operai va in fondo al proprio mazzo.');
+    return;
+  }
   startTurn(state);
 }
 

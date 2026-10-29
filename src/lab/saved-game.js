@@ -29,10 +29,12 @@ export function validateGameSave(save) {
   return save;
 }
 function contractsOnlySave(save) {
-  if ([save.config, save.state, ...save.history].every(rules => rules.contractsOnly && !rules.borsaFabbriche?.resourceCap?.enabled && !rules.players?.some(p=>p.resCap?.enabled) && rules.rowEconomy?.sameNationHireDiscount === (rules.roundRondel?.startingPolicy!=='affinity') && rules.rowEconomy?.tensionMachineCash === true)) return save;
+  if ([save.config, save.state, ...save.history].every(rules => rules.contractsOnly && (!rules.roundRondel?.fundThresholds||typeof rules.roundRondel.refreshWorkers==='boolean') && !rules.borsaRefresh?.enabled && !rules.borsaFabbriche?.resourceCap?.enabled && !rules.players?.some(p=>p.resCap?.enabled) && rules.rowEconomy?.sameNationHireDiscount === (rules.roundRondel?.startingPolicy!=='affinity') && rules.rowEconomy?.tensionMachineCash === true)) return save;
   const next = structuredClone(save), states = [next.state, ...next.history];
   if (!next.config.rowEconomy?.tensionMachineCash) next.config.workers = next.config.workers.map(tensionMachineCard);
   for (const rules of [next.config, ...states]) {
+    if(rules.roundRondel?.fundThresholds)rules.roundRondel.refreshWorkers??=true;
+    if(rules.borsaRefresh)rules.borsaRefresh={...rules.borsaRefresh,enabled:false};
     if(rules.borsaFabbriche?.resourceCap)rules.borsaFabbriche.resourceCap.enabled=false;
     for(const player of rules.players||[])if(player.resCap)player.resCap.enabled=false;
     rules.rowEconomy = { ...rules.rowEconomy, sameNationHireDiscount: rules.roundRondel?.startingPolicy!=='affinity', tensionMachineCash: true };

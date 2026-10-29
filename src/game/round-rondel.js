@@ -1,7 +1,9 @@
 import {WELFARE_FUNDS,validFundThresholds} from './welfare-funds.js';
+import {IMPIEGATI_BANK} from './data.js';
 import { welfareDisplayPolicies, welfarePolicies, welfarePolicyEnabled, validPolicyOrder } from './welfare-rondel.js';
 export const validRoundSchedule=(config,turns=28,n=3)=>Number.isInteger(turns)&&turns>=1&&turns<=60&&Array.isArray(config.bounds)&&Array.isArray(config.firstSeats)&&config.bounds.length===config.firstSeats.length&&config.bounds.every((end,i)=>Number.isInteger(end)&&end>0&&end<turns&&(i===0||end>config.bounds[i-1]))&&config.firstSeats.every(seat=>Number.isInteger(seat)&&seat>=0&&seat<n);
 export function initRoundRondel(config,n,turns) {
+  if(config.refreshWorkers!==undefined&&typeof config.refreshWorkers!=='boolean')throw new Error('Invalid round worker refresh');
   if(n!==3||!validRoundSchedule(config,turns,n)||config.maxSteps!==3||![0,1].includes(config.stepCost)||config.tokenCost!==1||config.tokenMax!==3)throw new Error('Invalid round rondel schedule or rules');
   if(config.startingPolicy!==undefined&&(config.startingPolicy!=='affinity'||config.extraStepCost!==1||config.mandatoryMove!==true||config.freeEntry!==false))throw new Error('Unsupported starting policy');
   if(config.fundThresholds&&(config.startingPolicy!=='affinity'||!validFundThresholds(config.fundThresholds)))throw new Error('Invalid Welfare fund thresholds');
@@ -9,8 +11,9 @@ export function initRoundRondel(config,n,turns) {
   return {...structuredClone(config),...(config.fundThresholds?{funds:Object.fromEntries(WELFARE_FUNDS.map(f=>[f.id,0]))}:{}),completed:[],active:null,log:[]};
 }
 export function beginRoundRondel(state,finishedTurn) {
-  const rr=state.roundRondel;if(!rr)return false;
+  const rr=state.roundRondel;if(!rr||rr.active)return false;
   const index=rr.bounds.indexOf(finishedTurn);if(index<0||rr.completed.includes(index))return false;
+  if(rr.refreshWorkers)state.banks=Object.fromEntries(Object.entries(state.banks).map(([id,deck])=>[id,id!==IMPIEGATI_BANK&&deck.length>1?[...deck.slice(1),deck[0]]:deck]));
   const order=Array.from({length:state.nPlayers},(_,i)=>(rr.firstSeats[index]+i)%state.nPlayers);
   const snapshots=state.players.map(p=>({seat:p.id,coins:p.coins,position:p.welfarePosition,tokens:p.welfareTokens,benefits:{...p.welfareRondelStats.benefits}}));
   state.roundRondel={...rr,active:{index,endTurn:finishedTurn,order,at:0,resumeCurrent:state.current,snapshots}};

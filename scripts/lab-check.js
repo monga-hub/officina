@@ -54,7 +54,7 @@ assert.equal(machineText({sector:'Chimica',effect:{verbo:'scambia',f1:{q:1,tipo:
 assert.equal(machineText({sector:'Tessile',effect:{verbo:'prendi',f1:{q:2,tipo:'risorsa',settore:'carta'}}}),'Prendi 2 tessuti');
 const historicalConfig={...reference,seed:1907,headless:true,players:cfg.players};
 const expected=initGame({...historicalConfig, workers:reference.workers.filter(w=>!w.power),
-  borsaFabbriche:cfg.borsaFabbriche, nodeBanks:structuredClone(STAR_NODE_BANKS), singleContractVisit:true,
+  borsaRefresh:cfg.borsaRefresh, borsaFabbriche:cfg.borsaFabbriche, nodeBanks:structuredClone(STAR_NODE_BANKS), singleContractVisit:true,
   contractsOnly:true, pianoEnabled:false, raceObjectives:{enabled:false,list:[]}, raceIncentive:0,
   rowEconomy:cfg.rowEconomy, contracts:cfg.contracts, contractCount:cfg.contractCount, contractPV:undefined,
   slots:{...reference.slots,direzione:{sopra:0,sotto:0}}});

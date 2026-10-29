@@ -8,6 +8,9 @@ const server=await createServer({configFile:false,server:{middlewareMode:true,hm
 try {
   const {Amount,MachineEffect,Development}=await server.ssrLoadModule('/src/lab/GameSymbols.jsx');
   const render=(component,props)=>renderToStaticMarkup(React.createElement(component,props));
+  const {default:RoundsEditor}=await server.ssrLoadModule('/src/lab/RoundsEditor.jsx');
+  const {mainDefaults}=await server.ssrLoadModule('/src/lab/config.js');
+  assert.match(render(RoundsEditor,{c:mainDefaults(),set(){}}),/Ricambio dei mazzi operai/);
   const {default:TurnTrack}=await server.ssrLoadModule('/src/lab/TurnTrack.jsx');
   const timeline=render(TurnTrack,{state:{turn:14,roundLimit:28,roundRondel:{bounds:[9,18]}}});
   assert.equal((timeline.match(/<li\b/g)||[]).length,28);

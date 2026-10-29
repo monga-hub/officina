@@ -271,7 +271,7 @@ function BorsaActions({ state, p, legal, dispatch }) {
         {converts.map((c, i) => <button key={i} onClick={() => dispatch(c)}>{c.giveQty} {RESOURCE_OF[c.give]} → {c.getQty} {RESOURCE_OF[c.take]}</button>)}
       </div>
       <h4>Completa Commesse</h4>
-      {state.contractsThisVisit === 0 && exitPathUsed && <small>Non completabili: hai già scelto di uscire con bonus/refresh in questa visita.</small>}
+      {state.contractsThisVisit === 0 && exitPathUsed && <small>Non completabili: hai già scelto l’alternativa alle commesse in questa visita.</small>}
       {state.contractsThisVisit < (state.singleContractVisit?1:2) && !exitPathUsed && completes.length === 0 && <small>Nessuna commessa completabile con le risorse attuali.</small>}
       <div className="btn-row col">
         {completes.map((c, i) => {

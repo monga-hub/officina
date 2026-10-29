@@ -48,6 +48,22 @@ try{
  const ssrEngine=await server.ssrLoadModule('/src/game/engine.js');ssrEngine.initGame(config);
  const {default:Board}=await server.ssrLoadModule('/src/lab/StarBoard.jsx');
  const render=state=>renderToStaticMarkup(React.createElement(Board,{state,dispatch(){}}));
+ const boardState=ssrEngine.initGame(config);boardState.players[0].isAI=false;
+ const text=render(boardState);assert.ok(!text.includes('star-instructions'),'No changing-height action row above the star');
+ const staffed=structuredClone(boardState);
+ staffed.players[0].depts.terziario.sopra=[config.workers.find(w=>w.sector==='Tessile').id];
+ staffed.players[0].depts.terziario.prod=6;staffed.players[0].depts.terziario.tension=1;
+ const nodeButton=(state,node)=>render(state).match(new RegExp(`<button[^>]*data-node="${node}"[^>]*>[\\s\\S]*?<\\/button>`))[0];
+ for(const [node,label] of [['Tessile','Produci'],['Servizi','Welfare'],['Sindacato','Repressione']]){
+  const moved=ssrEngine.applyCommand(staffed,ssrEngine.legalCommands(staffed).find(c=>c.type==='move'&&c.node===node));
+  const button=nodeButton(moved,node);
+  assert.ok(button.includes(`aria-label="${label} ·`));assert.ok(button.includes('star-node-action'));assert.ok(!button.includes('disabled'));
+  assert.equal((button.match(/<button/g)||[]).length,1,'Action node is one accessible button, without nested controls');
+ }
+ const empty=ssrEngine.applyCommand(boardState,ssrEngine.legalCommands(boardState).find(c=>c.type==='move'&&c.node==='Tessile'));
+ assert.ok(nodeButton(empty,'Tessile').includes('disabled'),'Production still needs a staffed department');
+ const city=structuredClone(boardState);city.phase='borsa';city.players[0].node='Borsa';
+ assert.ok(nodeButton(city,'Borsa').includes('aria-label="Commesse · Città"'));
  assert.ok(render({...round,welfareBank:0}).includes('Banca Welfare: 0 marchi'));
  assert.ok(render({...round,welfareBank:7}).includes('Banca Welfare: 7 marchi'));
  assert.ok(!render({...round,rowEconomy:{...round.rowEconomy,welfareBank:false}}).includes('star-welfare-bank'));

@@ -364,3 +364,8 @@
 .lab-shell .turn-track-dense li{font-size:9px}
 .turn-track-dense .turn-period ol{gap:1px}
 .turn-period-label{overflow:hidden}
+.table-overview .star-caption{height:40px;flex-shrink:0;padding:8px 12px}
+.star-action-node .star-seats{align-items:center;flex-wrap:wrap;max-width:100%;gap:3px}
+.lab-shell .star-destination.star-action-node:not(:disabled){cursor:pointer;border-color:#315f43;box-shadow:0 0 0 2px #b8c9a8}
+.star-node-action{display:inline-block;background:#244c39;color:#fff;border-radius:4px;padding:3px 7px;font:600 12px/1.2 sans-serif;white-space:nowrap}
+.star-action-node:disabled .star-node-action{background:#8b9681}

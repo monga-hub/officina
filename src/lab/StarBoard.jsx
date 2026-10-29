@@ -48,7 +48,7 @@ export default function StarBoard({state,dispatch,onActions,onNodeAction}) {
   const edges=[['Metallurgica','Servizi'],['Servizi','Tessile'],['Tessile','Chimica'],['Chimica','Sindacato'],['Sindacato','Metallurgica']];
   return <section id="stella" className="star-board" aria-label="Plancia a stella">
     <div className="star-caption"><div><p className="lab-eyebrow">LA CITTÀ INDUSTRIALE</p><h2>{canMove?'Scegli un nodo':canChoose?(isDepartment?(canRecover?'Assumi, produci o cura':'Assumi o produci'):'Scegli una delle due carte'):inCity?'Consegna in Città':'La plancia comune'}</h2></div><span>{canMove?'Tocca un nodo illuminato':canChoose?'Tocca una carta evidenziata':'Puoi sempre ingrandire le carte'}</span></div>
-    <p className="star-instructions">{inCity?<>Una commessa per visita. La consegna termina il turno. <button onClick={onActions}>Consegna commessa</button> <button className="node-action-shortcut" onClick={()=>dispatch(commands.find(c=>c.type==='endTurn'))}>Termina turno</button></>:canChoose?<><button className={nodeAction?"node-action-shortcut":undefined} onClick={nodeAction?()=>onNodeAction(nodeAction.type):onActions} disabled={!!nodeAction&&!canAct} title={nodeAction&&!canAct?nodeAction.unavailable:undefined}>{nodeAction?nodeAction.label:"Altre azioni"}</button>{canRecover&&<button className="node-action-shortcut" onClick={()=>dispatch({type:'pass'})} title="Rinuncia all’azione e scegli quanti gettoni spendere per curare questo reparto.">Cura senza produrre</button>}</>:null}</p>
+
     <div className="star-viewport"><div className="star-stage">
       <svg className="star-drawing" viewBox="0 0 1000 800" preserveAspectRatio="none" aria-hidden="true">
         <defs><radialGradient id="star-brass"><stop stopColor="#efd8a6"/><stop offset="1" stopColor="#916c41"/></radialGradient></defs>
@@ -60,9 +60,12 @@ export default function StarBoard({state,dispatch,onActions,onNodeAction}) {
       </svg>
       {Object.entries(STAR_PLACES).map(([node,pos])=>{
         const command=legal.find(c=>c.node===node), here=state.players.filter(q=>q.node===node);
-        return <button key={node} data-node={node} className={`star-destination ${command?'star-available':''} ${p.node===node?'star-current':''}`} style={{left:`${pos.x}%`,top:`${pos.y}%`}} disabled={!command} onClick={()=>dispatch(command)} aria-label={`Vai a ${rowNodeLabel(state,node)}${command?` · ${command.cost?`${command.cost} M`:'gratis'}`:''}`}>
+        const selected=node===p.node&&(canChoose||inCity);
+        const action=selected?(inCity?'Commesse':nodeAction?.label||'Azioni'):null;
+        const enabled=!!command||!!(selected&&(inCity||!nodeAction||canAct));
+        return <button key={node} data-node={node} className={`star-destination ${command?'star-available':''} ${p.node===node?'star-current':''} ${action?'star-action-node':''}`} style={{left:`${pos.x}%`,top:`${pos.y}%`}} disabled={!enabled} onClick={()=>command?dispatch(command):inCity||!nodeAction?onActions():onNodeAction(nodeAction.type)} title={selected&&nodeAction&&!canAct?nodeAction.unavailable:undefined} aria-label={action?`${action} · ${rowNodeLabel(state,node)}`:`Vai a ${rowNodeLabel(state,node)}${command?` · ${command.cost?`${command.cost} M`:'gratis'}`:''}`}>
           <span className="star-node-name">{SECTORS.includes(node)?<ResourceIcon resource={node} decorative/>:<span>{pos.icon}</span>} {rowNodeLabel(state,node)}</span>
-          <span className="star-seats">{Array.from({length:node==='Borsa'?Math.max(2,here.length):2},(_,i)=><span className="star-seat" key={i}>{here[i]?<Meeple player={here[i]}/>:<i>○</i>}</span>)}</span>
+          <span className="star-seats">{action?<>{here.map(q=><Meeple key={q.id} player={q}/>)}<span className="star-node-action">{action}</span></>:Array.from({length:node==='Borsa'?Math.max(2,here.length):2},(_,i)=><span className="star-seat" key={i}>{here[i]?<Meeple player={here[i]}/>:<i>○</i>}</span>)}</span>
           <small className="node-entry">{p.node===node?<span role="img" aria-label="Sei qui" title="Sei qui">●</span>:command?<Amount kind="coin" value={command.cost} label={`Ingresso: ${command.cost} marchi`}/>:here.length>=2&&node!=='Borsa'?<span role="img" aria-label="Posti occupati" title="Posti occupati">×</span>:null}</small>
         </button>;
       })}

@@ -16,7 +16,11 @@ Il tavolo usa cerchi dorati per i marchi e quadrati verde chiaro per i PV, con i
 
 ## Ultima versione testata · 29 ottobre 2026
 
-In **Gioca**, premi **Gioca l’ultima versione testata** per caricare e avviare le regole delle ultime cinque prove, anche se nel browser hai ancora altre impostazioni. Usa il numero di giocatori umani e la velocità IA selezionati nella stessa schermata. Le partite già salvate conservano le proprie regole.
+Il simulatore parte dalla configurazione principale delle ultime cinque prove. In **Gioca** c’è un solo pulsante: **Gioca con queste impostazioni**. Risorse del tracciato, carte, commesse, ordine della rondella e impostazioni IA degli editor si applicano sia alla partita giocata sia alle simulazioni. L’avvio non ricarica un preset sopra le modifiche. Le partite già salvate conservano le proprie regole.
+
+In **Welfare e denaro** puoi trascinare le sette abilità per cambiarne l’ordine in senso orario. Le frecce accanto alle abilità e i tasti ↑/↓ sulla maniglia permettono lo stesso riordino. Affinità rimane la partenza anche quando cambia posizione. L’ordine cambia le destinazioni e i costi effettivi, viene valutato dall’IA ed è conservato in configurazione, salvataggi e report.
+
+Le precedenti impostazioni locali restano conservate: se usavano già queste regole vengono recuperate con le personalizzazioni, altrimenti si apre la configurazione principale. Il ripristino in **Salva e apri** torna a questa stessa base (3 giocatori, 28 turni, cinque righe, Affinità e fondi 3/4/3).
 
 - **3 giocatori, 28 turni, cinque righe da quattro caselle**, sviluppo fino a20. Il rendimento delle risorse si sblocca raggiungendo o superando la singola casella; la tensione copre le prime righe.
 - **Rondella a sette caselle:** tutti iniziano su Affinità (−1 marco per assumere una nazionalità già presente nel reparto, minimo 1). Dopo i turni9 e18 devi avanzare da uno a sei passi: i primi tre sono gratuiti, gli extra costano un marco ciascuno. Nessun gettone dal movimento; caselle condivise.
@@ -26,7 +30,7 @@ In **Gioca**, premi **Gioca l’ultima versione testata** per caricare e avviare
 - **Punteggio:** commesse, un PV ogni10marchi finali (arrotondato per difetto) e un PV per ogni terna di risorse diverse (un tessuto, un acciaio, un colorante). Tutte36le commesse disponibili.
 - **IA:** fino a 15 secondi per confrontare i movimenti quando il Welfare è raggiungibile e gli acquisti Welfare diretti, 3 secondi per le altre scelte. La ricerca termina prima se completa la profondità richiesta e riusa il piano d’azione già scelto.
 
-Il motore conserva le regole precedenti per le configurazioni personalizzate e i salvataggi. La modalità rapida usa d2/r1 per ridurre l’attesa al tavolo; **Approfondito** usa d6/r1 come i test. Le sezioni di riferimento sotto descrivono anche le modalità precedenti.
+Il motore conserva le regole precedenti per le configurazioni personalizzate e i salvataggi. La modalità rapida usa d2/r1 per ridurre l’attesa al tavolo; **Approfondito** usa d6/r1 come i test. Le sezioni di riferimento sotto documentano anche le regole dei salvataggi precedenti, conservate per compatibilità.
 
 ## Avvio locale dai sorgenti
 

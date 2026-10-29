@@ -58,7 +58,9 @@ try{
  const compact=renderToStaticMarkup(React.createElement(Rondel,{state:human,player:human.players[human.current]}));
  assert.ok(compact.includes('Cooperazione'));assert.ok(!compact.includes('Produci con almeno due nazionalità'));assert.ok(!compact.includes('Ogni operaio assunto'));
  const {default:Setup}=await server.ssrLoadModule('/src/lab/PlaySetup.jsx');
- assert.ok(renderToStaticMarkup(React.createElement(Setup,{c:preset,set(){},onStart(){}})).includes('Gioca l’ultima versione testata'));
+ const setupHTML=renderToStaticMarkup(React.createElement(Setup,{c:preset,set(){},onStart(){}}));
+ assert.ok(setupHTML.includes('Gioca con queste impostazioni'));assert.ok(!setupHTML.includes('Gioca l’ultima versione testata'));
+ assert.equal((setupHTML.match(/play-start/g)||[]).length,1);
  const {machineText}=await server.ssrLoadModule('/src/lab/cards.js');
  assert.match(machineText(preset.workers.find(w=>w.effect.continuity)),/ogni riga raggiunta e libera/);
 }finally{await server.close();}

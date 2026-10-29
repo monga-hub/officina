@@ -9,9 +9,18 @@ export const WELFARE_POLICIES = [
 export const AFFINITY_POLICY={id:'affinity',name:'Affinità',description:'Assumere Sopra un operaio della stessa nazionalità di almeno un operaio già presente nello stesso reparto costa 1 marco in meno, minimo 1. Lo sconto è fisso, non cresce con gli operai.'};
 export const ALL_WELFARE_POLICIES=[...WELFARE_POLICIES,AFFINITY_POLICY];
 export const welfarePolicies=state=>state.roundRondel?.startingPolicy==='affinity'?ALL_WELFARE_POLICIES:WELFARE_POLICIES;
-export const welfareDisplayPolicies=state=>state.roundRondel?.startingPolicy==='affinity'?[AFFINITY_POLICY,...WELFARE_DISPLAY_POLICIES]:WELFARE_DISPLAY_POLICIES;
+export const welfareDisplayPolicies=state=>state.roundRondel?.startingPolicy==='affinity'
+  ? (state.roundRondel.policyOrder||DEFAULT_ROUND_POLICY_ORDER).map(id=>ALL_WELFARE_POLICIES.find(p=>p.id===id))
+  : WELFARE_DISPLAY_POLICIES;
 // Stable indices keep saved positions and historical reports attached to the same policy.
 export const WELFARE_DISPLAY_POLICIES = [...WELFARE_POLICIES.slice(1), WELFARE_POLICIES[0]];
+export const DEFAULT_ROUND_POLICY_ORDER=[AFFINITY_POLICY.id,...WELFARE_DISPLAY_POLICIES.map(p=>p.id)];
+export const validPolicyOrder=order=>Array.isArray(order)&&order.length===ALL_WELFARE_POLICIES.length&&new Set(order).size===order.length&&order.every(id=>ALL_WELFARE_POLICIES.some(p=>p.id===id));
+export function movePolicy(order,source,target){
+  const next=[...order],from=next.indexOf(source),to=next.indexOf(target);
+  if(from<0||to<0)return next;
+  next.splice(to,0,next.splice(from,1)[0]);return next;
+}
 // Existing saved games retain their original six-step rules.
 export const welfareMaxSteps = state => state.rowEconomy?.welfareMaxSteps ?? 6;
 export const freeWelfareEntry = state => state.rowEconomy?.welfareFreeEntry !== false;

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import LabWorker from './worker.js?worker&inline';
-import { AI_NAMES, gameConfig, download, validate } from './config.js';
+import { AI_NAMES, gameConfig, download, validateMainConfig as validate } from './config.js';
 import { summarize, textReport } from './run.js';
 import { Card, NumberField, SelectField } from './Editors.jsx';
 const fmt=n=>n.toLocaleString('it-IT',{maximumFractionDigits:2});
@@ -64,8 +64,7 @@ export default function Simulation({c,set,locked,setLocked,onPlay}) {
     </section>}
     <Card title="Lotto di simulazioni"><fieldset disabled={locked}><div className="lab-fields">
       <label className="lab-field"><span>Nome della prova</span><input value={c.name} maxLength={100} onChange={e=>set({name:e.target.value})}/></label>
-      <NumberField label="Giocatori" min={2} max={4} value={c.players} onChange={v=>set({players:v})}/>
-      <NumberField label="Turni per giocatore" min={1} max={60} value={c.turns} onChange={v=>set({turns:v})}/>
+      <p><b>{c.players} giocatori · {c.turns} turni</b><br/>Stessa configurazione della partita giocata: tutte le modifiche degli editor sono incluse.</p>
       <NumberField label="Partite da simulare nel lotto" min={1} max={100} value={c.simulation.games} onChange={games=>simSet({games})}/>
     </div><div className="lab-fields">{c.startingCoins.slice(0,c.players).map((n,i)=><NumberField key={i} label={`Marchi iniziali · posto ${i+1}`} value={n} max={100} onChange={v=>set({startingCoins:c.startingCoins.map((x,j)=>i===j?v:x)})}/>)}</div>
     <div className="lab-fields"><SelectField label="Intelligenza artificiale" value={c.simulation.ai} options={Object.entries(AI_NAMES).map(([value,label])=>({value,label}))} onChange={ai=>simSet({ai})}/><NumberField label="Seme iniziale" value={c.simulation.seed} max={2147483547} onChange={seed=>simSet({seed})}/></div>

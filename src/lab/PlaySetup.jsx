@@ -1,29 +1,23 @@
 import ResourceIcon from './ResourceIcon.jsx';
 import React, { useState } from 'react';
-import { Card, NumberField, SelectField } from './Editors.jsx';
-import { playableConfig } from './config.js';
-import latestPlaytest from './latest-playtest.json';
+import { Card, SelectField } from './Editors.jsx';
+import { gameConfig } from './config.js';
 
 export default function PlaySetup({ c, set, onStart, invalid }) {
-  const [humans, setHumans] = useState(1), [pace, setPace] = useState('rapid');
+  const [humans, setHumans] = useState(1);
+  const pace=c.simulation.ai==='forecast2'&&c.simulation.rollouts===1&&[2,6].includes(c.simulation.depth)?(c.simulation.depth===6?'study':'rapid'):'custom';
+  const setPace=value=>set({simulation:{...c.simulation,ai:'forecast2',depth:value==='study'?6:2,rollouts:1}});
   return <>
-    <Card title="Ultima versione · rondella a sette caselle">
-      <p>3 giocatori · 28 turni · cinque righe. Tutti partono su Affinità. Dopo i turni 9 e 18 bisogna avanzare: primi tre passi gratis, poi un marco per passo extra, fino a sei. Nessuna carta premio.</p>
-      <p>Continuità per ogni riga raggiunta e libera, macchinari bloccati senza righe libere, tensione ×3, 10 marchi finali = 1 PV e ogni terna di risorse diverse = 1 PV finale (1 tessuto + 1 acciaio + 1 colorante). I gettoni si comprano al Welfare.</p>
-      <button className="lab-primary" onClick={()=>{const preset=structuredClone(latestPlaytest);set(preset);onStart(playableConfig(preset,Math.min(humans,3),pace));}}>Gioca l’ultima versione testata →</button>
-      <p className="lab-muted">Usa il numero di giocatori umani e la velocità IA scelti qui sotto. Puoi poi modificare gli editor per una partita personalizzata.</p>
-    </Card>
     <Card title="Prendi in mano la tua fabbrica" className="play-intro">
       <p>Assumi, produci e consegna commesse. Guarda lo sviluppo salire e la tensione coprire le righe: ogni scelta si vede subito sulla tua plancia.</p>
       <div className="lab-fields">
-        <SelectField label="Giocatori al tavolo" value={c.players} onChange={v=>set({players:+v})} options={[2,3,4].map(value=>({value,label:String(value)}))}/>
+        <p><b>{c.players} giocatori · {c.turns} turni</b><br/>Configurazione principale con rondella dopo i turni 9 e 18.</p>
         <SelectField label="Giocatori umani" value={Math.min(humans,c.players)} onChange={v=>setHumans(+v)} options={Array.from({length:c.players},(_,i)=>({value:i+1,label:i===0?'Solo io':`${i+1} · sullo stesso schermo`}))}/>
-        <NumberField label="Turni per giocatore" value={c.turns} min={1} max={60} onChange={turns=>set({turns})}/>
       </div>
-      {Math.min(humans,c.players)<c.players&&<SelectField label="Avversario IA" value={pace} onChange={setPace} options={[{value:'rapid',label:'Rapido · nuova IA d2 r1'},{value:'study',label:'Approfondito · nuova IA d6 r1, come nelle ultime prove'}]}/>}
-      <p className="lab-muted">La modalità rapida riduce l’attesa, ma valuta meno in profondità. Cambia solo il tempo di riflessione dell’IA: le regole e le impostazioni delle simulazioni restano uguali.</p>
-      <button className="lab-primary play-start" disabled={!!invalid} onClick={()=>onStart(playableConfig(c,Math.min(humans,c.players),pace))}>Inizia la partita →</button>
-      <p className="lab-muted">Usa la configurazione mostrata qui sopra e negli editor. Ogni nuova partita usa un seme casuale, conservato nel salvataggio. La partita si salva automaticamente dopo ogni mossa in questo browser. Dopo una ricarica premi Riprendi partita. Si conservano anche le ultime 10 mosse annullabili.</p>
+      {Math.min(humans,c.players)<c.players&&<SelectField label="Avversario IA" value={pace} onChange={setPace} options={[{value:'rapid',label:'Rapido · nuova IA d2 r1'},{value:'study',label:'Approfondito · nuova IA d6 r1'},...(pace==='custom'?[{value:'custom',label:`Impostazioni degli editor · ${c.simulation.ai} d${c.simulation.depth} r${c.simulation.rollouts}`}]:[])]}/>}
+      <p className="lab-muted">La modalità rapida riduce l’attesa, ma valuta meno in profondità. La scelta aggiorna anche l’IA delle simulazioni: partita e prove usano gli stessi editor.</p>
+      <button className="lab-primary play-start" disabled={!!invalid} onClick={()=>onStart(gameConfig(c,{humans:Math.min(humans,c.players)}))}>Gioca con queste impostazioni →</button>
+      <p className="lab-muted">Ogni modifica a risorse, carte, commesse e ordine della rondella viene usata nella nuova partita e nelle simulazioni. Ogni nuova partita usa un seme casuale, conservato nel salvataggio. La partita si salva automaticamente dopo ogni mossa in questo browser. Dopo una ricarica premi Riprendi partita. Si conservano anche le ultime 10 mosse annullabili.</p>
     </Card>
     <div className="lab-two">
       <Card title="Come giocare">{c.roundRondel?.fundThresholds&&<p>I marchi dei gettoni vanno nei fondi a tua scelta: Economia 3, Personale 4, Produzione 3. Alla soglia le abilità collegate si potenziano per tutti. La repressione ruba da un solo fondo: sotto soglia il bonus torna base.</p>}{c.finalResourcePV&&<p>A fine partita: 1 PV per ogni terna di risorse diverse, composta da 1 tessuto + 1 acciaio + 1 colorante. Si aggiungono ai PV delle commesse e dei marchi.</p>}<ol><li><b>Spostati</b> in un nodo diverso: vedi prima il costo e le carte disponibili.</li><li><b>Scegli un’azione</b>: assumi, installa un macchinario, produci oppure investi. Poi passa il turno.</li><li><b>Quando vai in Città</b>, puoi consegnare una sola commessa: incassi punti e marchi e il turno termina. Puoi anche scegliere l’incasso alternativo senza consegnare.</li></ol><p>{c.finalCoinPV?`Ai punti delle commesse si aggiunge 1 PV ogni ${c.finalCoinsPerPV||10} marchi finali, arrotondando per difetto.`:'I punti vittoria vengono solo dalle commesse.'} A parità di punti contano i marchi rimasti, poi il numero di commesse completate.</p></Card>

@@ -1,7 +1,7 @@
 import {WELFARE_FUNDS,fundBalances} from '../game/welfare-funds.js';
 import { initGame, scorePlayer } from '../game/engine.js';
 import { withoutTrackPoints } from './config.js';
-import { welfarePolicies, rondelEnabled } from '../game/welfare-rondel.js';
+import { welfarePolicies, rondelEnabled, validPolicyOrder } from '../game/welfare-rondel.js';
 import { tensionMachineCard } from '../game/row-economy.js';
 
 export const GAME_SAVE_KEY='officina1907-partita-v1';
@@ -13,6 +13,7 @@ function validState(state,config) {
     &&Number.isInteger(state.turn)&&state.turn>0&&['move','action','borsa','resolving','roundRondel','done'].includes(state.phase)
     &&(state.phase!=='roundRondel'||(state.roundRondel?.active&&Array.isArray(state.roundRondel.log)&&Array.isArray(state.roundRondel.completed)&&state.roundRondel.active.order[state.roundRondel.active.at]===state.current))
     &&(!state.roundRondel?.fundThresholds||(fundBalances(state)&&Object.keys(fundBalances(state)).length===3&&WELFARE_FUNDS.every(f=>Number.isInteger(fundBalances(state)[f.id])&&fundBalances(state)[f.id]>=0)&&Object.values(fundBalances(state)).reduce((a,b)=>a+b,0)===state.welfareBank))
+    &&(state.roundRondel?.policyOrder===undefined||validPolicyOrder(state.roundRondel.policyOrder))
     &&state.banks&&state.tracks&&state.contracts&&Array.isArray(state.log)&&Array.isArray(state.pendingQueue)
     &&state.players.every(p=>p.resources&&p.depts&&ROLES.every(role=>Array.isArray(p.depts[role]?.sopra)&&Array.isArray(p.depts[role]?.sotto)))
     &&(!rondelEnabled(state)||state.players.every(p=>(p.welfarePosition===null||(Number.isInteger(p.welfarePosition)&&p.welfarePosition>=0&&p.welfarePosition<welfarePolicies(state).length))
@@ -21,6 +22,7 @@ function validState(state,config) {
 }
 export function validateGameSave(save) {
   if(save?.version!==1)throw new Error('Versione del salvataggio non supportata.');
+  if(save.config?.roundRondel?.policyOrder!==undefined&&!validPolicyOrder(save.config.roundRondel.policyOrder))throw new Error('Ordine della rondella salvata non valido.');
   if(!Array.isArray(save.config?.players)||save.config.players.length<2||save.config.players.length>4||!Array.isArray(save.config.workers)
     ||!validState(save.state,save.config)||!Array.isArray(save.history)||!save.history.every(state=>validState(state,save.config))
     ||typeof save.paused!=='boolean'||!Number.isFinite(Date.parse(save.savedAt)))throw new Error('Il salvataggio della partita non è leggibile.');

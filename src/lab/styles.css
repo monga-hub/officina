@@ -332,3 +332,15 @@
 .star-welfare-bank:has(.fund-powered),.star-welfare-bank:has([title]){gap:5px;font-size:10px;white-space:nowrap}
 .star-welfare-bank>span[title]{display:grid;text-align:center;padding:2px 3px;border-radius:3px;background:#fffdf0}
 .star-welfare-bank .fund-powered{color:#244c39;background:#d9edc4!important}
+
+.rondel-order-list{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:8px;padding:0;margin:14px 0}
+.rondel-order-list>li{display:flex;align-items:center;gap:10px;padding:9px;border:1px solid #d8dece;border-radius:9px;background:#fffdf6;transition:background .12s,border-color .12s}
+.rondel-order-list>li>div:nth-child(2){flex:1;min-width:0}
+.rondel-order-list small{display:block;margin-top:3px;color:#66735f}
+.rondel-order-list .order-dragging{opacity:.6}
+.rondel-order-list .order-target{border-color:#34664b;background:#e2efdc;outline:2px solid #34664b}
+.order-handle{touch-action:none;user-select:none;cursor:grab;font-size:25px;min-width:44px;min-height:44px}
+.order-handle:active{cursor:grabbing}
+.order-buttons{display:flex;gap:5px}
+.order-buttons button{min-width:40px;min-height:40px}
+.order-status{min-height:1.4em;color:#34664b}

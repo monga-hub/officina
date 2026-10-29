@@ -1,7 +1,8 @@
 import {validFundThresholds} from '../game/welfare-funds.js';
 import reference from './reference.json' with { type: 'json' };
+import latestPlaytest from './latest-playtest.json' with { type: 'json' };
 import { TRACK_MODELS, SECTORS, NATIONS_NUOVO } from '../game/data.js';
-import { WELFARE_POLICIES } from '../game/welfare-rondel.js';
+import { WELFARE_POLICIES, validPolicyOrder } from '../game/welfare-rondel.js';
 import { STAR_NODE_BANKS } from './markets.js';
 import { tensionMachineCard } from '../game/row-economy.js';
 export const ROLES = ['terziario', 'secondario', 'primario'];
@@ -9,9 +10,23 @@ export const SIZES = ['small', 'medium', 'large'];
 export const SIZE_NAMES = { small: 'Piccole', medium: 'Medie', large: 'Grandi' };
 export const MODELS = ['righe4corte', 'righe4', 'righe3', 'righe5x4'];
 export const AI_NAMES = { forecast2: 'Nuova IA · valuta gli utilizzi futuri', beam2: 'IA precedente · confronto', greedy: 'Rapida · controllo tecnico' };
-export const STORAGE_KEY = 'officina1907-laboratorio-v1';
+export const PREVIOUS_STORAGE_KEY = 'officina1907-laboratorio-v1';
+export const STORAGE_KEY = 'officina1907-laboratorio-principale-v1';
 export const RULES_REVISION = 4;
 const PRESET_REVISION = 2;
+export const mainDefaults=()=>structuredClone(latestPlaytest);
+export function validateMainConfig(c){
+  validate(c);
+  check(c.roundRondel?.enabled&&c.roundRondel.startingPolicy==='affinity'&&c.roundRondel.fundThresholds,'Questa configurazione usa una versione precedente. Riparti dalla configurazione principale.');
+  return c;
+}
+export function loadMainConfig(storage){
+  const raw=storage.getItem(STORAGE_KEY);
+  if(raw)return validateMainConfig(parseConfig(raw));
+  const previous=storage.getItem(PREVIOUS_STORAGE_KEY);
+  if(previous){const c=parseConfig(previous);if(c.roundRondel?.enabled&&c.roundRondel.startingPolicy==='affinity'&&c.roundRondel.fundThresholds)return validateMainConfig(c);}
+  return mainDefaults();
+}
 export function withoutTrackPoints(track) {
   return track.map(cell => {
     if (!cell || !Object.hasOwn(cell, 'pv')) return cell;
@@ -47,6 +62,7 @@ export function validate(c) {
   if (c.conversionMachines !== undefined) check(typeof c.conversionMachines === 'boolean', 'Opzione conversioni non valida.');
   if (c.roundRondel?.enabled) {
     const r=c.roundRondel;
+    if(r.policyOrder!==undefined)check(r.startingPolicy==='affinity'&&validPolicyOrder(r.policyOrder),'L’ordine della rondella deve contenere tutte le sette abilità una sola volta.');
     if(r.fundThresholds)check(c.welfareBank&&r.startingPolicy==='affinity'&&validFundThresholds(r.fundThresholds),'I fondi Welfare richiedono soglie Economia 3, Personale 4, Produzione 3.');
     if(r.startingPolicy!==undefined)check(r.startingPolicy==='affinity'&&r.extraStepCost===1&&r.mandatoryMove===true&&r.freeEntry===false,'Casella iniziale o movimento obbligatorio non validi.');
     check(c.players===3 && c.turns===28, 'La rondella di fine round testata richiede 3 giocatori e 28 turni.');

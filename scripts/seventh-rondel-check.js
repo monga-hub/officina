@@ -29,7 +29,7 @@ p.welfarePosition=1;assert.equal(hireCost(s,p,w,'terziario','sopra'),3,'Leaving 
 const bankId=s.nodeBanks.Tessile[0];s.banks[bankId]=[w.id];
 const hire=legalCommands(s).find(x=>x.type==='hire'&&x.side==='sopra'&&x.role==='terziario'&&x.cardId===w.id);
 assert.ok(hire);const hired=applyCommand(s,hire);assert.equal(hired.players[0].coins,18);assert.equal(hired.players[0].welfareRondelStats.benefits.affinity,1);
-const round=initGame(config);assert.ok(beginRoundRondel(round,9));round.players[0].coins=3;
+const round=initGame(config);assert.ok(beginRoundRondel(round,7));round.players[0].coins=3;
 const moves=roundRondelCommands(round);assert.equal(moves.length,6);
 assert.deepEqual(moves.map(x=>x.position),[1,2,3,4,5,0]);assert.deepEqual(moves.map(x=>roundRondelCost(round.roundRondel,x.steps)),[0,0,0,1,2,3]);
 assert.ok(!moves.some(x=>x.type==='keepRoundRondel'||x.position===6));assert.throws(()=>applyCommand(round,{type:'keepRoundRondel'}));

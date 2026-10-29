@@ -1,4 +1,5 @@
 import {validFundThresholds} from '../game/welfare-funds.js';
+import {validRoundSchedule} from '../game/round-rondel.js';
 import reference from './reference.json' with { type: 'json' };
 import latestPlaytest from './latest-playtest.json' with { type: 'json' };
 import { TRACK_MODELS, SECTORS, NATIONS_NUOVO } from '../game/data.js';
@@ -66,7 +67,7 @@ export function validate(c) {
     if(r.fundThresholds)check(c.welfareBank&&r.startingPolicy==='affinity'&&validFundThresholds(r.fundThresholds),'I fondi Welfare richiedono soglie Economia 3, Personale 4, Produzione 3.');
     if(r.startingPolicy!==undefined)check(r.startingPolicy==='affinity'&&r.extraStepCost===1&&r.mandatoryMove===true&&r.freeEntry===false,'Casella iniziale o movimento obbligatorio non validi.');
     check(c.players===3 && c.turns===28, 'La rondella di fine round testata richiede 3 giocatori e 28 turni.');
-    check(c.welfareRondel===true && JSON.stringify(r.bounds)==='[9,18]' && JSON.stringify(r.firstSeats)==='[0,1]' && r.maxSteps===3 && [0,1].includes(r.stepCost) && r.tokenCost===1 && r.tokenMax===3 && (r.freeEntry===undefined || typeof r.freeEntry==='boolean'), 'Impostazioni della rondella di fine round non valide.');
+    check(c.welfareRondel===true && validRoundSchedule(r) && r.maxSteps===3 && [0,1].includes(r.stepCost) && r.tokenCost===1 && r.tokenMax===3 && (r.freeEntry===undefined || typeof r.freeEntry==='boolean'), 'Impostazioni della rondella di fine round non valide.');
   }
   check(typeof c.name === 'string' && c.name.length <= 100, 'Nome della prova non valido.');
   integer(c.players, 2, 4, 'Giocatori'); integer(c.turns, 1, 60, 'Turni');
@@ -165,6 +166,9 @@ export function parseConfig(raw) {
   const c = JSON.parse(raw);
   // Editor migrations preserve custom prices; current rules apply to all lab configurations.
   if (c?.schema === 'officina-lab-1') {
+    if(c.roundRondel?.fundThresholds&&JSON.stringify(c.roundRondel.bounds)==='[9,18]'){
+      c.roundRondel.bounds=[7,14,21];c.roundRondel.firstSeats=[0,1,2];
+    }
     const migrateLargePV = c.presetRevision == null || c.presetRevision === 1;
     const migrateMachines = c.rulesRevision == null || [1, 2, 3].includes(c.rulesRevision);
     c.productionThresholds ??= Array.from({length: TRACK_MODELS[c.trackModel]?.rows || 4}, (_, i) => i * (TRACK_MODELS[c.trackModel]?.columns || 4) + 1);

@@ -15,6 +15,10 @@ try {
   assert.match(timeline,/aria-current="step"[^>]*>14<\/li>/);
   assert.match(timeline,/Turno 9 · Fine periodo/);assert.match(timeline,/Turno 18 · Fine periodo/);assert.match(timeline,/Turno 28 · Fine partita/);
   assert.match(render(TurnTrack,{state:{turn:10,roundLimit:28,roundRondel:{bounds:[9,18],active:{endTurn:9}}}}),/aria-current="step"[^>]*>9<\/li>/);
+  const quarters=render(TurnTrack,{state:{turn:15,roundLimit:28,roundRondel:{bounds:[7,14,21]}}});
+  assert.equal((quarters.match(/↻ Rondella/g)||[]).length,3);
+  for(const end of [7,14,21])assert.ok(quarters.includes(`Turno ${end} · Fine periodo`));
+  assert.match(quarters,/4° periodo/);
   assert.match(render(Amount,{kind:'coin',value:0}),/aria-label="0 marchi"/);
   assert.match(render(Amount,{kind:'pv',value:15}),/class="amount-token amount-pv"/);
   assert.match(render(Amount,{kind:'pv',value:15}),/>15<\/span>/);

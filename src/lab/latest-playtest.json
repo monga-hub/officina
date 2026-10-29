@@ -2041,12 +2041,14 @@
   "roundRondel": {
     "enabled": true,
     "bounds": [
-      9,
-      18
+      7,
+      14,
+      21
     ],
     "firstSeats": [
       0,
-      1
+      1,
+      2
     ],
     "maxSteps": 3,
     "stepCost": 0,

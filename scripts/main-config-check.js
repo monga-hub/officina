@@ -10,6 +10,17 @@ const storage=()=>{const values=new Map();return {getItem:k=>values.get(k)??null
 const fresh=mainDefaults();validateMainConfig(fresh);
 assert.equal(fresh.players,3);assert.equal(fresh.turns,28);assert.equal(fresh.trackModel,'righe5x4');
 assert.equal(fresh.roundRondel.startingPolicy,'affinity');assert.deepEqual(fresh.roundRondel.fundThresholds,{economy:3,personnel:4,production:3});
+assert.deepEqual(fresh.roundRondel.bounds,[7,14,21]);assert.deepEqual(fresh.roundRondel.firstSeats,[0,1,2]);
+const prior=structuredClone(fresh);prior.roundRondel.bounds=[9,18];prior.roundRondel.firstSeats=[0,1];
+assert.deepEqual(parseConfig(JSON.stringify(prior)).roundRondel.bounds,[7,14,21]);
+let calendar=initGame(gameConfig(fresh));const deadlines=[];
+while(!calendar.gameOver){
+ const legal=legalCommands(calendar);
+ if(calendar.phase==='roundRondel'&&calendar.roundRondel.active.at===0)deadlines.push([calendar.roundRondel.active.endTurn,calendar.current]);
+ calendar=applyCommand(calendar,legal.find(c=>['pass','endTurn','skipWelfareToken'].includes(c.type))||legal[0]);
+}
+assert.deepEqual(deadlines,[[7,0],[14,1],[21,2]]);assert.equal(calendar.roundRondel.log.length,9);assert.equal(calendar.turn,28);
+assert.deepEqual(calendar.roundRondel.completed,[0,1,2]);
 assert.deepEqual(loadMainConfig(storage()),fresh);
 const old=storage(),legacy=JSON.stringify(defaults());old.setItem(PREVIOUS_STORAGE_KEY,legacy);
 assert.deepEqual(loadMainConfig(old),fresh);assert.equal(old.getItem(PREVIOUS_STORAGE_KEY),legacy,'old settings kept intact');
@@ -24,7 +35,7 @@ old.setItem(PREVIOUS_STORAGE_KEY,JSON.stringify(changed));assert.deepEqual(loadM
 assert.deepEqual(parseConfig(JSON.stringify(changed)),changed);
 for(const source of DEFAULT_ROUND_POLICY_ORDER)for(const target of DEFAULT_ROUND_POLICY_ORDER){
  const c=mainDefaults();c.roundRondel.policyOrder=movePolicy(DEFAULT_ROUND_POLICY_ORDER,source,target);
- const state=initGame(gameConfig(c));state.turn=10;beginRoundRondel(state,9);
+ const state=initGame(gameConfig(c));state.turn=8;beginRoundRondel(state,7);
  const available=roundRondelCommands(state),start=c.roundRondel.policyOrder.indexOf('affinity');
  assert.equal(available.length,6);
  for(const command of available)assert.equal(welfarePolicies(state)[command.position].id,c.roundRondel.policyOrder[(start+command.steps)%7]);
@@ -58,7 +69,7 @@ for(const state of [restored.state,...restored.history]){
  assert.equal(productionPreview(state,produce).resources.Tessuti,4,'Resumed and undo states have unlimited storage');
  assert.deepEqual(state.players[0].resources,owner.resources,'Migration preserves existing resources');
 }
-let round=initGame(human);round.turn=10;assert.ok(round.players.every(p=>welfarePolicy(round,p).id==='affinity'));beginRoundRondel(round,9);
+let round=initGame(human);round.turn=8;assert.ok(round.players.every(p=>welfarePolicy(round,p).id==='affinity'));beginRoundRondel(round,7);
 assert.deepEqual(welfareDisplayPolicies(round).map(p=>p.id),changed.roundRondel.policyOrder);
 const commands=roundRondelCommands(round);assert.equal(commands[0].steps,1);assert.equal(welfarePolicies(round)[commands[0].position].id,'formation');
 for(const c of commands){assert.equal(roundRondelCost(round.roundRondel,c.steps),Math.max(0,c.steps-3));}

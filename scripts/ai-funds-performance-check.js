@@ -25,7 +25,7 @@ function lateState(node,depth){
 const cases=[];
 for(const node of ['Servizi','Sindacato','Tessile'])cases.push({label:node+' d6 finale',state:lateState(node,6)});
 for(const amount of [2,3,4]){const state=lateState('Servizi',6);state.roundRondel.funds={economy:amount,personnel:amount,production:amount};state.welfareBank=amount*3;cases.push({label:'soglie '+amount,state});}
-const checkpoint=lateState('Servizi',1);checkpoint.turn=19;beginRoundRondel(checkpoint,18);cases.push({label:'scelta rondella',state:checkpoint});
+const checkpoint=lateState('Servizi',1);checkpoint.turn=15;beginRoundRondel(checkpoint,14);cases.push({label:'scelta rondella',state:checkpoint});
 // Guard the greedy tie shortcut: a future evaluator that values allocation must remove it.
 for (let position=0;position<7;position++) {
   const state=lateState('Servizi',6);state.players[state.current].welfarePosition=position;

@@ -1,8 +1,8 @@
 import {WELFARE_FUNDS,validFundThresholds} from './welfare-funds.js';
 import { welfareDisplayPolicies, welfarePolicies, welfarePolicyEnabled, validPolicyOrder } from './welfare-rondel.js';
-export const validRoundSchedule=config=>JSON.stringify([config.bounds,config.firstSeats])==='[[9,18],[0,1]]'||JSON.stringify([config.bounds,config.firstSeats])==='[[7,14,21],[0,1,2]]';
+export const validRoundSchedule=(config,turns=28,n=3)=>Number.isInteger(turns)&&turns>=1&&turns<=60&&Array.isArray(config.bounds)&&Array.isArray(config.firstSeats)&&config.bounds.length===config.firstSeats.length&&config.bounds.every((end,i)=>Number.isInteger(end)&&end>0&&end<turns&&(i===0||end>config.bounds[i-1]))&&config.firstSeats.every(seat=>Number.isInteger(seat)&&seat>=0&&seat<n);
 export function initRoundRondel(config,n,turns) {
-  if(n!==3||turns!==28||!validRoundSchedule(config)||config.maxSteps!==3||![0,1].includes(config.stepCost)||config.tokenCost!==1||config.tokenMax!==3)throw new Error('Unsupported round rondel experiment');
+  if(n!==3||!validRoundSchedule(config,turns,n)||config.maxSteps!==3||![0,1].includes(config.stepCost)||config.tokenCost!==1||config.tokenMax!==3)throw new Error('Invalid round rondel schedule or rules');
   if(config.startingPolicy!==undefined&&(config.startingPolicy!=='affinity'||config.extraStepCost!==1||config.mandatoryMove!==true||config.freeEntry!==false))throw new Error('Unsupported starting policy');
   if(config.fundThresholds&&(config.startingPolicy!=='affinity'||!validFundThresholds(config.fundThresholds)))throw new Error('Invalid Welfare fund thresholds');
   if(config.policyOrder!==undefined&&(config.startingPolicy!=='affinity'||!validPolicyOrder(config.policyOrder)))throw new Error('Invalid rondel policy order');

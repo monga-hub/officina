@@ -355,3 +355,12 @@
 .turn-period-label b{font-weight:600;color:#805c22}
 .table-overview .play-header>.play-turn{flex-wrap:wrap;gap:2px 8px;max-width:190px}
 .table-overview .play-header>div:first-child{flex-shrink:0}
+.rounds-calendar{display:grid;grid-template-columns:repeat(auto-fill,minmax(55px,1fr));gap:7px;margin:20px 0}
+.lab-shell .rounds-calendar button{min-height:52px;padding:6px;font-size:16px;text-align:center}
+.rounds-calendar button small{display:block;height:17px;font-size:11px}
+.lab-shell .rounds-calendar [aria-pressed=true]{background:#294f3b;color:white;border-color:#294f3b}
+.rounds-calendar button:disabled{opacity:.65;border-style:dashed}
+.turn-track-dense{gap:2px}
+.lab-shell .turn-track-dense li{font-size:9px}
+.turn-track-dense .turn-period ol{gap:1px}
+.turn-period-label{overflow:hidden}

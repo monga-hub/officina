@@ -11,7 +11,7 @@ export default function PlaySetup({ c, set, onStart, invalid }) {
     <Card title="Prendi in mano la tua fabbrica" className="play-intro">
       <p>Assumi, produci e consegna commesse. Guarda lo sviluppo salire e la tensione coprire le righe: ogni scelta si vede subito sulla tua plancia.</p>
       <div className="lab-fields">
-        <p><b>{c.players} giocatori · {c.turns} turni</b><br/>Configurazione principale con rondella dopo i turni {c.roundRondel.bounds.join(", ")}.</p>
+        <p><b>{c.players} giocatori · {c.turns} turni</b><br/>Rondella: {c.roundRondel.bounds.length?`dopo i turni ${c.roundRondel.bounds.join(", ")}`:"nessuna scelta intermedia"}.</p>
         <SelectField label="Giocatori umani" value={Math.min(humans,c.players)} onChange={v=>setHumans(+v)} options={Array.from({length:c.players},(_,i)=>({value:i+1,label:i===0?'Solo io':`${i+1} · sullo stesso schermo`}))}/>
       </div>
       {Math.min(humans,c.players)<c.players&&<SelectField label="Avversario IA" value={pace} onChange={setPace} options={[{value:'rapid',label:'Rapido · nuova IA d2 r1'},{value:'study',label:'Approfondito · nuova IA d6 r1'},...(pace==='custom'?[{value:'custom',label:`Impostazioni degli editor · ${c.simulation.ai} d${c.simulation.depth} r${c.simulation.rollouts}`}]:[])]}/>}

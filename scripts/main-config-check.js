@@ -12,7 +12,7 @@ assert.equal(fresh.players,3);assert.equal(fresh.turns,28);assert.equal(fresh.tr
 assert.equal(fresh.roundRondel.startingPolicy,'affinity');assert.deepEqual(fresh.roundRondel.fundThresholds,{economy:3,personnel:4,production:3});
 assert.deepEqual(fresh.roundRondel.bounds,[7,14,21]);assert.deepEqual(fresh.roundRondel.firstSeats,[0,1,2]);
 const prior=structuredClone(fresh);prior.roundRondel.bounds=[9,18];prior.roundRondel.firstSeats=[0,1];
-assert.deepEqual(parseConfig(JSON.stringify(prior)).roundRondel.bounds,[7,14,21]);
+assert.deepEqual(parseConfig(JSON.stringify(prior)).roundRondel.bounds,[9,18]);
 let calendar=initGame(gameConfig(fresh));const deadlines=[];
 while(!calendar.gameOver){
  const legal=legalCommands(calendar);
@@ -21,6 +21,26 @@ while(!calendar.gameOver){
 }
 assert.deepEqual(deadlines,[[7,0],[14,1],[21,2]]);assert.equal(calendar.roundRondel.log.length,9);assert.equal(calendar.turn,28);
 assert.deepEqual(calendar.roundRondel.completed,[0,1,2]);
+// Custom calendars use identical rules at the table and in simulations.
+for(const [turns,bounds] of [[20,[4,11,17]],[32,[8,16,24]],[12,[]],[6,[1,2,3,4,5]],[1,[]]]){
+ const custom=mainDefaults();custom.turns=turns;custom.roundRondel.bounds=bounds;custom.roundRondel.firstSeats=bounds.map((_,i)=>i%3);
+ validateMainConfig(custom);assert.deepEqual(parseConfig(JSON.stringify(custom)),custom);
+ const humanRules=gameConfig(custom,{humans:1}),simRules=gameConfig(custom);
+ assert.deepEqual(humanRules.roundRondel,simRules.roundRondel);assert.equal(humanRules.roundLimit,turns);
+ let state=initGame(simRules);const seen=[];
+ while(!state.gameOver){
+  const legal=legalCommands(state);
+  if(state.phase==='roundRondel'&&state.roundRondel.active.at===0)seen.push(state.roundRondel.active.endTurn);
+  state=applyCommand(state,legal.find(c=>['pass','endTurn','skipWelfareToken'].includes(c.type))||legal[0]);
+ }
+ assert.deepEqual(seen,bounds);assert.equal(state.turn,turns);assert.equal(state.roundRondel.log.length,bounds.length*3);
+ const persisted=storage();saveGame(humanRules,{state,history:[],paused:true},persisted);
+ assert.deepEqual(loadGame(persisted).config.roundRondel.bounds,bounds);
+}
+for(const bounds of [[0],[28],[7,7],[14,7],[7.5]]){
+ const invalid=mainDefaults();invalid.roundRondel.bounds=bounds;invalid.roundRondel.firstSeats=bounds.map(()=>0);
+ assert.throws(()=>gameConfig(invalid),/scadenze/);assert.throws(()=>initGame({...gameConfig(fresh),roundRondel:invalid.roundRondel}),/schedule/);
+}
 assert.deepEqual(loadMainConfig(storage()),fresh);
 const old=storage(),legacy=JSON.stringify(defaults());old.setItem(PREVIOUS_STORAGE_KEY,legacy);
 assert.deepEqual(loadMainConfig(old),fresh);assert.equal(old.getItem(PREVIOUS_STORAGE_KEY),legacy,'old settings kept intact');

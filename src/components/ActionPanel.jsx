@@ -1,5 +1,6 @@
 import {WELFARE_FUNDS,fundBalances} from '../game/welfare-funds.js';
 import WelfareRondel from './WelfareRondel.jsx';
+import GuidedWelfareActions from './GuidedWelfareActions.jsx';
 import RoundRondelChoice from './RoundRondelChoice.jsx';
 import { rondelEnabled } from '../game/welfare-rondel.js';
 import { rowNodeLabel, tokenWelfare } from '../game/row-economy.js';
@@ -352,6 +353,7 @@ export function ProductionActions({state,p,activations,dispatch}) {
 }
 
 export function RowEconomyActions({state,legal,dispatch}) {
+  if(state.rowEconomy?.enabled&&tokenWelfare(state)&&fundBalances(state))return <GuidedWelfareActions key={`${state.current}-${state.turn}`} state={state} legal={legal} dispatch={dispatch}/>;
   return (state.rowEconomy?.enabled && <div>
         {!state.roundRondel && rondelEnabled(state) && currentPlayer(state).node === 'Servizi' && <WelfareRondel key={state.current} state={state} player={currentPlayer(state)} legal={legal} dispatch={dispatch}/>}
         {legal.filter(c => (c.type === 'investWelfare' && (!rondelEnabled(state)||state.roundRondel))||c.type === 'repress').map(c => {

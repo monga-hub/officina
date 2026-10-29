@@ -381,3 +381,13 @@
 .fund-label{display:inline-block;border:1px solid var(--fund-line);background:var(--fund-bg);color:var(--fund-ink);padding:1px 5px;border-radius:4px;font-size:11px;font-style:normal;margin:2px 3px 2px 0}
 .fund-allocation{display:flex;align-items:center;flex-wrap:wrap;gap:3px}
 .rondel-policies>li[data-welfare-fund].rondel-destination{outline:2px solid #244c39;outline-offset:1px}
+
+.guided-welfare{display:grid;gap:12px;margin:10px 0;text-align:left}
+.guided-welfare p{margin:0;line-height:1.5}
+.guided-field{display:grid;gap:5px;font-weight:600;min-width:0}
+.guided-field select{width:100%;min-height:42px;padding:8px;border:1px solid var(--fund-line,#a7b39a);border-radius:6px;background:var(--fund-bg,#fffef8);color:var(--fund-ink,#294638);font:inherit}
+.guided-funds{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px}
+.guided-summary{display:grid;gap:7px;padding:12px;background:#f0f3e9;border:1px solid #d1d8c5;border-radius:8px;line-height:1.5}
+.guided-summary small{display:block}
+.lab-shell .guided-welfare>button.primary{margin:0;text-align:center;background:#244c39;color:white;padding:12px;width:100%}
+.lab-shell .guided-welfare small{color:#4f604c;font-weight:400;line-height:1.5}

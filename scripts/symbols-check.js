@@ -17,6 +17,28 @@ try {
   const {default:Board}=await server.ssrLoadModule('/src/lab/StarBoard.jsx');
   const {default:RoundChoice}=await server.ssrLoadModule('/src/components/RoundRondelChoice.jsx');
   const funds=initGame(gameConfig(mainDefaults()));
+  const {default:Guided,welfareCommand}=await server.ssrLoadModule('/src/components/GuidedWelfareActions.jsx');
+  const {welfareAllocations,WELFARE_FUNDS}=await server.ssrLoadModule('/src/game/welfare-funds.js');
+  const purchases=[1,2,3].flatMap(count=>welfareAllocations(count).map(funds=>({type:'investWelfare',count,funds})));
+  for(const c of purchases){
+    const targets=WELFARE_FUNDS.flatMap(f=>Array(c.funds[f.id]).fill(f.id));
+    assert.equal(welfareCommand(purchases,c.count,targets),c,'Every allocation selects the original legal command');
+  }
+  assert.equal(welfareCommand(purchases.filter(c=>c.count===1),3,['economy','economy','economy']),undefined);
+  funds.phase='action';funds.players[0].node='Servizi';
+  const welfareMenu=render(Guided,{state:funds,legal:purchases,dispatch(){}});
+  assert.equal((welfareMenu.match(/<button/g)||[]).length,1,'One confirmation replaces nineteen allocation buttons');
+  const roles=Object.keys(funds.players[0].depts);
+  for(const role of roles)funds.players[0].depts[role].tension=2;
+  funds.roundRondel.funds.economy=3;funds.welfareBank=3;
+  const repressions=roles.flatMap(role=>WELFARE_FUNDS.map(f=>({type:'repress',role,fund:f.id})));
+  funds.players[0].node='Sindacato';
+  const repressionMenu=render(Guided,{state:funds,legal:repressions,dispatch(){}});
+  assert.equal((repressionMenu.match(/<button/g)||[]).length,1,'One confirmation replaces nine repression buttons');
+  assert.match(repressionMenu,/potenziamenti si disattivano/);
+  assert.equal((repressionMenu.match(/<select/g)||[]).length,2);
+  for(const role of roles)funds.players[0].depts[role].tension=0;
+  funds.roundRondel.funds.economy=0;funds.welfareBank=0;funds.phase='move';funds.players[0].node='Citta';
   const rondel=render(Rondel,{state:funds,player:funds.players[0]});
   for(const id of ['economy','personnel','production'])assert.equal((rondel.match(new RegExp(`data-welfare-fund="${id}"`,'g'))||[]).length,2,'Two policies per fund; Affinity stays neutral');
   assert.match(rondel,/Innovazione · Fondo Economia/);assert.match(rondel,/Formazione · Fondo Personale/);assert.match(rondel,/Cooperazione · Fondo Produzione/);

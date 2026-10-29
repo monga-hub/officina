@@ -8,6 +8,13 @@ const server=await createServer({configFile:false,server:{middlewareMode:true,hm
 try {
   const {Amount,MachineEffect,Development}=await server.ssrLoadModule('/src/lab/GameSymbols.jsx');
   const render=(component,props)=>renderToStaticMarkup(React.createElement(component,props));
+  const {default:TurnTrack}=await server.ssrLoadModule('/src/lab/TurnTrack.jsx');
+  const timeline=render(TurnTrack,{state:{turn:14,roundLimit:28,roundRondel:{bounds:[9,18]}}});
+  assert.equal((timeline.match(/<li\b/g)||[]).length,28);
+  assert.equal((timeline.match(/↻ Rondella/g)||[]).length,2);
+  assert.match(timeline,/aria-current="step"[^>]*>14<\/li>/);
+  assert.match(timeline,/Turno 9 · Fine periodo/);assert.match(timeline,/Turno 18 · Fine periodo/);assert.match(timeline,/Turno 28 · Fine partita/);
+  assert.match(render(TurnTrack,{state:{turn:10,roundLimit:28,roundRondel:{bounds:[9,18],active:{endTurn:9}}}}),/aria-current="step"[^>]*>9<\/li>/);
   assert.match(render(Amount,{kind:'coin',value:0}),/aria-label="0 marchi"/);
   assert.match(render(Amount,{kind:'pv',value:15}),/class="amount-token amount-pv"/);
   assert.match(render(Amount,{kind:'pv',value:15}),/>15<\/span>/);

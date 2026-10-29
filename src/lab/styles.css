@@ -344,3 +344,14 @@
 .order-buttons{display:flex;gap:5px}
 .order-buttons button{min-width:40px;min-height:40px}
 .order-status{min-height:1.4em;color:#34664b}
+.turn-track{display:flex;flex:1;gap:7px;min-width:280px;max-width:720px;color:var(--muted)}
+.turn-period{min-width:0}
+.turn-period ol{display:flex;gap:2px;list-style:none;margin:0;padding:0}
+.lab-shell .turn-period li{flex:1;min-width:0;margin:0;text-align:center;font:600 11px/23px sans-serif;border:1px solid #d6ddce;border-radius:3px;background:#f4f5ed;color:#687461}
+.turn-period li.turn-past{background:#dfe8d8;color:#52684b}
+.turn-period li.turn-deadline{border-color:#b98939;border-bottom-width:3px;line-height:21px}
+.turn-period li[aria-current=step]{background:#294f3b;border-color:#294f3b;color:#fff;box-shadow:0 0 0 2px #c0d1b4}
+.turn-period-label{display:flex;justify-content:space-between;gap:3px;margin-top:4px;font-size:9px;white-space:nowrap}
+.turn-period-label b{font-weight:600;color:#805c22}
+.table-overview .play-header>.play-turn{flex-wrap:wrap;gap:2px 8px;max-width:190px}
+.table-overview .play-header>div:first-child{flex-shrink:0}

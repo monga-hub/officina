@@ -23,7 +23,11 @@ function decide(label,s){
 }
 const buy=decide('usable tokens',state);
 assert.equal(buy.type,'investWelfare');
-assert.equal(buy.count,2,'two outperform one in this forecast; three is not affordable in this state');
+// Exact quantity depends on reaching d6; slower hosts can finish a shallower search in three seconds.
+const snapshot=JSON.stringify(state),complete=A.chooseCommand(state);
+assert.equal(JSON.stringify(state),snapshot);
+assert.equal(complete.type,'investWelfare');
+assert.equal(complete.count,2,'the completed d6 forecast prefers two; three is not affordable');
 const stocked=structuredClone(state);stocked.players[stocked.current].welfareTokens=20;
 stocked.roundRondel.funds={economy:3,personnel:4,production:3};stocked.welfareBank=10;
 assert.notEqual(decide('same factory, sufficient stock and active funds',stocked).type,'investWelfare');

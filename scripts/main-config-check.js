@@ -3,7 +3,8 @@ import {mainDefaults,loadMainConfig,validateMainConfig,defaults,parseConfig,game
 import {initGame,applyCommand,legalCommands} from '../src/game/engine.js';
 import {beginRoundRondel,roundRondelCommands,roundRondelCost} from '../src/game/round-rondel.js';
 import {DEFAULT_ROUND_POLICY_ORDER,movePolicy,welfareDisplayPolicies,welfarePolicies,welfarePolicy} from '../src/game/welfare-rondel.js';
-import {gameSession,saveGame,loadGame} from '../src/lab/saved-game.js';
+import {gameSession,saveGame,loadGame,GAME_SAVE_KEY} from '../src/lab/saved-game.js';
+import {productionPreview} from '../src/components/production-choices.js';
 const plain=x=>JSON.parse(JSON.stringify(x));
 const storage=()=>{const values=new Map();return {getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v)};};
 const fresh=mainDefaults();validateMainConfig(fresh);
@@ -36,6 +37,27 @@ const production=initGame(human),p=production.players[0];p.node='Tessile';p.dept
 const activate=legalCommands(production).find(c=>c.type==='activate'&&!c.welfareToken);assert.ok(activate);
 const produced=applyCommand(production,activate);assert.equal(produced.players[0].resources.Tessuti-p.resources.Tessuti,2,'moved resource changes the actual production');
 const original=initGame(gameConfig(fresh));assert.equal(original.tracks.terziario[2].res,1);assert.equal(original.tracks.terziario[3],null);
+// Screenshot regression: 8 textiles + 2 steel must not discard the next production.
+const warehouse=initGame(gameConfig(fresh)),owner=warehouse.players[0];
+warehouse.phase='action';owner.node='Tessile';owner.resources={Tessuti:8,Acciaio:2,Coloranti:0};
+Object.assign(owner.depts.terziario,{prod:15,tension:0,sopra:[human.workers.find(w=>w.sector==='Tessile').id]});
+const produce=legalCommands(warehouse).find(c=>c.type==='activate'&&!c.welfareToken);
+assert.equal(productionPreview(warehouse,produce).resources.Tessuti,4);
+const income=applyCommand(warehouse,produce).players[0];
+assert.equal(income.resources.Tessuti,12);assert.equal(income.resources.Acciaio,2);assert.equal(income.resCapLost,0);
+const cappedSave={version:1,savedAt:new Date().toISOString(),config:gameConfig(fresh),state:structuredClone(warehouse),history:[structuredClone(warehouse)],paused:true};
+for(const rules of [cappedSave.config,cappedSave.state,...cappedSave.history]){
+ rules.borsaFabbriche.resourceCap.enabled=true;
+ for(const player of rules.players)if(player.resCap)player.resCap.enabled=true;
+}
+const capStore=storage(),oldSave=JSON.stringify(cappedSave);capStore.setItem(GAME_SAVE_KEY,oldSave);
+const restored=loadGame(capStore);assert.equal(capStore.getItem(GAME_SAVE_KEY),oldSave,'Loading preserves the original stored data until the next save');
+assert.equal(restored.config.borsaFabbriche.resourceCap.enabled,false);
+for(const state of [restored.state,...restored.history]){
+ assert.ok(state.players.every(p=>!p.resCap.enabled));
+ assert.equal(productionPreview(state,produce).resources.Tessuti,4,'Resumed and undo states have unlimited storage');
+ assert.deepEqual(state.players[0].resources,owner.resources,'Migration preserves existing resources');
+}
 let round=initGame(human);round.turn=10;assert.ok(round.players.every(p=>welfarePolicy(round,p).id==='affinity'));beginRoundRondel(round,9);
 assert.deepEqual(welfareDisplayPolicies(round).map(p=>p.id),changed.roundRondel.policyOrder);
 const commands=roundRondelCommands(round);assert.equal(commands[0].steps,1);assert.equal(welfarePolicies(round)[commands[0].position].id,'formation');

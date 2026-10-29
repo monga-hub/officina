@@ -95,6 +95,7 @@ checkPreview(tokens,tokenIntense,{resources:yields(2),coins:machine.effect.f1.q,
 assert.equal(applyCommand(tokens,tokenIntense).pending,null,'Producing never opens a recovery choice');
 assert.equal(applyCommand(tokens,tokenIntense).players[0].welfareTokens,3,'Ordinary production keeps the tokens');
 const fullWarehouse=structuredClone(tokens);
+fullWarehouse.players[0].resCap={enabled:true,base:10,perFactory:[]};
 fullWarehouse.players[0].resources.Tessuti=9;
 for(const command of tokenChoices) {
   const result=productionPreview(fullWarehouse,command);

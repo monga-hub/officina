@@ -140,6 +140,7 @@ export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
   validate(c);
   return { ...structuredClone(reference),
     ...((c.finalCoinsPerPV||c.finalResourcePV)?{conversions:{...reference.conversions,...(c.finalCoinsPerPV?{coinsPerPV:c.finalCoinsPerPV}:{}),...(c.finalResourcePV?{resPerPV:3}:{})}}:{}),
+    borsaFabbriche: {...structuredClone(reference.borsaFabbriche), resourceCap: {...reference.borsaFabbriche.resourceCap, enabled:false}},
     ...(c.roundAwards?.enabled ? {roundAwards:structuredClone(c.roundAwards)} : {}),
     ...(c.roundRondel?.enabled ? {roundRondel:structuredClone(c.roundRondel)} : {}),
     seed, headless: humans === 0, endMode: 'rounds', roundLimit: c.turns, singleContractVisit: true,

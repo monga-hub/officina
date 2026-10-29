@@ -9,6 +9,8 @@ for(const command of game.commands){
   state=E.applyCommand(state,command);
 }
 assert.equal(state.turn,13);
+// Keep this affordability case at two coins when earlier hiring discounts change.
+state.players[state.current].coins=2;
 const evidence=[];
 function decide(label,s){
  const snapshot=JSON.stringify(s);A.resetRolloutStats();

@@ -735,7 +735,7 @@ export function hireCostBeforeVoucher(state, p, w, role, side) {
   const nationDiscount = state.rowEconomy?.enabled && state.rowEconomy.sameNationHireDiscount && side === 'sopra' && !w.power
     ? (d?.sopra || []).filter(id => WORKER_BY_ID[id]?.nation === w.nation).length : 0;
   const policy = welfarePolicy(state, p)?.id;
-  const policyDiscount = !w.power && ((side === 'sotto' && policy === 'innovation') || (side === 'sopra' && policy === 'affinity' && d?.sopra.some(id => WORKER_BY_ID[id]?.nation === w.nation)) || (side === 'sopra' && policy === 'integration' && !d?.sopra.some(id => WORKER_BY_ID[id]?.nation === w.nation))) ? (policyBoosted(state,policy)?2:1) : 0;
+  const policyDiscount = !w.power && ((side === 'sotto' && policy === 'innovation') || (side === 'sopra' && policy === 'affinity' && DEPT_ROLES.some(r => p.depts[r]?.sopra.some(id => WORKER_BY_ID[id]?.nation === w.nation))) || (side === 'sopra' && policy === 'integration' && !d?.sopra.some(id => WORKER_BY_ID[id]?.nation === w.nation))) ? (policyBoosted(state,policy)?2:1) : 0;
   return Math.max(state.rowEconomy?.enabled ? 1 : 0, w.v - policyDiscount - structHireDiscount(p, p.node) - welfareDiscount - nationDiscount) + surcharge;
 }
 

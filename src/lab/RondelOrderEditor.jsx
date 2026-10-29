@@ -22,7 +22,7 @@ export default function RondelOrderEditor({c,set}){
     <p>Trascina la maniglia di un’abilità sulla posizione desiderata. L’ordine va in senso orario e determina i passi effettivi. Affinità resta l’abilità iniziale, ovunque la metti.</p>
     <ol ref={list} className="rondel-order-list">{order.map((id,index)=>{
       const policy=ALL_WELFARE_POLICIES.find(p=>p.id===id),fund=policyFund(id);
-      return <li key={id} data-rondel-id={id} className={`${dragging===id?'order-dragging':''} ${target===id&&dragging!==id?'order-target':''}`}>
+      return <li key={id} data-rondel-id={id} data-welfare-fund={fund?.id} className={`${dragging===id?'order-dragging':''} ${target===id&&dragging!==id?'order-target':''}`}>
         <button type="button" className="order-handle" aria-label={`Trascina ${policy.name}`} onPointerDown={e=>{
           if(e.button!==0)return;e.preventDefault();e.currentTarget.focus();e.currentTarget.setPointerCapture(e.pointerId);
           drag.current={id,x:e.clientX,y:e.clientY,moved:false,target:null};setDragging(id);setMessage('');

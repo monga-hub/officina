@@ -14,7 +14,7 @@ export default function RoundRondelChoice({state,player,legal,dispatch}) {
     <p>Politica attuale: <b>{WELFARE_POLICIES[player.welfarePosition]?.name||'nessuna'}</b>. Le caselle sono condivise.</p>
     <div className="round-rondel-options">{legal.map(command=>{
       const keep=command.type==='keepRoundRondel',base=WELFARE_POLICIES[keep?player.welfarePosition:command.position],policy=base?policyDescription(state,base):null;
-      return <button key={keep?'keep':command.position} className="production-choice" onClick={()=>dispatch(command)}>
+      return <button key={keep?'keep':command.position} data-welfare-fund={fundBalances(state)?policyFund(policy?.id)?.id:undefined} className="production-choice" onClick={()=>dispatch(command)}>
         <strong>{keep?(first?'Rinvia il primo ingresso':`Resta su ${WELFARE_POLICIES[player.welfarePosition].name}`):policy.name}</strong>
         {fundBalances(state)&&policyFund(policy?.id)&&<small>{policyFund(policy.id).name}: {fundBalances(state)[policyFund(policy.id).id]}/{policyFund(policy.id).threshold} · {policy.upgraded?'potenziata':'base'}</small>}
         <small className="round-policy-effect">{policy?.description||'Conserva la situazione attuale fino alla prossima scelta.'}</small>

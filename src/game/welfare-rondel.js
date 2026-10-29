@@ -6,7 +6,7 @@ export const WELFARE_POLICIES = [
   { id: 'integration', name: 'Integrazione', description: 'Assumere Sopra una nazionalità assente nel reparto costa 1 marco in meno, minimo 1.' },
   { id: 'mutualAid', name: 'Mutuo soccorso', description: 'A ogni produzione puoi convertire 1 risorsa appena prodotta dal reparto in un altro settore.' },
 ];
-export const AFFINITY_POLICY={id:'affinity',name:'Affinità',description:'Assumere Sopra un operaio della stessa nazionalità di almeno un operaio già presente nello stesso reparto costa 1 marco in meno, minimo 1. Lo sconto è fisso, non cresce con gli operai.'};
+export const AFFINITY_POLICY={id:'affinity',name:'Affinità',description:'Assumere Sopra un operaio della stessa nazionalità di almeno un operaio già presente in uno qualsiasi dei tre reparti della tua fabbrica costa 1 marco in meno, minimo 1. Lo sconto è fisso, non cresce con gli operai.'};
 export const ALL_WELFARE_POLICIES=[...WELFARE_POLICIES,AFFINITY_POLICY];
 export const welfarePolicies=state=>state.roundRondel?.startingPolicy==='affinity'?ALL_WELFARE_POLICIES:WELFARE_POLICIES;
 export const welfareDisplayPolicies=state=>state.roundRondel?.startingPolicy==='affinity'

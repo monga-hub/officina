@@ -1,4 +1,4 @@
-import {allocationLabel,WELFARE_FUNDS,fundBalances} from '../game/welfare-funds.js';
+import {WELFARE_FUNDS,fundBalances} from '../game/welfare-funds.js';
 import WelfareRondel from './WelfareRondel.jsx';
 import RoundRondelChoice from './RoundRondelChoice.jsx';
 import { rondelEnabled } from '../game/welfare-rondel.js';
@@ -357,8 +357,8 @@ export function RowEconomyActions({state,legal,dispatch}) {
         {legal.filter(c => (c.type === 'investWelfare' && (!rondelEnabled(state)||state.roundRondel))||c.type === 'repress').map(c => {
           const welfare=c.type==='investWelfare',preview=rowActionPreview(state,c);
           const first=preview.departments[0];
-          if(tokenWelfare(state))return <button key={JSON.stringify(c)} className="production-choice" onClick={()=>dispatch(c)}>
-            <strong>{welfare?'Welfare':`Repressione — ${first.before.sector}${c.fund?' · '+WELFARE_FUNDS.find(f=>f.id===c.fund).name:''}`}</strong>{c.funds&&<small>Versamento: {allocationLabel(c.funds)}</small>}
+          if(tokenWelfare(state))return <button key={JSON.stringify(c)} data-welfare-fund={c.fund} className="production-choice" onClick={()=>dispatch(c)}>
+            <strong>{welfare?'Welfare':`Repressione — ${first.before.sector}${c.fund?' · '+WELFARE_FUNDS.find(f=>f.id===c.fund).name:''}`}</strong>{c.funds&&<small className="fund-allocation">Versamento: {WELFARE_FUNDS.filter(f=>c.funds[f.id]>0).map(f=><span key={f.id} className="fund-label" data-welfare-fund={f.id}>{f.name} {c.funds[f.id]}</span>)}</small>}
             <span className="production-yield">Paghi <Amount kind="coin" value={preview.cost}/>{preview.income>0&&<span> · Incassi <Amount kind="coin" value={preview.income}/></span>}
               {welfare?<span>🌿 <b>+{preview.welfareTokens.after-preview.welfareTokens.before} gettoni</b></span>:<span>Tensione <b>{first.before.tension} → {first.after.tension}</b></span>}
             </span>

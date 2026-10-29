@@ -24,6 +24,30 @@ d.sopra=[same[0].id];assert.equal(hireCost(s,p,w,'terziario','sopra'),2);
 d.sopra.push(same[1].id);assert.equal(hireCost(s,p,w,'terziario','sopra'),2,'Discount stays fixed at one');
 assert.equal(hireCost(s,p,different,'terziario','sopra'),different.v);
 assert.equal(hireCost(s,p,w,'terziario','sotto'),3);
+for(const role of ['terziario','secondario','primario'])for(const otherRole of ['terziario','secondario','primario']){
+ const global=structuredClone(s),owner=global.players[0];
+ for(const dept of Object.values(owner.depts)){dept.sopra=[];dept.sotto=[];}
+ const candidate=Object.values(WORKER_BY_ID).find(x=>x.sector===owner.depts[role].sector&&x.nation==='Francesi');
+ const existing=Object.values(WORKER_BY_ID).find(x=>x.sector===owner.depts[otherRole].sector&&x.nation==='Francesi'&&x.id!==candidate.id);
+ assert.ok(candidate&&existing);owner.depts[otherRole].sopra=[existing.id];
+ assert.equal(hireCost(global,owner,candidate,role,'sopra'),Math.max(1,candidate.v-1),'French worker in any owned department gives the fixed discount');
+ owner.depts[otherRole].sopra.push(existing.id);
+ assert.equal(hireCost(global,owner,candidate,role,'sopra'),Math.max(1,candidate.v-1),'Multiple matching workers do not stack');
+ assert.equal(hireCost(global,owner,{...candidate,v:1},role,'sopra'),1,'Minimum price remains one');
+ assert.equal(hireCost(global,owner,candidate,role,'sotto'),candidate.v,'Machines do not receive Affinity');
+ owner.depts[otherRole].sopra=[];owner.depts[otherRole].sotto=[existing.id];
+ assert.equal(hireCost(global,owner,candidate,role,'sopra'),candidate.v,'Matching machines do not grant Affinity');
+ owner.depts[otherRole].sotto=[];global.players[1].depts[otherRole].sopra=[existing.id];
+ assert.equal(hireCost(global,owner,candidate,role,'sopra'),candidate.v,'Other players do not grant Affinity');
+}
+const cross=structuredClone(s),buyer=cross.players[0];buyer.depts.terziario.sopra=[];
+buyer.depts.primario.sopra=[Object.values(WORKER_BY_ID).find(x=>x.sector==='Chimica'&&x.nation===w.nation).id];
+cross.banks[cross.nodeBanks.Tessile[0]]=[w.id];buyer.coins=2;
+const crossHire=legalCommands(cross).find(x=>x.type==='hire'&&x.side==='sopra'&&x.cardId===w.id);
+assert.ok(crossHire,'The cross-department discount makes the hire affordable');
+const crossAfter=applyCommand(cross,crossHire).players[0];
+assert.equal(crossAfter.coins,0);assert.equal(crossAfter.welfareRondelStats.benefits.affinity,1);
+assert.equal(crossAfter.depts.terziario.prod,buyer.depts.terziario.prod+w.v,'Printed development is unchanged');
 p.welfarePosition=1;assert.equal(hireCost(s,p,w,'terziario','sopra'),3,'Leaving Affinity removes its discount');p.welfarePosition=6;
 // A real legal hire records exactly one saved coin.
 const bankId=s.nodeBanks.Tessile[0];s.banks[bankId]=[w.id];

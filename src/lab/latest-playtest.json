@@ -16,26 +16,6 @@
   "track": [
     null,
     null,
-    {
-      "res": 1,
-      "milestoneReward": {
-        "res": 1,
-        "coins": 0
-      }
-    },
-    null,
-    null,
-    null,
-    {
-      "res": 1,
-      "milestoneReward": {
-        "res": 1,
-        "coins": 0
-      }
-    },
-    null,
-    null,
-    null,
     null,
     {
       "milestoneReward": {
@@ -54,13 +34,6 @@
       }
     },
     null,
-    {
-      "res": 1,
-      "milestoneReward": {
-        "res": 1,
-        "coins": 0
-      }
-    },
     null,
     {
       "res": 1,
@@ -70,7 +43,40 @@
       }
     },
     null,
-    null
+    null,
+    null,
+    {
+      "res": 1,
+      "milestoneReward": {
+        "res": 1,
+        "coins": 0
+      }
+    },
+    null,
+    null,
+    {
+      "res": 1,
+      "milestoneReward": {
+        "res": 1,
+        "coins": 0
+      }
+    },
+    null,
+    {
+      "res": 1,
+      "milestoneReward": {
+        "res": 1,
+        "coins": 0
+      }
+    },
+    null,
+    {
+      "milestoneReward": {
+        "res": 1,
+        "coins": 0
+      },
+      "res": 1
+    }
   ],
   "welfareCost": 4,
   "welfareBank": true,
@@ -2025,7 +2031,7 @@
     }
   },
   "contractMarket": 2,
-  "cityIncome": 2,
+  "cityIncome": 3,
   "cityRefresh": false,
   "simulation": {
     "games": 5,
@@ -2034,13 +2040,8 @@
     "depth": 6,
     "rollouts": 1
   },
-  "conversionMachines": false,
-  "finalCoinPV": true,
-  "finalCoinsPerPV": 10,
-  "machinesRequireOpenRow": true,
   "roundRondel": {
     "enabled": true,
-    "refreshWorkers": true,
     "bounds": [
       7,
       14,
@@ -2063,7 +2064,12 @@
       "economy": 3,
       "personnel": 4,
       "production": 3
-    }
+    },
+    "refreshWorkers": true
   },
+  "conversionMachines": false,
+  "machinesRequireOpenRow": true,
+  "finalCoinPV": true,
+  "finalCoinsPerPV": 10,
   "finalResourcePV": true
 }

@@ -39,7 +39,7 @@ for(const [pos,expected,bonus]of [[2,7,2],[16,20,1],[18,20,0]]){
 }
 function production(policy,pos=11){const s=fixture('Tessile',policy),d=s.players[0].depts.terziario,ws=Object.values(WORKER_BY_ID).filter(w=>w.sector==='Tessile');d.prod=pos;d.sopra=[ws[0].id,ws.find(w=>w.nation!==ws[0].nation).id];fund(s,'production',3);return s;}
 s=production('cooperation');let n=applyCommand(s,{type:'activate',sector:'Tessile',intensity:1});assert.equal(n.players[0].welfareRondelStats.benefits.cooperation,2);
-for(const [pos,expected]of [[11,2],[2,1]]){
+for(const [pos,expected]of [[11,2],[3,1]]){
  s=production('mutualAid',pos);n=applyCommand(s,{type:'activate',sector:'Tessile',intensity:1});let used=0;
  while(n.pending){const cmds=legalCommands(n),cmd=cmds.find(c=>c.type==='resolveEffect'&&c.use&&c.take===(used?'Chimica':'Metallurgica'))||cmds.find(c=>c.type==='skipWelfareToken');assert.ok(cmd);if(cmd.type==='resolveEffect')used++;n=applyCommand(n,cmd);}
  assert.equal(used,expected);assert.equal(n.players[0].welfareRondelStats.benefits.mutualAid,expected);assert.equal(n.players[0].convCount.risorsaRisorsa,expected);

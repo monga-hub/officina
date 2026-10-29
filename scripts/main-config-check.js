@@ -98,7 +98,7 @@ assert.deepEqual(changed,snapshot);assert.deepEqual(mainDefaults(),fresh,'starti
 const production=initGame(human),p=production.players[0];p.node='Tessile';p.depts.terziario.prod=3;p.depts.terziario.sopra=[human.workers.find(w=>w.sector==='Tessile').id];production.phase='action';
 const activate=legalCommands(production).find(c=>c.type==='activate'&&!c.welfareToken);assert.ok(activate);
 const produced=applyCommand(production,activate);assert.equal(produced.players[0].resources.Tessuti-p.resources.Tessuti,2,'moved resource changes the actual production');
-const original=initGame(gameConfig(fresh));assert.equal(original.tracks.terziario[2].res,1);assert.equal(original.tracks.terziario[3],null);
+const original=initGame(gameConfig(fresh));assert.equal(original.tracks.terziario[2],null);assert.equal(original.tracks.terziario[3].res,1);assert.equal(fresh.cityIncome,3);
 // Screenshot regression: 8 textiles + 2 steel must not discard the next production.
 const warehouse=initGame(gameConfig(fresh)),owner=warehouse.players[0];
 warehouse.phase='action';owner.node='Tessile';owner.resources={Tessuti:8,Acciaio:2,Coloranti:0};

@@ -7,7 +7,7 @@ import {
 import {
   legalCommands, applyCommand, forkForSearch, currentPlayer, deptOfSector, bankMarket, tileForecast,
   WORKER_BY_ID, WELFARE_BY_ID, iconCount, welfareCount, totalResources, trackPV, milestoneCount, formulaOf,
-  expectedDividend, workerCapacity, tensionLimit, scorePlayer, welfarePoints,
+  expectedDividend, workerCapacity, tensionLimit, scorePlayer, welfarePoints, roundObjectivePotential,
 } from './engine.js';
 
 import { activeWorkers, policiesOf, welfareEfficiency, wellbeing } from './industrial.js';
@@ -27,6 +27,7 @@ function withinForecast(end, run) {
 export let lastDecision = null;
 // Legacy chooseCommand remains available for paired reference checks and frozen studies.
 export function chooseTimedCommand(state, { budgetMs } = {}) {
+  if(state.roundObjectives&&!state.roundObjectives.preview)state={...state,roundObjectives:{...state.roundObjectives,preview:true}};
   if (timedSearch) return chooseCommand(state);
   if (budgetMs !== undefined && (!Number.isFinite(budgetMs) || budgetMs <= 0)) throw new Error('Invalid AI budget');
   if (state.gameOver) return null;
@@ -147,9 +148,10 @@ function evaluateInner(state, playerId, rolloutLeaf) {
     const score = scorePlayer(state, p);
     // Spareggi reali: marchi, poi commesse. Il bonus resta < 1, senza scavalcare un PV.
     const tie = score.coins + score.nContracts / (score.nContracts + 1);
-    return score.total * 10 + (state.contractsOnly ? tie / (tie + 1) : 0);
+    return (score.total+(!state.gameOver?roundObjectivePotential(state,p):0)) * 10 + (state.contractsOnly ? tie / (tie + 1) : 0);
   }
   let v = 0;
+  if(state.roundObjectives)v += ((state.roundObjectives.banked[p.id]||0)+roundObjectivePotential(state,p))*10*w.wObjective;
   v += p.contractsWon.reduce((a, c) => a + c.pv, 0) * 10 * w.wContract;
   // Banked coins are reversible end-game points as well as spending fuel.
   if (state.contractsOnly && state.finalCoinPV) v += Math.floor(p.coins / state.rules.coinsPerPV) * 10 * w.wCoins;
@@ -426,7 +428,7 @@ function greedyActionKey(state) {
     state.current, state.welfareBank, state.roundStart, state.roundTurns, state.dir, state.phase, decisionPart(state.turnFlags), defersToken(state, p.id),
     ...(state.roundAwards ? [decisionPart(state.roundAwards), decisionPart(state.players.map(q=>q.depts))] : []),
     ...(state.roundRondel ? [roundRondelPart(state.roundRondel),Boolean(state.aiRoundRondelProbe)] : []),
-    state.finalRound, state.endImmediate, decisionPart(state.pendingQueue), decisionPart(state.trackTileStock)]);
+    ...(state.roundObjectives?[decisionPart({...state.roundObjectives,log:undefined})]:[]),state.finalRound, state.endImmediate, decisionPart(state.pendingQueue), decisionPart(state.trackTileStock)]);
 }
 export function chooseCommand(state) {
   const root = !decisionCache && GREEDY_CACHE_LIMIT > 0 && state.aiRollout && state.contractsOnly && state.rowTrack && state.rowEconomy?.enabled
@@ -1221,7 +1223,7 @@ function chooseRoundRondel(state) {
   // The three-turn probe includes opponents: unlike immediate choices, key every player's game data.
   const key = JSON.stringify([greedyActionKey(state),
     state.players.map((p,i) => decisionCache.playerKeys[i].map(k => decisionPart(p[k]))),
-    decisionPart(state.aiTokenPlan || null), decisionPart(state.producedThisTurn), timedSearch ? forecastEnd : null]);
+    ...(state.roundObjectives?[decisionPart({...state.roundObjectives,log:undefined})]:[]),decisionPart(state.aiTokenPlan || null), decisionPart(state.producedThisTurn), timedSearch ? forecastEnd : null]);
   if (decisionCache.rounds.has(key)) {
     rolloutStats.roundCacheHits++;
     return decisionCache.rounds.get(key);

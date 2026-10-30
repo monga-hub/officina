@@ -23,9 +23,9 @@ export function validateMainConfig(c){
 }
 export function loadMainConfig(storage){
   const raw=storage.getItem(STORAGE_KEY);
-  if(raw)return validateMainConfig(parseConfig(raw));
+  if(raw){const c=parseConfig(raw);if(JSON.parse(raw).roundObjectives===undefined&&c.roundRondel?.bounds?.length<=3)c.roundObjectives=true;return validateMainConfig(c);}
   const previous=storage.getItem(PREVIOUS_STORAGE_KEY);
-  if(previous){const c=parseConfig(previous);if(c.roundRondel?.enabled&&c.roundRondel.startingPolicy==='affinity'&&c.roundRondel.fundThresholds)return validateMainConfig(c);}
+  if(previous){const c=parseConfig(previous);if(JSON.parse(previous).roundObjectives===undefined&&c.roundRondel?.bounds?.length<=3)c.roundObjectives=true;if(c.roundRondel?.enabled&&c.roundRondel.startingPolicy==='affinity'&&c.roundRondel.fundThresholds)return validateMainConfig(c);}
   return mainDefaults();
 }
 export function withoutTrackPoints(track) {
@@ -37,7 +37,7 @@ export function withoutTrackPoints(track) {
 }
 export function defaults() {
   return structuredClone({ schema: 'officina-lab-1', rulesRevision: RULES_REVISION, presetRevision: PRESET_REVISION, contractsOnly: true, name: 'Prova di riferimento',
-    players: 2, turns: 28, startingCoins: [15, 15, 15, 15],
+    players: 2, turns: 28, roundObjectives:false, startingCoins: [15, 15, 15, 15],
     trackModel: 'righe4corte', track: withoutTrackPoints(reference.tracks.terziario),
     welfareCost: 4, welfareBank: false, welfareRondel: false, welfareFreeEntry: false, welfareMaxSteps: 3, welfarePoliciesEnabled: Object.fromEntries(WELFARE_POLICIES.map(p=>[p.id,true])), repressionBase: 2, repressionStep: 0,
     contractCoins: reference.rowEconomy.contractCoins,
@@ -59,6 +59,8 @@ export function validate(c) {
   if(c.finalResourcePV!==undefined)check(typeof c.finalResourcePV==='boolean','PV finali delle risorse non validi.');
   if (c.finalCoinPV !== undefined) check(typeof c.finalCoinPV === 'boolean', 'Conversione finale marchi non valida.');
   check(c.contractsOnly === true, 'Nel Laboratorio si contano i PV delle commesse e gli eventuali PV dei marchi e delle risorse finali.');
+  if(c.roundObjectives!==undefined)check(typeof c.roundObjectives==='boolean','Richieste di round non valide.');
+  if(c.roundObjectives)check(c.contractsOnly&&c.roundRondel?.enabled&&c.roundRondel.fundThresholds&&Array.isArray(c.roundRondel.bounds)&&c.roundRondel.bounds.length<=3,'Le dodici richieste richiedono da uno a quattro round, con al massimo tre scadenze intermedie.');
   check(!c.roundAwards?.enabled, 'Le carte premio non fanno parte di questa versione.');
   if (c.conversionMachines !== undefined) check(typeof c.conversionMachines === 'boolean', 'Opzione conversioni non valida.');
   if (c.roundRondel?.enabled) {
@@ -146,6 +148,7 @@ export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
     borsaFabbriche: {...structuredClone(reference.borsaFabbriche), resourceCap: {...reference.borsaFabbriche.resourceCap, enabled:false}},
     ...(c.roundAwards?.enabled ? {roundAwards:structuredClone(c.roundAwards)} : {}),
     ...(c.roundRondel?.enabled ? {roundRondel:structuredClone(c.roundRondel)} : {}),
+    ...(c.roundObjectives?{roundObjectives:true}:{}),
     seed, headless: humans === 0, endMode: 'rounds', roundLimit: c.turns, singleContractVisit: true,
     startingCoins: [...c.startingCoins], trackModel: c.trackModel,
     tracks: Object.fromEntries(ROLES.map(r => [r, structuredClone(c.track)])),
@@ -169,6 +172,7 @@ export function parseConfig(raw) {
   // Editor migrations preserve custom prices; current rules apply to all lab configurations.
   if (c?.schema === 'officina-lab-1') {
     c.cityRefresh=false;
+    c.roundObjectives??=false;
     if(c.roundRondel?.fundThresholds)c.roundRondel.refreshWorkers??=true;
     const migrateLargePV = c.presetRevision == null || c.presetRevision === 1;
     const migrateMachines = c.rulesRevision == null || [1, 2, 3].includes(c.rulesRevision);

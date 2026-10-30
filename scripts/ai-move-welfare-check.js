@@ -4,6 +4,7 @@ import {gameConfig} from '../src/lab/config.js';
 import * as E from '../src/game/engine.js';
 import * as A from '../src/game/ai.js';
 const editor=JSON.parse(fs.readFileSync('src/lab/latest-playtest.json'));
+editor.roundObjectives=false; // These fixtures isolate the pre-existing movement/Welfare horizon.
 for(const players of [2,3,4])for(const lastSeat of [false,true]){
  const setup=structuredClone(editor);setup.players=players;
  if(players!==3)setup.roundRondel.enabled=false;

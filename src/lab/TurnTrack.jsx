@@ -8,7 +8,7 @@ export default function TurnTrack({state}) {
       const start=(boundaries[index-1]||0)+1,final=end===state.roundLimit;
       return <div className="turn-period" key={end} style={{flex:end-start+1}}>
         <ol start={start} aria-label={`${index+1}° periodo`}>
-          {Array.from({length:end-start+1},(_,i)=>start+i).map(turn=><li key={turn} aria-current={turn===current?'step':undefined} className={`${turn<current?'turn-past':''} ${turn===end?'turn-deadline':''}`} title={`Turno ${turn}${turn===end?final?' · Fine partita':' · Fine periodo: scelta della rondella':''}`}>{turn}</li>)}
+          {Array.from({length:end-start+1},(_,i)=>start+i).map(turn=><li key={turn} aria-current={turn===current?'step':undefined} className={`${turn<current?'turn-past':''} ${turn===end?'turn-deadline':''}`} title={`Turno ${turn}${turn===end?final?' · Fine partita':' · Fine periodo: richieste e scelta della rondella':''}`}>{turn}</li>)}
         </ol>
         <span className="turn-period-label" title={`${index+1}° periodo · ${final?'Fine partita':'Scelta della rondella'}`}>{end-start<3?<b>{final?'Fine':'↻'}</b>:<>{index+1}° periodo <b>{final?'Fine partita':'↻ Rondella'}</b></>}</span>
       </div>;

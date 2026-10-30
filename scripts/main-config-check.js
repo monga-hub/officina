@@ -23,7 +23,7 @@ assert.deepEqual(deadlines,[[7,0],[14,1],[21,2]]);assert.equal(calendar.roundRon
 assert.deepEqual(calendar.roundRondel.completed,[0,1,2]);
 // Custom calendars use identical rules at the table and in simulations.
 for(const [turns,bounds] of [[20,[4,11,17]],[32,[8,16,24]],[12,[]],[6,[1,2,3,4,5]],[1,[]]]){
- const custom=mainDefaults();custom.turns=turns;custom.roundRondel.bounds=bounds;custom.roundRondel.firstSeats=bounds.map((_,i)=>i%3);
+ const custom=mainDefaults();custom.roundObjectives=bounds.length<=3;custom.turns=turns;custom.roundRondel.bounds=bounds;custom.roundRondel.firstSeats=bounds.map((_,i)=>i%3);
  validateMainConfig(custom);assert.deepEqual(parseConfig(JSON.stringify(custom)),custom);
  const humanRules=gameConfig(custom,{humans:1}),simRules=gameConfig(custom);
  assert.deepEqual(humanRules.roundRondel,simRules.roundRondel);assert.equal(humanRules.roundLimit,turns);
@@ -39,7 +39,7 @@ for(const [turns,bounds] of [[20,[4,11,17]],[32,[8,16,24]],[12,[]],[6,[1,2,3,4,5
 }
 for(const bounds of [[0],[28],[7,7],[14,7],[7.5]]){
  const invalid=mainDefaults();invalid.roundRondel.bounds=bounds;invalid.roundRondel.firstSeats=bounds.map(()=>0);
- assert.throws(()=>gameConfig(invalid),/scadenze/);assert.throws(()=>initGame({...gameConfig(fresh),roundRondel:invalid.roundRondel}),/schedule/);
+ assert.throws(()=>gameConfig(invalid),/scadenze/);assert.throws(()=>initGame({...gameConfig(fresh),roundRondel:invalid.roundRondel}),/schedule|richieste/);
 }
 for(const enabled of [false,true])for(const search of [false,true]){
  const c=mainDefaults();c.turns=4;c.roundRondel={...c.roundRondel,bounds:[1,3],firstSeats:[0,1],refreshWorkers:enabled};

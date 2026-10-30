@@ -1,3 +1,4 @@
+import {cardById,cardRequirement} from '../game/round-objectives.js';
 import {policyDescription,policyFund,fundBalances} from '../game/welfare-funds.js';
 import React from 'react';
 import {roundRondelCost} from '../game/round-rondel.js';
@@ -11,6 +12,7 @@ export default function RoundRondelChoice({state,player,legal,dispatch}) {
     <p className="lab-eyebrow">FINE ROUND · TURNO {state.roundRondel.active.endTurn}</p>
     <h2>{player.name}, scegli la tua politica</h2>
     <p>{paid?'Devi avanzare da 1 a 6 passi in senso orario: i primi 3 sono gratis, ogni passo aggiuntivo costa 1 marco. Nessun gettone.':<>{first?'Primo ingresso libero: scegli qualsiasi casella attiva.':'Puoi restare o avanzare in senso orario di uno, due o tre passi.'} Gratis, senza gettoni.</>}</p>
+    {state.roundObjectives?.active.length>0&&<aside className="round-next-requests"><h3>Richieste del nuovo round</h3><ul>{state.roundObjectives.active.map(id=>{const c=cardById(id),r=state.roundObjectives.round;return <li key={id}><b>{c.name}</b> · {c.thresholds[r].map((n,i)=>`${2*(i+1)} PV ≥${n}`).join(' · ')}<small>{cardRequirement(c,r)}</small></li>;})}</ul><p>Premi appena incassati: {state.roundObjectives.log.at(-1)?.awards[player.id].pv||0} PV. Totale richieste acquisito: {state.roundObjectives.banked[player.id]} PV.</p></aside>}
     <p>Politica attuale: <b>{WELFARE_POLICIES[player.welfarePosition]?.name||'nessuna'}</b>. Le caselle sono condivise.</p>
     <div className="round-rondel-options">{legal.map(command=>{
       const keep=command.type==='keepRoundRondel',base=WELFARE_POLICIES[keep?player.welfarePosition:command.position],policy=base?policyDescription(state,base):null;

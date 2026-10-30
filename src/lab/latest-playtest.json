@@ -2071,5 +2071,6 @@
   "machinesRequireOpenRow": true,
   "finalCoinPV": true,
   "finalCoinsPerPV": 10,
-  "finalResourcePV": true
+  "finalResourcePV": true,
+  "roundObjectives": true
 }

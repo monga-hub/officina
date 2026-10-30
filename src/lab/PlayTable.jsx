@@ -1,3 +1,4 @@
+import RoundObjectives,{RoundObjectivesDetails} from './RoundObjectives.jsx';
 import WelfareRondel from '../components/WelfareRondel.jsx';
 import { rondelEnabled, welfareMaxSteps, freeWelfareEntry } from '../game/welfare-rondel.js';
 import React, { useEffect, useRef, useState } from 'react';
@@ -71,6 +72,7 @@ export default function PlayTable({state,dispatch,undo,paused,setPaused,onClose,
     <header className="play-header"><div><p className="lab-eyebrow">OFFICINA 1907 / AL TAVOLO</p><h1>Turno {state.turn}<small> / {state.roundLimit}</small></h1></div><TurnTrack state={state}/><div className="play-turn" role="status"><b>{p.name}{p.isAI?' · IA':''}</b><span>{thinking?'Sta valutando le alternative…':paused?'IA in pausa':state.pending?'Completa la scelta':state.phase==='roundRondel'?'Fine round · scegli la politica':state.phase==='move'?'Scegli dove andare':`Sei a ${rowNodeLabel(state,p.node)}`}</span></div><div className="lab-actions"><button onClick={undo} disabled={!undo}>↶ Annulla mossa</button><button onClick={()=>setPaused(!paused)}>{paused?'Riprendi IA':'Pausa IA'}</button><button onClick={onClose}>Torna al laboratorio</button></div></header>
     {error&&<p className="lab-error" role="alert">{error}</p>}{saveError&&<p className="lab-error" role="alert">{saveError}</p>}
     <nav className="play-jumps" aria-label="Comandi del tavolo"><button onClick={()=>{setActionType(null);setActionsOpen(true);}}>{state.phase==='roundRondel'?'Scegli la politica':'Azioni del nodo'}</button><button onClick={()=>setInfo({type:'log'})}>Registro</button><button onClick={()=>setInfo({type:'symbols'})}>Simboli</button><span className="game-save-state">{saved?'✓ Partita salvata':'Salvataggio non disponibile'}</span></nav>
+    <RoundObjectives state={state} player={player} onInspect={()=>setInfo({type:'requests'})}/>
     <main className="play-layout">
       <StarBoard state={state} dispatch={dispatch} onActions={()=>{setActionType(null);setActionsOpen(true);}} onNodeAction={type=>{setActionType(type);setActionsOpen(true);}}/>
       <section id="commesse" className="lab-card play-contracts play-contracts-side" aria-label="Rondella e commesse"><WelfareRondel state={state} player={player}/><ContractsPanel state={state} player={player}/></section>
@@ -85,9 +87,9 @@ export default function PlayTable({state,dispatch,undo,paused,setPaused,onClose,
 
       </div>
     </main>
-    {info&&<TableOverlay><dialog ref={infoRef} className="table-action-dialog" aria-label={info.type==='log'?'Registro':info.type==='symbols'?'Simboli':'Operai e macchinari'} onCancel={()=>setInfo(null)} onClick={e=>{if(e.target===e.currentTarget)setInfo(null);}}>
+    {info&&<TableOverlay><dialog ref={infoRef} className="table-action-dialog" aria-label={info.type==='log'?'Registro':info.type==='symbols'?'Simboli':info.type==='requests'?'Richieste del round':'Operai e macchinari'} onCancel={()=>setInfo(null)} onClick={e=>{if(e.target===e.currentTarget)setInfo(null);}}>
       <button className="dialog-close" onClick={()=>setInfo(null)}>Torna al tavolo ×</button>
-      {info.type==='symbols'?<SymbolKey open/>:info.type==='log'?<section className="play-events"><h2>Registro</h2><ol>{[...state.log].reverse().map((l,i)=><li key={i}><small>T{l.turn}</small> {l.text}</li>)}</ol></section>:<section><h2>{state.players[info.playerId].depts[info.role].sector} · operai e macchinari</h2>{['sopra','sotto'].map(side=><React.Fragment key={side}><h3>{side==='sopra'?'Operai':'Macchinari'}</h3><div className="installed-cards">{state.players[info.playerId].depts[info.role][side].map(id=><WorkerCard key={id} worker={WORKER_BY_ID[id]} side={side} onInspect={()=>{setInfo(null);setInspected(id);}}/>)}</div></React.Fragment>)}</section>}
+      {info.type==='requests'?<RoundObjectivesDetails state={state} player={player}/>:info.type==='symbols'?<SymbolKey open/>:info.type==='log'?<section className="play-events"><h2>Registro</h2><ol>{[...state.log].reverse().map((l,i)=><li key={i}><small>T{l.turn}</small> {l.text}</li>)}</ol></section>:<section><h2>{state.players[info.playerId].depts[info.role].sector} · operai e macchinari</h2>{['sopra','sotto'].map(side=><React.Fragment key={side}><h3>{side==='sopra'?'Operai':'Macchinari'}</h3><div className="installed-cards">{state.players[info.playerId].depts[info.role][side].map(id=><WorkerCard key={id} worker={WORKER_BY_ID[id]} side={side} onInspect={()=>{setInfo(null);setInspected(id);}}/>)}</div></React.Fragment>)}</section>}
     </dialog></TableOverlay>}
     <TableOverlay><dialog ref={actionsRef} className="table-action-dialog" aria-label={actionTitle||'Azioni del nodo'} onCancel={()=>setActionsOpen(false)} onClick={e=>{if(e.target===e.currentTarget)setActionsOpen(false);}}>
       <button className="dialog-close" onClick={()=>setActionsOpen(false)}>Torna al tabellone ×</button>

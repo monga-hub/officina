@@ -1,3 +1,4 @@
+import {validRoundObjectives} from '../game/round-objectives.js';
 import {WELFARE_FUNDS,fundBalances} from '../game/welfare-funds.js';
 import { initGame, scorePlayer } from '../game/engine.js';
 import { withoutTrackPoints } from './config.js';
@@ -14,6 +15,9 @@ function validState(state,config) {
     &&(state.phase!=='roundRondel'||(state.roundRondel?.active&&Array.isArray(state.roundRondel.log)&&Array.isArray(state.roundRondel.completed)&&state.roundRondel.active.order[state.roundRondel.active.at]===state.current))
     &&(!state.roundRondel?.fundThresholds||(fundBalances(state)&&Object.keys(fundBalances(state)).length===3&&WELFARE_FUNDS.every(f=>Number.isInteger(fundBalances(state)[f.id])&&fundBalances(state)[f.id]>=0)&&Object.values(fundBalances(state)).reduce((a,b)=>a+b,0)===state.welfareBank))
     &&(state.roundRondel?.policyOrder===undefined||validPolicyOrder(state.roundRondel.policyOrder))
+    &&Boolean(config.roundObjectives)===Boolean(state.roundObjectives)
+    &&(!config.roundObjectives||JSON.stringify(state.roundObjectives?.bounds)===JSON.stringify([...(config.roundRondel?.bounds||[]),config.roundLimit]))
+    &&(!state.roundObjectives||validRoundObjectives(state.roundObjectives,state.nPlayers))
     &&state.banks&&state.tracks&&state.contracts&&Array.isArray(state.log)&&Array.isArray(state.pendingQueue)
     &&state.players.every(p=>p.resources&&p.depts&&ROLES.every(role=>Array.isArray(p.depts[role]?.sopra)&&Array.isArray(p.depts[role]?.sotto)))
     &&(!rondelEnabled(state)||state.players.every(p=>(p.welfarePosition===null||(Number.isInteger(p.welfarePosition)&&p.welfarePosition>=0&&p.welfarePosition<welfarePolicies(state).length))

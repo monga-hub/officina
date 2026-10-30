@@ -17,6 +17,12 @@ try {
   const {default:Board}=await server.ssrLoadModule('/src/lab/StarBoard.jsx');
   const {default:RoundChoice}=await server.ssrLoadModule('/src/components/RoundRondelChoice.jsx');
   const funds=initGame(gameConfig(mainDefaults()));
+  const {default:Requests,RoundObjectivesDetails}=await server.ssrLoadModule('/src/lab/RoundObjectives.jsx');
+  const requestStrip=render(Requests,{state:funds,player:funds.players[0],onInspect(){}});
+  assert.match(requestStrip,/PV potenziali/);assert.match(requestStrip,/Scadenza T/);
+  const requestDetails=render(RoundObjectivesDetails,{state:funds,player:funds.players[0]});
+  assert.match(requestDetails,/Premi acquisiti/);assert.doesNotMatch(requestDetails,/da verificare|Provvisoria|Resta il riferimento/);
+
   const {default:Guided,welfareCommand}=await server.ssrLoadModule('/src/components/GuidedWelfareActions.jsx');
   const {welfareAllocations,WELFARE_FUNDS}=await server.ssrLoadModule('/src/game/welfare-funds.js');
   const purchases=[1,2,3].flatMap(count=>welfareAllocations(count).map(funds=>({type:'investWelfare',count,funds})));

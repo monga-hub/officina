@@ -407,11 +407,10 @@
 .lab-shell .guided-welfare .guided-options>button[data-welfare-fund][aria-pressed="true"]{background:var(--fund-bg);color:var(--fund-ink)}
 .policy-tooltip>small{display:block;margin-top:6px;color:inherit}
 
-/* Always present during the match, independent of node/action dialogs. */
-.round-requests{display:grid;grid-template-columns:125px repeat(3,minmax(0,1fr));gap:8px;margin:6px 0}
-.round-requests-heading{display:flex;flex-direction:column;justify-content:center;gap:3px;font-size:12px}
-.round-requests-heading button{font-size:11px;padding:3px 5px}
-.round-request{display:flex;flex-direction:column;text-align:left;gap:3px;padding:7px 10px;border:1px solid #a5b292;border-radius:8px;background:#faf9ee;color:#2b4637;min-width:0}
-.round-request b{font-size:13px}.round-request span{font-size:12px}.round-request small{font-size:11px;color:#596b50}
+/* Keep only card titles in the toolbar; reuse rondel hints outside the scaled table. */
+.round-requests{display:flex;align-items:center;gap:6px;min-width:0}
+.round-requests>.policy-hint{flex:0 1 auto;min-width:0}
+.round-requests-heading{font-weight:700;flex-shrink:0}
+.round-request{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-color:#a5b292;background:#faf9ee;color:#2b4637}
 
 .round-next-requests{padding:8px 12px;border:1px solid #c7ceb8;background:#f5f6ed;border-radius:8px}.round-next-requests ul{padding-left:18px}.round-next-requests li{margin:5px 0;font-size:13px}.round-next-requests small{display:block;color:#52644a}

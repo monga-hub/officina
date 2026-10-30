@@ -18,10 +18,14 @@ try {
   const {default:RoundChoice}=await server.ssrLoadModule('/src/components/RoundRondelChoice.jsx');
   const funds=initGame(gameConfig(mainDefaults()));
   const {default:Requests,RoundObjectivesDetails}=await server.ssrLoadModule('/src/lab/RoundObjectives.jsx');
+  const {CARDS,cardById}=await server.ssrLoadModule('/src/game/round-objectives.js');
   const requestStrip=render(Requests,{state:funds,player:funds.players[0],onInspect(){}});
-  assert.match(requestStrip,/PV potenziali/);assert.match(requestStrip,/Scadenza T/);
+  assert.doesNotMatch(requestStrip,/PV potenziali|round-request-metric/);assert.match(requestStrip,/Scadenza T/);
+  for(const id of funds.roundObjectives.active)assert.ok(requestStrip.includes(cardById(id).name));
   const requestDetails=render(RoundObjectivesDetails,{state:funds,player:funds.players[0]});
   assert.match(requestDetails,/Premi acquisiti/);assert.doesNotMatch(requestDetails,/da verificare|Provvisoria|Resta il riferimento/);
+  for(const card of CARDS)assert.ok(requestDetails.includes(card.name));
+  assert.match(requestDetails,/<details open="">/);
 
   const {default:Guided,welfareCommand}=await server.ssrLoadModule('/src/components/GuidedWelfareActions.jsx');
   const {welfareAllocations,WELFARE_FUNDS}=await server.ssrLoadModule('/src/game/welfare-funds.js');

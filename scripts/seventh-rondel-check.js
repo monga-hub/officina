@@ -9,6 +9,7 @@ import {beginRoundRondel,roundRondelCommands,roundRondelCost} from '../src/game/
 import {welfarePolicies,welfareDisplayPolicies,welfarePolicy} from '../src/game/welfare-rondel.js';
 import {saveGame,loadGame,gameSession} from '../src/lab/saved-game.js';
 const c=JSON.parse(fs.readFileSync(new URL('../src/lab/latest-playtest.json',import.meta.url)));
+c.roundObjectives=false; // Legacy rondel fixture predates the shared request deck.
 delete c.roundRondel.fundThresholds;validate(c);assert.deepEqual(parseConfig(JSON.stringify(c)),c);
 const config=gameConfig(c),s=initGame(config);
 assert.equal(s.rowEconomy.sameNationHireDiscount,false);

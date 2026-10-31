@@ -195,7 +195,9 @@
 .version-notice{position:fixed;bottom:6px;left:50%;transform:translateX(-50%);z-index:90;max-width:95vw;padding:8px 12px;border-radius:6px;background:#244c39;color:white;font:13px/1.4 system-ui;box-shadow:0 2px 10px #0003}
 
 /* The table has one viewport budget; content cannot stretch the star or orders. */
-.table-overview .play-layout{grid-template-columns:clamp(350px,28cqw,460px) minmax(0,1fr) 230px;height:var(--play-area-height,620px);min-height:0;align-items:stretch}
+.table-overview{--play-columns:clamp(350px,28cqw,460px) minmax(0,1fr) 230px;--play-gap:10px}
+.table-fit-compact .table-overview{--play-gap:6px}
+.table-overview .play-layout{grid-template-columns:var(--play-columns);gap:var(--play-gap);height:var(--play-area-height,620px);min-height:0;align-items:stretch}
 .table-overview .play-factory-column,.table-overview .star-board{display:flex;flex-direction:column;min-height:0}
 .table-overview .play-factory{flex:1;padding:10px;min-height:0}
 .table-overview .play-departments{align-content:start}
@@ -408,9 +410,13 @@
 .policy-tooltip>small{display:block;margin-top:6px;color:inherit}
 
 /* Keep only card titles in the toolbar; reuse rondel hints outside the scaled table. */
-.round-requests{display:flex;align-items:center;gap:6px;min-width:0}
+.table-overview .play-jumps{display:grid;grid-template-columns:var(--play-columns);column-gap:var(--play-gap);align-items:center;overflow:visible}
+.play-jump-actions{display:flex;gap:6px;min-width:0}
+.round-requests{grid-column:2;display:flex;align-items:center;justify-content:center;gap:6px;min-width:0}
+.table-overview .play-jumps>.game-save-state{grid-column:3;justify-self:end;margin-left:0}
 .round-requests>.policy-hint{flex:0 1 auto;min-width:0}
 .round-requests-heading{font-weight:700;flex-shrink:0}
-.round-request{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-color:#a5b292;background:#faf9ee;color:#2b4637}
+.lab-shell button.round-request{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-color:#ae8529;background:linear-gradient(#f9e6ad,#e8c362);color:#574011}
+.lab-shell button.round-request:hover{background:#f3d37e;border-color:#8d6819}
 
 .round-next-requests{padding:8px 12px;border:1px solid #c7ceb8;background:#f5f6ed;border-radius:8px}.round-next-requests ul{padding-left:18px}.round-next-requests li{margin:5px 0;font-size:13px}.round-next-requests small{display:block;color:#52644a}

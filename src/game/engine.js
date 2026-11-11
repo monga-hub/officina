@@ -15,7 +15,7 @@ import {
 
 import { industrialForTrack, activeWorkers, wellbeing, policiesOf, welfareEfficiency, resourcePayments } from './industrial.js';
 
-import { normalizeRowEconomy, rowEconomyConfig, rowMachineCard, machinesOperational, continuityIncome, tensionMachineIncome, repressionCost, tokenWelfare, availableWelfareTokens } from './row-economy.js';
+import { normalizeRowEconomy, rowEconomyConfig, rowMachineCard, activeMachineIds, machinesOperational, continuityIncome, tensionMachineIncome, repressionCost, tokenWelfare, availableWelfareTokens } from './row-economy.js';
 
 import { WELFARE_POLICIES, ALL_WELFARE_POLICIES, rondelEnabled, welfarePolicy, welfareRondelCommands, recordWelfareBenefit } from './welfare-rondel.js';
 
@@ -609,6 +609,7 @@ export function initGame(config) {
     singlePlace: !!config.singlePlace,   // true: la commessa ha un solo vincitore (PV 1°) e si rinfresca subito, niente 2° posto
     slots: mergeSlots(config.slots),     // cap Sopra/Sotto per reparto + Direzione (editabile)
     contractEngine: !!config.contractEngine, // commessa completata → carta-motore sotto Direzione (risorsa/turno per forza-settore dominante)
+    ...(config.machineReserve === true ? { machineReserve: true } : {}),
     sottoInstantEffect: !!config.sottoInstantEffect, // true: installare una carta Sotto ne esegue subito l'azione, invece di aspettare l'attivazione del reparto
     starMovement: !!config.starMovement, // 2 giocatori: movimento a stella (pentagramma), +1 per scavallare a un nodo a fianco
     // bonus carta-motore ora è PER-CARTA (contract.engine: {yield, amount, uses}); nessun valore globale, solo il master toggle contractEngine.
@@ -1801,7 +1802,7 @@ function placements(state, p, w) {
   }
   if (!w.power && !(state.rowEconomy?.conversionMachines === false && w.effect?.verbo === 'scambia')) {
     for (const role of DEPT_ROLES) {
-      if (p.depts[role].sotto.length < state.slots[role].sotto) out.push({ side: 'sotto', role });
+      if (state.machineReserve || p.depts[role].sotto.length < state.slots[role].sotto) out.push({ side: 'sotto', role });
     }
   }
   return out;
@@ -2414,7 +2415,7 @@ function doActivate(state, p, sector, intensity = 1, sustainableRow = null, welf
   // tocca solo il conteggio finale a decisioni invariate. Distinzione da conservare (idea utente 29/07/2026).
   sottoTimes = Math.max(1, Math.round(sottoTimes * (state.borsaFabbriche.sottoYieldMult ?? 1)));
   if (state.industrial.enabled) sottoTimes = 1; // la spinta moltiplica risorse, mai monete o conversioni
-  const cards = machinesOperational(state, dept) ? dept.sotto.filter(id => !dept.blocked.includes(id)) : [];
+  const cards = activeMachineIds(state, dept, WORKER_BY_ID);
   // passata BASE (1×): quello che scatterebbe anche senza fabbriche
   const c0 = p.coins, r0 = totalResources(p);
   for (const id of cards) {

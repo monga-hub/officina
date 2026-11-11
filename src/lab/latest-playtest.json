@@ -114,6 +114,7 @@
   "tensionDirection": "same",
   "milestoneResource": false,
   "machineImmediate": true,
+  "machineReserve": true,
   "workers": [
     {
       "id": "nw_gr5",

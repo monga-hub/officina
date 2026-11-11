@@ -95,3 +95,19 @@ export function continuityIncome(state, dept, amount = 1, rowsPerCoin = 1) {
 export function machinesOperational(state, dept) {
   return !state.rowEconomy?.machinesRequireOpenRow || continuityIncome(state, dept, 1, 1) > 0;
 }
+
+function machineCoinIncome(state, dept, worker) {
+  const effect = worker.effect;
+  if (effect.continuity) return continuityIncome(state, dept, effect.f1.q, effect.continuityRowsPerCoin || 1);
+  return effect.verbo === 'perOgni' ? tensionMachineIncome(effect, dept.tension) : effect.f1.q;
+}
+
+export function activeMachineIds(state, dept, workers) {
+  if (!machinesOperational(state, dept)) return [];
+  const available = dept.sotto.filter(id => !dept.blocked.includes(id));
+  if (!state.machineReserve || available.length < 2) return available;
+  // Stable sorting gives priority to the earlier installation when returns are equal.
+  return available.map(id => ({ id, income: machineCoinIncome(state, dept, workers[id]) }))
+    .sort((a, b) => b.income - a.income)
+    .slice(0, 2).map(machine => machine.id);
+}

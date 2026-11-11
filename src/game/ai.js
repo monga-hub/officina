@@ -11,13 +11,13 @@ import {
 } from './engine.js';
 
 import { activeWorkers, policiesOf, welfareEfficiency, wellbeing } from './industrial.js';
-import { machinesOperational, tensionMachineIncome, tokenWelfare } from './row-economy.js';
+import { activeMachineIds, machinesOperational, tensionMachineIncome, tokenWelfare } from './row-economy.js';
 
 // One clock and one forecast horizon for the whole real decision, including nested probes.
 const SEARCH_TIMEOUT = Symbol('search timeout');
 let timedSearch = null, forecastEnd = Infinity, welfareProbe = false;
 function checkSearchTime() {
-  if (timedSearch && performance.now() >= timedSearch.deadline) throw SEARCH_TIMEOUT;
+  if (timedSearch && timedSearch.budgetStates === undefined && performance.now() >= timedSearch.deadline) throw SEARCH_TIMEOUT;
 }
 function withinForecast(end, run) {
   const previous = forecastEnd;
@@ -26,25 +26,25 @@ function withinForecast(end, run) {
 }
 export let lastDecision = null;
 // Legacy chooseCommand remains available for paired reference checks and frozen studies.
-export function chooseTimedCommand(state, { budgetMs } = {}) {
+export function chooseTimedCommand(state, { budgetMs, budgetStates } = {}) {
+  if (budgetStates !== undefined && (!Number.isSafeInteger(budgetStates) || budgetStates < 1)) throw new Error('Invalid state budget');
   if(state.roundObjectives&&!state.roundObjectives.preview)state={...state,roundObjectives:{...state.roundObjectives,preview:true}};
   if (timedSearch) return chooseCommand(state);
   if (budgetMs !== undefined && (!Number.isFinite(budgetMs) || budgetMs <= 0)) throw new Error('Invalid AI budget');
   if (state.gameOver) return null;
   if (state.phase === 'action' && plannedAction?.key === planKey(state)) {
     const started = performance.now(), command = chooseCommand(state);
-    lastDecision = { ms: performance.now() - started, completedDepth: 0, timedOut: false, reusedPlan: true };
+    lastDecision = { ms: performance.now() - started, completedDepth: 0, timedOut: false, reusedPlan: true,
+      ...(budgetStates !== undefined ? { budgetStates, states: 0 } : {}) };
     return command;
   }
   const started = performance.now(), legal = legalCommands(state);
   // Compare the whole movement plan: extra Welfare time at arrival would reuse a shallow choice.
-  budgetMs ??= !state.pending && state.aiRollout && state.contractsOnly && tokenWelfare(state)
-    && legal.some(c => c.type === 'investWelfare' || (state.phase === 'move' && c.type === 'move' && c.node === 'Servizi'))
-    ? 15000 : 3000;
+  budgetMs ??= welfareSearch(state, legal) ? 15000 : 3000;
   let command = legal[0] || null, savedPlan = null, completedDepth = -1, timedOut = false;
   const requested = state.aiRollout?.depth ?? 0;
   // Reserve time for the final engine operation and returning the completed choice.
-  timedSearch = { deadline: started + Math.max(0, budgetMs - 20), moveForecast: state.phase === 'move' && state.contractsOnly && tokenWelfare(state) };
+  timedSearch = { budgetStates, states: 0, deadline: started + Math.max(0, budgetMs - 20), moveForecast: state.phase === 'move' && state.contractsOnly && tokenWelfare(state) };
   try {
     for (let depth = 0; depth <= requested; depth++) {
       checkSearchTime();
@@ -56,11 +56,22 @@ export function chooseTimedCommand(state, { budgetMs } = {}) {
     if (error !== SEARCH_TIMEOUT) throw error;
     timedOut = true;
   } finally {
+    const { states } = timedSearch;
     timedSearch = null; forecastEnd = Infinity; welfareProbe = false;
     plannedAction = savedPlan;
-    lastDecision = { ms: performance.now() - started, budgetMs, completedDepth, requestedDepth: requested, timedOut };
+    lastDecision = { ms: performance.now() - started, completedDepth, requestedDepth: requested, timedOut,
+      ...(budgetStates === undefined ? { budgetMs } : { budgetStates, states }) };
   }
   return command;
+}
+
+function welfareSearch(state, legal) {
+  return !state.pending && state.aiRollout && state.contractsOnly && tokenWelfare(state)
+    && legal.some(c => c.type === 'investWelfare' || (state.phase === 'move' && c.type === 'move' && c.node === 'Servizi'));
+}
+
+export function chooseLabCommand(state) {
+  return chooseTimedCommand(state, { budgetStates: welfareSearch(state, legalCommands(state)) ? 300000 : 100000 });
 }
 
 // profiler artigianale per il rollout: contatori + tempo per bucket, azzerati a mano con resetRolloutStats().
@@ -80,6 +91,10 @@ export function resetRolloutStats() {
 }
 function timedApply(state, cmd) {
   checkSearchTime();
+  if (timedSearch?.budgetStates !== undefined) {
+    if (timedSearch.states >= timedSearch.budgetStates) throw SEARCH_TIMEOUT;
+    timedSearch.states++;
+  }
   const t0 = performance.now();
   const s = applyCommand(state, cmd);
   rolloutStats.msApplyCommand += performance.now() - t0;
@@ -217,14 +232,15 @@ function evaluateInner(state, playerId, rolloutLeaf) {
     }
     if (!state.rowEconomy?.enabled) v += d.sopra.length * 1.2 * w.wTrack;
     // carte Sotto: valore = qualità dell'effetto × attivazioni future attese
-    for (const id of d.sotto) {
+    const valuedMachines = state.machineReserve ? activeMachineIds(state, d, WORKER_BY_ID) : d.sotto;
+    for (const id of valuedMachines) {
       if (!d.blocked.includes(id)) v += (state.industrial?.enabled && state.industrial.productionMode === 'compact' ? Math.min(1.5, sottoValue(WORKER_BY_ID[id])) : sottoValue(WORKER_BY_ID[id])) * 2.2 * w.wTrack * futureEngine;
     }
     v -= d.blocked.length * 2.2;
     // Diagnostic hypothesis: value one future activation at today's tension, in ordinary coin units.
     // shortcut: this is a one-use estimate, not a fitted forecast of every future production.
     if (finiteFactory && machinesOperational(state, d)) {
-      const income = d.sotto.reduce((sum,id) => {
+      const income = valuedMachines.reduce((sum,id) => {
         const effect = formulaOf(WORKER_BY_ID[id]);
         return sum + (!d.blocked.includes(id) && effect.verbo === 'perOgni' && effect.f2?.conta === 'tensione' && effect.f1?.tipo === 'moneta' ? tensionMachineIncome(effect,d.tension) : 0);
       },0);
@@ -645,7 +661,7 @@ function chooseMoveInner(state, p) {
   const moveCost = profileOf(p).moveCost;
   let best = null;
   for (const mv of moves) {
-    const s2 = applyCommand(state, mv);
+    const s2 = timedSearch?.budgetStates === undefined ? applyCommand(state, mv) : timedApply(state, mv);
     let score, action;
     if (state.industrial?.enabled && state.aiRollout) {
       // Il lookahead deve scegliere anche il nodo: altrimenti non visita mai una produzione che il greedy scarta.
@@ -1091,7 +1107,7 @@ function bestPlacement(state, p, w) {
     const dSopra = deptOfSector(p, w.sector);
     if (dSopra.sopra.length < state.slots[dSopra.role].sopra) opts.push({ side: 'sopra', role: dSopra.role, val: Math.min(w.v, state.trackMax - dSopra.prod) });
     for (const role of DEPT_ROLES) {
-      if (p.depts[role].sotto.length < state.slots[role].sotto) opts.push({ side: 'sotto', role, val: sottoValue(w) });
+      if (state.machineReserve || p.depts[role].sotto.length < state.slots[role].sotto) opts.push({ side: 'sotto', role, val: sottoValue(w) });
     }
   }
   if (opts.length === 0) return null;

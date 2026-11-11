@@ -2,7 +2,7 @@ import {WELFARE_FUNDS,fundBalances,policyBoosted} from '../game/welfare-funds.js
 import { researchSummary } from './research.js';
 import { welfarePolicies, welfareDisplayPolicies, welfareMaxSteps, freeWelfareEntry } from '../game/welfare-rondel.js';
 import { bankMarket, hireCost, legalCommands, WORKER_BY_ID } from '../game/engine.js';
-import { rowMachineCard, machinesOperational, continuityIncome, tensionMachineIncome } from '../game/row-economy.js';
+import { activeMachineIds, rowMachineCard, machinesOperational, continuityIncome, tensionMachineIncome } from '../game/row-economy.js';
 import { rowPressureState } from '../game/row-pressure.js';
 import { RESOURCE_OF, rowTrackModel } from '../game/data.js';
 const roles=['terziario','secondario','primario'];
@@ -77,9 +77,12 @@ export function observeStudy(out,before,cmd,after) {
   };
   if(cmd.type==='hire'&&cmd.side==='sotto'&&before.sottoInstantEffect){const m=out.machines.at(-1);machineIncome(m,true);}
   if(cmd.type==='activate') {
-    const machines=out.machines.filter(m=>m.seat===p.id&&m.role===role),targets=machines.filter(m=>m.kind==='tensione');
+    const owned=out.machines.filter(m=>m.seat===p.id&&m.role===role);
+    const selected=before.machineReserve?activeMachineIds(before,p.depts[role],WORKER_BY_ID):null;
+    const machines=selected?owned.filter(m=>selected.includes(m.cardId)):owned;
+    const targets=machines.filter(m=>m.kind==='tensione');
     const income=sum(machines,m=>machineIncome(m,false));
-    out.productions.push({seq,seat:p.id,role,turn:before.turn,tension:p.depts[role].tension,targets:targets.length,machinesOperational:machinesOperational(before,p.depts[role]),targetIncome:machinesOperational(before,p.depts[role])?sum(targets,m=>tensionMachineIncome(m.effect,p.depts[role].tension)):0,machineIncome:income,protected:cmd.welfareToken===true,...rowPressureState(before,p.depts[role])});
+    out.productions.push({...(selected?{selectedMachines:selected,installedMachines:owned.length}:{}),seq,seat:p.id,role,turn:before.turn,tension:p.depts[role].tension,targets:targets.length,machinesOperational:machinesOperational(before,p.depts[role]),targetIncome:machinesOperational(before,p.depts[role])?sum(targets,m=>tensionMachineIncome(m.effect,p.depts[role].tension)):0,machineIncome:income,protected:cmd.welfareToken===true,...rowPressureState(before,p.depts[role])});
   }
   if(cmd.type==='resolveEffect'&&cmd.use&&before.pending?.cardId) {
     const m=out.machines.find(m=>m.seat===p.id&&m.cardId===before.pending.cardId);
@@ -132,9 +135,9 @@ export function detailedReport(config,games,status) {
   const cohort=ps=>[ps.length,mean(ps,p=>p.total),mean(ps,p=>p.nContracts),mean(ps,p=>p.stats.welfareBuys),mean(ps,p=>p.stats.repressions)];
   const research=researchSummary(games);
   const L=[`# OFFICINA 1907 — ${config.name}`,`\n${status}: **${games.length}/${config.simulation.games} partite**, ${N} giocatori-partita. Generato: ${new Date().toISOString()}.`,
-    `\n## Esperimento riproducibile\n\nImpronta configurazione: **${fingerprint(config)}**. IA ${config.simulation.ai}, d${config.simulation.depth}/r${config.simulation.rollouts}. ${config.players} giocatori, ${config.turns} turni. Versioni del motore: ${[...new Set(games.map(g=>g.release?.version||'sviluppo locale'))].join(', ')}.`,
+    `\n## Esperimento riproducibile\n\nImpronta configurazione: **${fingerprint(config)}**. IA ${config.simulation.ai}, d${config.simulation.depth}/r${config.simulation.rollouts}, budget da 100.000/300.000 stati. ${config.players} giocatori, ${config.turns} turni. Versioni del motore: ${[...new Set(games.map(g=>g.release?.version||'sviluppo locale'))].join(', ')}.`,
     `Mazzetti commesse: ${['small','medium','large'].map(size=>`${size} ${config.contractCount[config.players][size]}/${config.contracts[size].length}`).join(' · ')}. Carte visibili per taglia: ${config.contractMarket}.`,
-    `Tensione: ${config.tensionDirection==='same'?'stesso verso dello sviluppo, prima riga coperta per prima':'verso opposto, ultime righe coperte per prime'}. Sblocco produzione: ${config.productionUnlock==='cells'?'singola casella, arrivo o superamento':'intera riga'}. Soglie di riga ${config.productionUnlock==='cells'?'inattive':'permanenti'}: ${config.productionThresholds.join('/') }. Risorsa immediata alla soglia: ${config.productionUnlock!=='cells'&&config.milestoneResource?'sì':'no'}. Macchinari attivi all’installazione: ${config.machineImmediate?'sì':'no'}.`,
+    `Tensione: ${config.tensionDirection==='same'?'stesso verso dello sviluppo, prima riga coperta per prima':'verso opposto, ultime righe coperte per prime'}. Sblocco produzione: ${config.productionUnlock==='cells'?'singola casella, arrivo o superamento':'intera riga'}. Soglie di riga ${config.productionUnlock==='cells'?'inattive':'permanenti'}: ${config.productionThresholds.join('/') }. Risorsa immediata alla soglia: ${config.productionUnlock!=='cells'&&config.milestoneResource?'sì':'no'}. Macchinari: ${config.machineReserve?'possesso illimitato, due rendite per produzione, incasso a ogni installazione con una riga libera':config.machineImmediate?'incasso all’installazione':'rendita alla produzione'}.`,
     ...(config.track.some(c=>c?.milestoneReward)?['\n### Milestone con premio una tantum\n',table(['Casella','Risorse del reparto','Marchi'],config.track.flatMap((c,i)=>c?.milestoneReward?[[i,c.milestoneReward.res||0,c.milestoneReward.coins||0]]:[])),table(['Seme','Posto','Reparto','Turno','Casella','Risorse ricevute','Marchi ricevuti'],games.flatMap(g=>(g.study?.milestones||[]).map(m=>[g.seed,m.seat+1,m.role,m.turn,m.position,m.res||0,m.coins||0]))),'I premi sono incassati una volta quando si raggiunge o supera la casella, anche con tensione alta. Turno 0 = premio della posizione iniziale, già conteggiato nel bilancio. Non si ripetono nelle produzioni.']:[]),
     `Semi completati: ${games.map(g=>g.seed).join(', ')}.`,
     `Tempo di calcolo cumulato: ${f(sum(games,g=>g.elapsedMs)/1000)} secondi (in parallelo differisce dal tempo trascorso).`,
@@ -151,7 +154,7 @@ export function detailedReport(config,games,status) {
     `Turni con almeno un’assunzione legale: ${offers.length}; turni in cui viene scelta: ${offers.filter(o=>o.picked).length}. La disponibilità non dimostra che fosse la scelta migliore.`,
     config.productionUnlock==='cells'?'Le soglie di riga qui sotto sono solo riferimenti di sviluppo: ogni rendimento si sblocca alla propria casella.':'Il turno 0 indica una soglia già sbloccata nel setup: il premio immediato si paga solo attraversandola durante un avanzamento.',
     table(['Soglia','Reparti arrivati','Su reparti totali','Turno medio'],config.productionThresholds.map(t=>{const ts=thresholds.filter(x=>x.threshold===t);return [t,ts.length,N*3,mean(ts,x=>x.turn)];})),
-    table(['Settore','Reparti','Operai medi','Macchinari medi','Sviluppo medio','Tensione finale media','Spazi macchinari pieni'],Object.values(RESOURCE_OF).map((_,i)=>{const ds=people.map(p=>p.final?.depts[roles[i]]).filter(Boolean);return [ds[0]?.sector||roles[i],ds.length,mean(ds,d=>d.sopra.length),mean(ds,d=>d.sotto.length),mean(ds,d=>d.prod),mean(ds,d=>d.tension),ds.filter(d=>d.sotto.length===config.machineSlots[i]).length];})),
+    table(['Settore','Reparti','Operai medi','Macchinari medi','Sviluppo medio','Tensione finale media',config.machineReserve?'Reparti con almeno 3 macchinari':'Spazi macchinari pieni'],Object.values(RESOURCE_OF).map((_,i)=>{const ds=people.map(p=>p.final?.depts[roles[i]]).filter(Boolean);return [ds[0]?.sector||roles[i],ds.length,mean(ds,d=>d.sopra.length),mean(ds,d=>d.sotto.length),mean(ds,d=>d.prod),mean(ds,d=>d.tension),ds.filter(d=>config.machineReserve?d.sotto.length>=3:d.sotto.length===config.machineSlots[i]).length];})),
     '\n## Macchinari: ritorno monetario e tempismo\n',
     'Ricavo lordo immediato e ricavo nelle produzioni sono separati. Pareggio monetario = incassi ≥ prezzo; non remunera l’azione o lo spazio. Le conversioni hanno valore anche in risorse: non sono confrontabili tramite il solo pareggio in marchi.',
     table(['Tipo / costo','Copie','Spesa','Incasso immediato','Incasso successivo','Mai prodotte','Pareggio monetario','Attesa prima produzione'],[...new Set(machines.map(m=>`${m.kind}/${m.cost}`))].sort().map(k=>{const ms=machines.filter(m=>`${m.kind}/${m.cost}`===k);return [k,ms.length,sum(ms,m=>m.cost),k.startsWith('conversione')?'—':sum(ms,m=>m.immediate),k.startsWith('conversione')?'—':sum(ms,m=>m.recurring),ms.filter(m=>!m.uses).length,k.startsWith('conversione')?'—':ms.filter(m=>m.payback!=null).length,mean(ms.filter(m=>m.firstUse!=null),m=>m.firstUse-m.turn)];})),

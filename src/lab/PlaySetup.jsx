@@ -15,7 +15,8 @@ export default function PlaySetup({ c, set, onStart, invalid }) {
         <SelectField label="Giocatori umani" value={Math.min(humans,c.players)} onChange={v=>setHumans(+v)} options={Array.from({length:c.players},(_,i)=>({value:i+1,label:i===0?'Solo io':`${i+1} · sullo stesso schermo`}))}/>
       </div>
       {Math.min(humans,c.players)<c.players&&<SelectField label="Avversario IA" value={pace} onChange={setPace} options={[{value:'rapid',label:'Rapido · nuova IA d2 r1'},{value:'study',label:'Approfondito · nuova IA d6 r1'},...(pace==='custom'?[{value:'custom',label:`Impostazioni degli editor · ${c.simulation.ai} d${c.simulation.depth} r${c.simulation.rollouts}`}]:[])]}/>}
-      <p className="lab-muted">La modalità rapida riduce l’attesa, ma valuta meno in profondità. La scelta aggiorna anche l’IA delle simulazioni: partita e prove usano gli stessi editor.</p>
+      {Math.min(humans,c.players)<c.players&&<p className="lab-muted">L’IA esplora fino a 100.000 stati per scelta, o 300.000 quando può acquistare gettoni Welfare o raggiungere il nodo Welfare. La modalità rapida cerca fino a profondità 2.</p>}
+      {c.machineReserve&&<p className="lab-muted">Macchinari senza limite di possesso. Fino a due rendono quando produci, e ogni installazione paga se il reparto ha almeno una riga raggiunta e libera.</p>}
       <button className="lab-primary play-start" disabled={!!invalid} onClick={()=>onStart(gameConfig(c,{humans:Math.min(humans,c.players)}))}>Gioca con queste impostazioni →</button>
       <p className="lab-muted">Ogni modifica a risorse, carte, commesse e ordine della rondella viene usata nella nuova partita e nelle simulazioni. Ogni nuova partita usa un seme casuale, conservato nel salvataggio. La partita si salva automaticamente dopo ogni mossa in questo browser. Dopo una ricarica premi Riprendi partita. Si conservano anche le ultime 10 mosse annullabili.</p>
     </Card>

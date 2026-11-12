@@ -1,5 +1,6 @@
 import {validFundThresholds} from '../game/welfare-funds.js';
 import {validRoundSchedule} from '../game/round-rondel.js';
+import {usesFiveNationalities} from '../game/round-objectives.js';
 import reference from './reference.json' with { type: 'json' };
 import latestPlaytest from './latest-playtest.json' with { type: 'json' };
 import { TRACK_MODELS, SECTORS, NATIONS_NUOVO } from '../game/data.js';
@@ -16,6 +17,9 @@ export const STORAGE_KEY = 'officina1907-laboratorio-principale-v1';
 export const RULES_REVISION = 4;
 const PRESET_REVISION = 2;
 export const mainDefaults=()=>structuredClone(latestPlaytest);
+export const mainWorkerDeck=()=>structuredClone(latestPlaytest.workers);
+// The six-nationality reference used 72 cards in five nonempty markets.
+const REFERENCE_WORKER_SHUFFLE_DRAWS = 72 - 5;
 export function validateMainConfig(c){
   validate(c);
   check(c.roundRondel?.enabled&&c.roundRondel.startingPolicy==='affinity'&&c.roundRondel.fundThresholds,'Questa configurazione usa una versione precedente. Riparti dalla configurazione principale.');
@@ -146,7 +150,9 @@ export function validate(c) {
 }
 export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
   validate(c);
-  return { ...structuredClone(reference),
+  const nations = NATIONS_NUOVO.filter(nation => c.workers.some(worker => worker.nation === nation));
+  return { ...structuredClone(reference), nations,
+    ...(usesFiveNationalities(c.workers) ? { referenceWorkerShuffleDraws: REFERENCE_WORKER_SHUFFLE_DRAWS } : {}),
     ...((c.finalCoinsPerPV||c.finalResourcePV)?{conversions:{...reference.conversions,...(c.finalCoinsPerPV?{coinsPerPV:c.finalCoinsPerPV}:{}),...(c.finalResourcePV?{resPerPV:3}:{})}}:{}),
     borsaFabbriche: {...structuredClone(reference.borsaFabbriche), resourceCap: {...reference.borsaFabbriche.resourceCap, enabled:false}},
     ...(c.roundAwards?.enabled ? {roundAwards:structuredClone(c.roundAwards)} : {}),

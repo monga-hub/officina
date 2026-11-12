@@ -1,5 +1,10 @@
 export const CARDS=[{"id": "internazionale", "name": "Fabbrica internazionale", "category": "Operai", "thresholds": [[2, 3, 4], [3, 4, 5], [4, 5, 6], [2, 3, 4]], "metric": "R1–R3: nazionalità diverse fra gli operai Sopra. R4: nazionalità rappresentate da almeno due operai Sopra, in tutta la fabbrica."}, {"id": "affiatata", "name": "Squadra affiatata", "category": "Operai", "thresholds": [[1, 2, 3], [2, 3, 4], [2, 3, 4], [2, 3, 4]], "metric": "Numero di operai Sopra della stessa nazionalità nello stesso reparto; conta soltanto il gruppo più numeroso."}, {"id": "cosmopoliti", "name": "Reparti cosmopoliti", "category": "Operai", "thresholds": [[1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3]], "requirements": [2, 2, 3, 3], "metric": "Numero di reparti con almeno N nazionalità diverse fra gli operai Sopra. N per round: 2/2/3/3."}, {"id": "organico", "name": "Organico completo", "category": "Operai", "thresholds": [[1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3]], "requirements": [1, 2, 3, 4], "metric": "Numero di reparti con almeno N operai Sopra. N per round: 1/2/3/4."}, {"id": "automazione", "name": "Automazione operativa", "category": "Impianti", "thresholds": [[1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3]], "requirements": [1, 2, 2, 2], "development": [1, 1, 5, 9], "metric": "Numero di reparti con almeno N macchine e sviluppo almeno S, con una riga fisica raggiunta libera. N: 1/2/2/2; S: 1/1/5/9."}, {"id": "specializzato", "name": "Polo specializzato", "category": "Impianti", "thresholds": [[5, 7, 9], [8, 10, 12], [11, 13, 16], [13, 16, 18]], "metric": "Sviluppo del reparto più avanzato."}, {"id": "equilibrata", "name": "Fabbrica equilibrata", "category": "Impianti", "thresholds": [[2, 3, 5], [4, 6, 8], [6, 9, 11], [9, 11, 13]], "metric": "Sviluppo del reparto meno avanzato: tutti i tre devono raggiungere la soglia."}, {"id": "complementare", "name": "Impianto complementare", "category": "Impianti", "thresholds": [[1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3]], "metric": "Numero di tipi diversi di macchina presenti in tutta la fabbrica in reparti con almeno una riga fisica raggiunta libera: Fisso, T, Continuità. Ogni tipo conta una sola volta."}, {"id": "benessere", "name": "Benessere progressivo", "category": "Gestione", "thresholds": [[1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3]], "requirements": [1, 2, 2, 3], "development": [1, 1, 5, 9], "tension": [0, 1, 1, 1], "metric": "Numero di reparti qualificati. Operai minimi: 1/2/2/3; sviluppo minimo: 1/1/5/9; T massima: 0/1/1/1. Nessun bonus ulteriore per tre reparti: massimo 6 PV."}, {"id": "riserva", "name": "Riserva per il personale", "category": "Gestione", "thresholds": [[1, 2, 3], [2, 3, 4], [2, 3, 4], [2, 3, 4]], "metric": "Gettoni Welfare posseduti alla scadenza. Non si spendono per segnare; nessun requisito di operai, sviluppo o reparti."}, {"id": "bilancio", "name": "Bilancio solido", "category": "Gestione", "thresholds": [[4, 7, 10], [6, 10, 15], [10, 16, 24], [15, 25, 40]], "metric": "Marchi posseduti alla scadenza. Premio aggiuntivo rispetto alla conversione finale ordinaria; i marchi non si spendono."}, {"id": "finanziamento", "name": "Finanziamento mirato", "category": "Gestione", "thresholds": [[3, 5, 7], [3, 5, 7], [3, 5, 7], [3, 5, 7]], "metric": "Marchi versati personalmente durante questo round nei fondi che risultano attivi alla scadenza. Somma soltanto quei versamenti; i bottini non sono versamenti. Il contatore personale riparte ogni round."}];
 const BY_ID=Object.fromEntries(CARDS.map(c=>[c.id,c]));
+const FIVE_NATIONS_INTERNATIONAL = {
+ ...BY_ID.internazionale,
+ thresholds: BY_ID.internazionale.thresholds.map((tier, round) => round === 2 ? [3, 4, 5] : tier),
+};
+export const usesFiveNationalities = workers => new Set(workers.map(worker => worker.nation)).size === 5;
 // A separate seeded shuffle preserves worker and contract draws.
 export function objectiveDeck(seed) {
  let value=(seed^0x72657132)>>>0;
@@ -12,12 +17,12 @@ export function objectiveDeck(seed) {
  }
  return deck;
 }
-export function initRoundObjectives(n,seed,bounds) {
+export function initRoundObjectives(n,seed,bounds,fiveNationalities = false) {
  if(!Array.isArray(bounds)||bounds.length<1||bounds.length>4||!bounds.every((t,i)=>Number.isInteger(t)&&t>0&&(!i||t>bounds[i-1])))throw new Error('Le dodici richieste consentono da uno a quattro round.');
  const deck=objectiveDeck(seed);
- return {version:2,bounds:[...bounds],deck,round:0,active:deck.slice(0,3),banked:Array(n).fill(0),contributions:Array.from({length:n},()=>({economy:0,personnel:0,production:0})),completed:[],log:[]};
+ return {version:2,...(fiveNationalities?{fiveNationalities:true}:{}),bounds:[...bounds],deck,round:0,active:deck.slice(0,3),banked:Array(n).fill(0),contributions:Array.from({length:n},()=>({economy:0,personnel:0,production:0})),completed:[],log:[]};
 }
-export const cardById=id=>BY_ID[id];
+export const cardById=(id, rules)=>id==='internazionale' && rules?.fiveNationalities ? FIVE_NATIONS_INTERNATIONAL : BY_ID[id];
 export function objectiveMetrics(state,p,workers){
  const ds=['terziario','secondario','primario'].map(r=>p.depts[r]);
  const nations=ds.flatMap(d=>d.sopra.map(id=>workers[id].nation));
@@ -40,15 +45,16 @@ export function cardValue(c,x,r){const ds=x.departments;switch(c.id){
  case 'finanziamento':return Object.entries(x.donations).reduce((n,[f,v])=>n+(x.funds[f]>={economy:3,personnel:4,production:3}[f]?v:0),0);
  default:throw new Error('Unknown objective '+c.id);
 }}
-export function cardPoints(id,x,r){const c=BY_ID[id],value=cardValue(c,x,r);let pv=0;for(let i=0;i<3;i++)if(value>=c.thresholds[r][i])pv=2*(i+1);return {id,name:c.name,value,pv};}
-export function objectivePotential(state,p,workers){const rr=state.roundObjectives;if(!rr||rr.round>=rr.bounds.length)return 0;const x=objectiveMetrics(state,p,workers);return rr.active.reduce((n,id)=>n+cardPoints(id,x,rr.round).pv,0);}
+export function cardPoints(id,x,r,rules){const c=cardById(id,rules),value=cardValue(c,x,r);let pv=0;for(let i=0;i<3;i++)if(value>=c.thresholds[r][i])pv=2*(i+1);return {id,name:c.name,value,pv};}
+export function objectivePotential(state,p,workers){const rr=state.roundObjectives;if(!rr||rr.round>=rr.bounds.length)return 0;const x=objectiveMetrics(state,p,workers);return rr.active.reduce((n,id)=>n+cardPoints(id,x,rr.round,rr).pv,0);}
 export function settleRoundObjectives(state,turn,workers){
  const rr=state.roundObjectives;if(!rr||turn!==rr.bounds[rr.round]||rr.round>=rr.bounds.length||rr.completed.includes(turn))return;
- const awards=state.players.map(p=>{const metrics=objectiveMetrics(state,p,workers),cards=rr.active.map(id=>cardPoints(id,metrics,rr.round)),pv=cards.reduce((n,c)=>n+c.pv,0);rr.banked[p.id]+=pv;return {seat:p.id,metrics,cards,pv,banked:rr.banked[p.id]};});
+ const awards=state.players.map(p=>{const metrics=objectiveMetrics(state,p,workers),cards=rr.active.map(id=>cardPoints(id,metrics,rr.round,rr)),pv=cards.reduce((n,c)=>n+c.pv,0);rr.banked[p.id]+=pv;return {seat:p.id,metrics,cards,pv,banked:rr.banked[p.id]};});
  const round=rr.round+1;state.roundObjectives={...rr,round,active:round<rr.bounds.length&&!rr.preview?rr.deck.slice(round*3,round*3+3):[],contributions:state.players.map(()=>({economy:0,personnel:0,production:0})),completed:[...rr.completed,turn],log:rr.preview?rr.log:[...rr.log,{round,endTurn:turn,active:rr.active.slice(),awards}]};
 }
 
 export function validRoundObjectives(rr,n) {
+ if(rr?.fiveNationalities!==undefined&&typeof rr.fiveNationalities!=='boolean')return false;
  if(!rr||rr.version!==2||!Array.isArray(rr.bounds)||rr.bounds.length<1||rr.bounds.length>4||!rr.bounds.every((t,i)=>Number.isInteger(t)&&t>0&&(!i||t>rr.bounds[i-1]))||!Array.isArray(rr.deck)||rr.deck.length!==12||new Set(rr.deck).size!==12||!rr.deck.every(id=>BY_ID[id]))return false;
  if(!Number.isInteger(rr.round)||rr.round<0||rr.round>rr.bounds.length||rr.preview||!Array.isArray(rr.active)||JSON.stringify(rr.active)!==JSON.stringify(rr.round<rr.bounds.length?rr.deck.slice(rr.round*3,rr.round*3+3):[]))return false;
  if(!Array.isArray(rr.banked)||rr.banked.length!==n||!rr.banked.every(v=>Number.isInteger(v)&&v>=0)||!Array.isArray(rr.contributions)||rr.contributions.length!==n||!rr.contributions.every(c=>c&&Object.keys(c).length===3&&['economy','personnel','production'].every(f=>Number.isInteger(c[f])&&c[f]>=0)))return false;

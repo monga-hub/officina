@@ -3,7 +3,7 @@ import { TRACK_MODELS, SECTORS, NATIONS_NUOVO, activeTrackEnd, activeTrackRange 
 import { rowMachineCard } from '../game/row-economy.js';
 import RowProductionTrack from '../components/RowProductionTrack.jsx';
 import RondelOrderEditor from './RondelOrderEditor.jsx';
-import { MODELS, SIZES, SIZE_NAMES, withoutTrackPoints } from './config.js';
+import { MODELS, SIZES, SIZE_NAMES, withoutTrackPoints, mainWorkerDeck } from './config.js';
 export function NumberField({ label, value, onChange, min=0, max=30 }) {
   return <label className="lab-field"><span>{label}</span><input type="number" min={min} max={max} step="1" value={value} onChange={e=>onChange(Math.max(min,Math.min(max,Math.round(Number(e.target.value)||0))))}/></label>;
 }
@@ -66,6 +66,9 @@ export function CardsEditor({c,set}) {
   const copy=w=>set({workers:[...c.workers,{...structuredClone(w),id:`lab-${Date.now()}-${Math.random().toString(36).slice(2,7)}`}]});
   return <Card title="Operai e macchinari">
     <p>Sopra: sviluppo pari al valore stampato, con sconto per connazionali nello stesso reparto. Sotto: prezzo pieno; rendita fissa, rendita da tensione o Continuità, attivata insieme al reparto. Le conversioni possono essere disattivate nella configurazione.</p>
+    <button onClick={()=>{
+      if(confirm('Sostituire il mazzo operai con le 75 carte da cinque nazionalità?'))set({workers:mainWorkerDeck()});
+    }}>Carica il mazzo da 75 carte</button>
     <SelectField label="Filtra per mazzetto" value={filter} onChange={setFilter} options={['Tutti','A','B','C','D','E']}/>
     <p className="lab-muted">{rows.length} carte mostrate · {c.workers.length} nel mazzo. Modifiche salvate automaticamente.</p>
     <div className="lab-card-list">{rows.map(({w,i})=>{const effect=rowMachineCard(w,{machineCash:true,tensionMachineCash:true}).effect;return <article className="lab-worker" key={w.id}>

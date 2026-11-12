@@ -1,11 +1,44 @@
 import assert from 'node:assert/strict';
-import {mainDefaults,gameConfig,parseConfig,loadMainConfig,STORAGE_KEY} from '../src/lab/config.js';
+import {mainDefaults,mainWorkerDeck,defaults,gameConfig,parseConfig,loadMainConfig,STORAGE_KEY} from '../src/lab/config.js';
 import {initGame,applyCommand,legalCommands,scorePlayer,roundObjectivePotential,WORKER_BY_ID} from '../src/game/engine.js';
 import {chooseTimedCommand,evaluate} from '../src/game/ai.js';
-import {CARDS,objectiveDeck,initRoundObjectives,cardPoints,objectiveMetrics,settleRoundObjectives,validRoundObjectives} from '../src/game/round-objectives.js';
+import {CARDS,objectiveDeck,initRoundObjectives,cardById,cardPoints,objectiveMetrics,settleRoundObjectives,validRoundObjectives} from '../src/game/round-objectives.js';
 import {gameSession,saveGame,loadGame,GAME_SAVE_KEY} from '../src/lab/saved-game.js';
 const plain=x=>JSON.parse(JSON.stringify(x)),c=mainDefaults(),cfg=gameConfig(c),storage=()=>{const m=new Map();return{getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,v)};};
 assert.equal(cfg.roundObjectives,true);assert.equal(CARDS.length,12);
+const workers=mainWorkerDeck();
+assert.equal(workers.length,75);
+assert.equal(new Set(workers.map(w=>w.id)).size,75);
+const nations=new Set(workers.map(w=>w.nation));
+assert.equal(nations.size,5);
+assert.deepEqual(new Set(cfg.nations),nations);
+function verifyProfiles(cards) {
+ assert.equal(cards.length,15);
+ assert.deepEqual([2,3,4].map(v=>cards.filter(w=>w.v===v).length),[4,7,4]);
+ assert.deepEqual(['fisso','tensione','continuita'].map(kind=>cards.filter(w=>
+  (w.effect.continuity?'continuita':w.effect.verbo==='perOgni'?'tensione':'fisso')===kind).length),[7,4,4]);
+}
+for(const bank of 'ABCDE'){
+ const cards=workers.filter(w=>w.deck===bank);
+ verifyProfiles(cards);
+ assert.equal(new Set(cards.map(w=>w.nation+'/'+w.sector)).size,15);
+}
+for(const nation of nations)verifyProfiles(workers.filter(w=>w.nation===nation));
+for(const sector of ['Tessile','Metallurgica','Chimica'])assert.equal(workers.filter(w=>w.sector===sector).length,25);
+const current=initGame(cfg);
+assert.equal(current.roundObjectives.fiveNationalities,true);
+const previousConfig=gameConfig({...c,workers:defaults().workers});
+const previous=initGame(previousConfig);
+assert.equal(previous.roundObjectives.fiveNationalities,undefined);
+assert.deepEqual(current.contracts,previous.contracts);
+assert.deepEqual(cardById('internazionale',current.roundObjectives).thresholds[2],[3,4,5]);
+assert.deepEqual(cardById('internazionale',previous.roundObjectives).thresholds[2],[4,5,6]);
+assert.equal(cardPoints('internazionale',{nations:5},2,current.roundObjectives).pv,6);
+assert.equal(cardPoints('internazionale',{nations:5},2,previous.roundObjectives).pv,4);
+const previousStorage=storage();
+saveGame(previousConfig,{state:previous,history:[],paused:true},previousStorage);
+assert.equal(loadGame(previousStorage).state.roundObjectives.fiveNationalities,undefined);
+
 for(let seed=0;seed<30;seed++){const deck=objectiveDeck(seed);assert.equal(new Set(deck).size,12);assert.deepEqual(deck,objectiveDeck(seed));}
 assert.notDeepEqual(objectiveDeck(1907),objectiveDeck(1908));
 const enabled=initGame(cfg),disabled=initGame({...cfg,roundObjectives:false});

@@ -1,4 +1,4 @@
-import {initRoundObjectives,objectivePotential,settleRoundObjectives} from './round-objectives.js';
+import {initRoundObjectives,objectivePotential,settleRoundObjectives,usesFiveNationalities} from './round-objectives.js';
 import {WELFARE_FUNDS,fundBalances,policyBoosted,welfareAllocations,changeFund,allocationLabel} from './welfare-funds.js';
 import { initRoundRondel, beginRoundRondel, roundRondelCommands, applyRoundRondel } from './round-rondel.js';
 import { initRoundAwards, beginRoundAwards, roundAwardCommands, applyRoundAward, roundVoucherDiscount, spendRoundVoucher } from './round-awards.js';
@@ -502,8 +502,15 @@ export function initGame(config) {
   const nodeBanks = (config.nodeBanks && Object.keys(config.nodeBanks).length) ? config.nodeBanks : NODE_BANKS;
   const bankIds = [...new Set(Object.values(nodeBanks).flat())];
   const banks = {};
+  let workerRandom = rnd;
+  if (Number.isSafeInteger(config.referenceWorkerShuffleDraws) && config.referenceWorkerShuffleDraws >= 0 && config.referenceWorkerShuffleDraws <= 200) {
+    // Keep the tested contract shuffle when the number of worker cards changes.
+    workerRandom = mulberry32(seed);
+    for (let i = 1; i < tiles.length; i++) workerRandom();
+    for (let i = 0; i < config.referenceWorkerShuffleDraws; i++) rnd();
+  }
   for (const id of bankIds) {
-    banks[id] = shuffled(workerDeck.filter(w => (w.deck ?? w.nation) === id && !(industrial.enabled && industrial.development === 'off' && w.power)).map(w => w.id), rnd);
+    banks[id] = shuffled(workerDeck.filter(w => (w.deck ?? w.nation) === id && !(industrial.enabled && industrial.development === 'off' && w.power)).map(w => w.id), workerRandom);
   }
   // carte Welfare/Macchinari: editabili via config.welfare, altrimenti default WELFARE.
   // Mazzo mescolato, WELFARE_MARKET carte scoperte a inizio partita; refresh dal mazzo a ogni acquisto.
@@ -571,7 +578,7 @@ export function initGame(config) {
   for (const role of DEPT_ROLES) trackTileStock[role] = Object.fromEntries(trackTileDeck.map(t => [t.id, t.copies ?? Infinity]));
 
   const state = {
-    ...(config.roundObjectives?{roundObjectives:initRoundObjectives(n,seed,[...(config.roundRondel?.bounds||[]),config.roundLimit])}:{}),
+    ...(config.roundObjectives?{roundObjectives:initRoundObjectives(n,seed,[...(config.roundRondel?.bounds||[]),config.roundLimit],usesFiveNationalities(workerDeck))}:{}),
     seed, nPlayers: n, industrial, trackModel, rowTrack, rowEconomy,
     headless: !!config.headless, // true nei batch: disattiva il log di partita
     // coinsRepeat: true = le caselle marchi riproducono a ogni attivazione (default);

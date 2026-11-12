@@ -1,5 +1,6 @@
 import React from 'react';
 import {RequestDeck} from './RoundObjectives.jsx';
+import {usesFiveNationalities} from '../game/round-objectives.js';
 import {Card,NumberField,Toggle} from './Editors.jsx';
 
 export default function RoundsEditor({c,set}) {
@@ -19,7 +20,7 @@ export default function RoundsEditor({c,set}) {
     <Toggle label="Richieste comuni · mazzo v2" value={c.roundObjectives===true} onChange={roundObjectives=>set({roundObjectives})}/>
     <p>Tre carte estratte a inizio partita e tre nuove a ogni scadenza, senza ripetizioni. Tutti possono ottenere 0/2/4/6 PV per carta; i punti incassati restano acquisiti. Il conteggio precede la scelta della rondella. Il mazzo consente al massimo quattro periodi: rimuovi eventuali scadenze in eccesso prima di attivarlo.</p>
     {c.roundObjectives&&c.turns!==28&&<p className="lab-callout">Le soglie sono calibrate per quattro periodi di sette turni. Un calendario diverso cambia la difficoltà degli obiettivi.</p>}
-    <RequestDeck/>
+    <RequestDeck rules={{fiveNationalities:usesFiveNationalities(c.workers)}}/>
     <Toggle label="Ricambio dei mazzi operai" value={c.roundRondel.refreshWorkers===true} onChange={refreshWorkers=>set({roundRondel:{...c.roundRondel,refreshWorkers}})}/>
     <p>Alle scadenze selezionate, prima della scelta della rondella, la prima carta di ogni mazzo operai va in fondo allo stesso mazzo. Il ricambio non si può più fare in Città e non avviene dopo la fine della partita.</p>
     <p className="lab-muted">Le impostazioni valgono per le nuove partite e le simulazioni. Le partite già salvate mantengono il proprio calendario. Accorciando la partita, le scadenze fuori calendario vengono rimosse.</p>

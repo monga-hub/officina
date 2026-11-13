@@ -17,10 +17,13 @@ export const CITY_HANDS = [
   ['consegna4','parco-completo','organico-completo'],
 ];
 export const periodOf = turn => Math.floor((turn - 1) / 7);
-export const productionPoints = turn => cityPoints(turn) + 7;
+// Saves created before the 5–2 scale keep their original awards.
+export const CITY_SCORING = '5-2';
+export const productionPoints = (turn, scoring) => cityPoints(turn, scoring) + (scoring === CITY_SCORING ? 3 : 7);
 
-export function cityPoints(turn) {
+export function cityPoints(turn, scoring) {
   const day = (turn - 1) % 7 + 1;
+  if (scoring === CITY_SCORING) return day <= 2 ? 3 : 2;
   return 5 + (day <= 2 ? 2 : day <= 5 ? 1 : 0);
 }
 
@@ -58,7 +61,7 @@ export function cityCertificates(state, player, workers) {
 
 export function certifyCity(state, player, ids) {
   const markers = { ...state.calendarMissions[player.id] };
-  for (const id of ids) markers[id] = { turn: state.turn, points: cityPoints(state.turn) };
+  for (const id of ids) markers[id] = { turn: state.turn, points: cityPoints(state.turn, state.cityScoring) };
   state.calendarMissions = state.calendarMissions.slice();
   state.calendarMissions[player.id] = markers;
 }

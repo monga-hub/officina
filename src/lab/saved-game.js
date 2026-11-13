@@ -1,4 +1,4 @@
-import {CITY_HANDS,cityPoints,periodOf} from '../game/city-missions.js';
+import {CITY_HANDS,CITY_SCORING,cityPoints,periodOf} from '../game/city-missions.js';
 import {CALENDAR_BOUNDS,CALENDAR_MISSIONS} from '../game/calendar-missions.js';
 import {validRoundObjectives} from '../game/round-objectives.js';
 import {WELFARE_FUNDS,fundBalances} from '../game/welfare-funds.js';
@@ -10,10 +10,10 @@ import { tensionMachineCard } from '../game/row-economy.js';
 export const GAME_SAVE_KEY='officina1907-partita-v1';
 export const SAVED_UNDO_LIMIT=10;
 const ROLES=['terziario','secondario','primario'];
-function validCalendar(markers,players,turn,city) {
+function validCalendar(markers,players,turn,city,scoring) {
   return Array.isArray(markers)&&markers.length===players&&markers.every(row=>row&&typeof row==='object'&&!Array.isArray(row)
     &&Object.entries(row).every(([id,marker])=>marker&&Number.isInteger(marker.turn)&&marker.turn>=1&&marker.turn<=turn
-      &&(city ? CITY_HANDS[periodOf(marker.turn)]?.slice(1).includes(id)&&cityPoints(marker.turn)===marker.points
+      &&(city ? CITY_HANDS[periodOf(marker.turn)]?.slice(1).includes(id)&&cityPoints(marker.turn,scoring)===marker.points
         : CALENDAR_MISSIONS.find(mission=>mission.id===id)?.points[CALENDAR_BOUNDS.findIndex(end=>marker.turn<=end)]===marker.points)
       &&Number.isInteger(marker.points)));
 }
@@ -25,9 +25,11 @@ function validState(state,config) {
     &&(!state.roundRondel?.fundThresholds||(fundBalances(state)&&Object.keys(fundBalances(state)).length===3&&WELFARE_FUNDS.every(f=>Number.isInteger(fundBalances(state)[f.id])&&fundBalances(state)[f.id]>=0)&&Object.values(fundBalances(state)).reduce((a,b)=>a+b,0)===state.welfareBank))
     &&(state.roundRondel?.policyOrder===undefined||validPolicyOrder(state.roundRondel.policyOrder))
     &&Boolean(config.cityMissions)===Boolean(state.cityMissions)
+    &&state.cityScoring===config.cityScoring
+    &&(state.cityScoring===undefined||state.cityScoring===CITY_SCORING)
     &&Boolean(config.calendarMissions||config.cityMissions)===Boolean(state.calendarMissions)
     &&(!state.cityMissions||JSON.stringify(state.calendarDeck)===JSON.stringify(CITY_HANDS))
-    &&(!state.calendarMissions||validCalendar(state.calendarMissions,state.nPlayers,state.turn,state.cityMissions))
+    &&(!state.calendarMissions||validCalendar(state.calendarMissions,state.nPlayers,state.turn,state.cityMissions,state.cityScoring))
     &&Boolean(config.roundObjectives)===Boolean(state.roundObjectives)
     &&(!config.roundObjectives||JSON.stringify(state.roundObjectives?.bounds)===JSON.stringify([...(config.roundRondel?.bounds||[]),config.roundLimit]))
     &&(!state.roundObjectives||validRoundObjectives(state.roundObjectives,state.nPlayers))

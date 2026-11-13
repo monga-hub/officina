@@ -597,7 +597,7 @@ function resourceNeeds(state, p) {
         let missing = 0;
         for (const [s, n] of Object.entries(need)) missing += Math.max(0, n - p.resources[RESOURCE_OF[s]]);
         const place = slot.places[0] === null ? 0 : 1;
-        const score = (state.cityMissions ? productionPoints(state.turn) : slot.card.pv[place]) / (1 + missing * 2);
+        const score = (state.cityMissions ? productionPoints(state.turn,state.cityScoring) : slot.card.pv[place]) / (1 + missing * 2);
         if (!best || score > best.score) best = { score, need, missing };
       });
     }
@@ -1144,8 +1144,8 @@ function hireValue(state, p, w, place) {
 function borsaEstimate(state, p) {
   if (state.cityMissions) {
     const rewards = legalCommands(state).map(cmd => {
-      if (cmd.type === 'certifyCity') return cityPoints(state.turn) * cmd.missions.length;
-      return cmd.type === 'completeContract' ? productionPoints(state.turn) : 0;
+      if (cmd.type === 'certifyCity') return cityPoints(state.turn,state.cityScoring) * cmd.missions.length;
+      return cmd.type === 'completeContract' ? productionPoints(state.turn,state.cityScoring) : 0;
     });
     return Math.max(0, ...rewards) * 8;
   }
@@ -1232,7 +1232,7 @@ function chooseBorsa(state, p) {
 function contractPV(state, cmd) {
   const slot = state.contracts[cmd.size].active[cmd.slotIndex ?? 0];
   const place = slot.places[0] === null ? 0 : 1;
-  return state.cityMissions ? productionPoints(state.turn) : slot.card.pv[place];
+  return state.cityMissions ? productionPoints(state.turn,state.cityScoring) : slot.card.pv[place];
 }
 
 // Exact rewards enter the ordinary evaluator and existing d6 forecasts. No objective weights.

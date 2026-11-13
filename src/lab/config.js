@@ -1,3 +1,4 @@
+import { CITY_SCORING } from '../game/city-missions.js';
 import { CALENDAR_BOUNDS } from '../game/calendar-missions.js';
 import {validFundThresholds} from '../game/welfare-funds.js';
 import {validRoundSchedule} from '../game/round-rondel.js';
@@ -191,7 +192,7 @@ export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
     ...(c.roundRondel?.enabled ? {roundRondel:structuredClone(c.roundRondel)} : {}),
     ...(c.roundObjectives?{roundObjectives:true}:{}),
     ...(c.calendarMissions ? { calendarMissions: true } : {}),
-    ...(c.cityMissions ? { cityMissions: true } : {}),
+    ...(c.cityMissions ? { cityMissions: true, cityScoring: CITY_SCORING } : {}),
     ...(c.machineReserve ? { machineReserve: true } : {}),
     seed, headless: humans === 0, endMode: 'rounds', roundLimit: c.turns, singleContractVisit: true,
     startingCoins: [...c.startingCoins], trackModel: c.trackModel,

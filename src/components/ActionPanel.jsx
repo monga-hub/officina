@@ -261,13 +261,13 @@ function BorsaActions({ state, p, legal, dispatch }) {
     return <section aria-label="Missioni in Città">
       <h3>Missioni in Città</h3>
       {certificate && <button className="primary" onClick={() => dispatch(certificate)}>
-        Certifica {certificate.missions.map(id => CITY_CATEGORIES[hand.indexOf(id)].name).join(' e ')} · {cityPoints(state.turn) * certificate.missions.length} PV
+        Certifica {certificate.missions.map(id => CITY_CATEGORIES[hand.indexOf(id)].name).join(' e ')} · {cityPoints(state.turn,state.cityScoring) * certificate.missions.length} PV
       </button>}
       <div className="btn-row col">
         {completes.map(c => {
           const req = state.contracts[c.size].active[c.slotIndex].card.reqs[c.reqIndex];
           const lot = [...new Set(req)].map(sector => `${req.filter(s => s === sector).length} ${RESOURCE_OF[sector].toLowerCase()}`).join(' + ');
-          return <button key={c.reqIndex} className="primary" onClick={() => dispatch(c)}>Consegna {lot} · {productionPoints(state.turn)} PV</button>;
+          return <button key={c.reqIndex} className="primary" onClick={() => dispatch(c)}>Consegna {lot} · {productionPoints(state.turn,state.cityScoring)} PV</button>;
         })}
       </div>
       {!certificate && !completes.length && <p>Nessuna missione pronta in questa visita.</p>}

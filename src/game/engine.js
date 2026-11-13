@@ -581,7 +581,7 @@ export function initGame(config) {
 
   const state = {
     ...(config.calendarMissions || config.cityMissions ? { calendarMissions: players.map(() => ({})) } : {}),
-    ...(config.cityMissions ? { cityMissions: true, calendarDeck: CITY_HANDS } : {}),
+    ...(config.cityMissions ? { cityMissions: true, calendarDeck: CITY_HANDS, ...(config.cityScoring ? { cityScoring: config.cityScoring } : {}) } : {}),
     ...(config.roundObjectives?{roundObjectives:initRoundObjectives(n,seed,[...(config.roundRondel?.bounds||[]),config.roundLimit],usesFiveNationalities(workerDeck))}:{}),
     seed, nPlayers: n, industrial, trackModel, rowTrack, rowEconomy,
     headless: !!config.headless, // true nei batch: disattiva il log di partita
@@ -2848,7 +2848,7 @@ function doContract(state, p, cmd) {
   slot.doneReq[cmd.reqIndex] = true;
   const place = state.singlePlace ? 0 : (slot.places[0] === null ? 0 : 1);
   slot.places[place] = p.id;
-  const pv = state.cityMissions ? productionPoints(state.turn) : slot.card.pv[place];
+  const pv = state.cityMissions ? productionPoints(state.turn,state.cityScoring) : slot.card.pv[place];
   if (state.rowEconomy?.enabled && !state.cityMissions) addCoins(state, p, state.rowEconomy.contractCoins[cmd.size], 'commessa');
   if (welfarePolicy(state, p)?.id === 'reliability') {
     const amount=policyBoosted(state,'reliability')?4:2;

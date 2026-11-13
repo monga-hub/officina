@@ -28,13 +28,32 @@ export function validateMainConfig(c){
   check(c.roundRondel?.enabled&&c.roundRondel.startingPolicy==='affinity'&&c.roundRondel.fundThresholds,'Questa configurazione usa una versione precedente. Riparti dalla configurazione principale.');
   return c;
 }
+export function fitsCityCalendar(turns, bounds) {
+  return JSON.stringify([...(bounds || []), turns]) === JSON.stringify(CALENDAR_BOUNDS);
+}
+export function enableCityMissions(c) {
+  return { ...c, cityMissions:true, calendarMissions:false, roundObjectives:false, finalCoinPV:false, finalResourcePV:false };
+}
+function readStoredConfig(raw) {
+  const c = parseConfig(raw);
+  if (c.cityMissions === undefined && c.roundRondel?.enabled && fitsCityCalendar(c.turns, c.roundRondel.bounds)) {
+    return enableCityMissions(c);
+  }
+  if (!c.calendarMissions && JSON.parse(raw).roundObjectives === undefined && c.roundRondel?.bounds?.length <= 3) {
+    c.roundObjectives = true;
+  }
+  return c;
+}
 export function loadMainConfig(storage){
-  const raw=storage.getItem(STORAGE_KEY);
-  if(raw){const c=parseConfig(raw);
-    const previousDefault=parseConfig(JSON.stringify(latestPlaytest));
-    if (JSON.stringify(c)===JSON.stringify(previousDefault)) return mainDefaults();if(!c.calendarMissions&&JSON.parse(raw).roundObjectives===undefined&&c.roundRondel?.bounds?.length<=3)c.roundObjectives=true;return validateMainConfig(c);}
-  const previous=storage.getItem(PREVIOUS_STORAGE_KEY);
-  if(previous){const c=parseConfig(previous);if(!c.calendarMissions&&JSON.parse(previous).roundObjectives===undefined&&c.roundRondel?.bounds?.length<=3)c.roundObjectives=true;if(c.roundRondel?.enabled&&c.roundRondel.startingPolicy==='affinity'&&c.roundRondel.fundThresholds)return validateMainConfig(c);}
+  const raw = storage.getItem(STORAGE_KEY);
+  if (raw) return validateMainConfig(readStoredConfig(raw));
+  const previous = storage.getItem(PREVIOUS_STORAGE_KEY);
+  if (previous) {
+    const c = readStoredConfig(previous);
+    if (c.roundRondel?.enabled && c.roundRondel.startingPolicy === 'affinity' && c.roundRondel.fundThresholds) {
+      return validateMainConfig(c);
+    }
+  }
   return mainDefaults();
 }
 export function withoutTrackPoints(track) {
@@ -71,11 +90,11 @@ export function validate(c) {
   check(c.contractsOnly === true, 'Nel Laboratorio si contano i PV delle commesse e gli eventuali PV dei marchi e delle risorse finali.');
   if (c.cityMissions !== undefined) check(typeof c.cityMissions === 'boolean', 'Missioni in Città non valide.');
   if (c.cityMissions) check(!c.calendarMissions && !c.roundObjectives && !c.finalCoinPV && !c.finalResourcePV && c.roundRondel?.enabled
-    && JSON.stringify([...(c.roundRondel.bounds || []), c.turns]) === JSON.stringify(CALENDAR_BOUNDS),
+    && fitsCityCalendar(c.turns, c.roundRondel.bounds),
     'Le missioni in Città richiedono quattro quadrimestri da sette turni.');
   if (c.calendarMissions !== undefined) check(typeof c.calendarMissions === 'boolean', 'Missioni calendario non valide.');
   if (c.calendarMissions) check(c.contractsOnly && !c.roundObjectives && c.roundRondel?.enabled
-    && c.roundRondel.tokenMax === 3 && JSON.stringify([...(c.roundRondel.bounds || []), c.turns]) === JSON.stringify(CALENDAR_BOUNDS),
+    && c.roundRondel.tokenMax === 3 && fitsCityCalendar(c.turns, c.roundRondel.bounds),
     'Le missioni richiedono la rondella con un massimo di 3 gettoni per visita e quattro round da 7 turni.');
   if(c.roundObjectives!==undefined)check(typeof c.roundObjectives==='boolean','Richieste di round non valide.');
   if(c.roundObjectives)check(c.contractsOnly&&c.roundRondel?.enabled&&c.roundRondel.fundThresholds&&Array.isArray(c.roundRondel.bounds)&&c.roundRondel.bounds.length<=3,'Le dodici richieste richiedono da uno a quattro round, con al massimo tre scadenze intermedie.');

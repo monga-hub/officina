@@ -1,13 +1,13 @@
 import React from 'react';
 import {RequestDeck} from './RoundObjectives.jsx';
 import {usesFiveNationalities} from '../game/round-objectives.js';
+import {enableCityMissions,fitsCityCalendar} from './config.js';
 import {CALENDAR_BOUNDS} from '../game/calendar-missions.js';
 import {Card,NumberField,Toggle} from './Editors.jsx';
 
 export default function RoundsEditor({c,set}) {
   const bounds=c.roundRondel.bounds;
-  const fitsMissions=(turns,ends)=>JSON.stringify([...ends,turns])===JSON.stringify(CALENDAR_BOUNDS);
-  const update=(turns,ends)=>set({turns,roundRondel:{...c.roundRondel,bounds:ends,firstSeats:ends.map((_,i)=>i%c.players)},calendarMissions:c.calendarMissions===true&&fitsMissions(turns,ends),cityMissions:c.cityMissions===true&&fitsMissions(turns,ends)});
+  const update=(turns,ends)=>set({turns,roundRondel:{...c.roundRondel,bounds:ends,firstSeats:ends.map((_,i)=>i%c.players)},calendarMissions:c.calendarMissions===true&&fitsCityCalendar(turns,ends),cityMissions:c.cityMissions===true&&fitsCityCalendar(turns,ends)});
   const toggle=turn=>update(c.turns,bounds.includes(turn)?bounds.filter(end=>end!==turn):[...bounds,turn].sort((a,b)=>a-b));
   const ends=[...bounds,c.turns];
   return <Card title="Durata e round">
@@ -18,7 +18,8 @@ export default function RoundsEditor({c,set}) {
     </div>
     <p><b>{ends.length} periodi</b> · {bounds.length} scelte della rondella per giocatore.</p>
     <ol className="rounds-summary">{ends.map((end,i)=><li key={end}>Turni {(ends[i-1]||0)+1}–{end}: {i===ends.length-1?'fine partita':`rondella · sceglie per primo il giocatore ${c.roundRondel.firstSeats[i]+1}`}</li>)}</ol>
-    {fitsMissions(c.turns,bounds)&&<Toggle label="Missioni in Città · 12 PV per consegna" value={c.cityMissions===true} onChange={cityMissions=>set(cityMissions?{cityMissions,calendarMissions:false,roundObjectives:false,finalCoinPV:false,finalResourcePV:false}:{cityMissions})}/>}
+    {fitsCityCalendar(c.turns,bounds)&&<Toggle label="Missioni in Città · 12 PV per consegna" value={c.cityMissions===true} onChange={cityMissions=>set(cityMissions?enableCityMissions(c):{cityMissions})}/>}
+    {!fitsCityCalendar(c.turns,bounds)&&<p>Le missioni in Città usano quattro quadrimestri da sette turni. <button type="button" onClick={()=>set(enableCityMissions({...c,turns:CALENDAR_BOUNDS.at(-1),roundRondel:{...c.roundRondel,bounds:CALENDAR_BOUNDS.slice(0,-1),firstSeats:[0,1,2]}}))}>Imposta calendario 7/14/21/28 e attiva le missioni</button></p>}
     {c.cityMissions&&<p>Una terna fissa per quadrimestre. Consegne ripetibili, certificazioni di Economia e Personale una volta per quadrimestre.</p>}
     {c.calendarMissions&&<p>Le tre missioni sono visibili dal primo turno. Il gettone va nella casella in cui completi la missione e i suoi PV restano acquisiti.</p>}
     <h3>Cosa succede a fine round</h3>

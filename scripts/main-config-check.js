@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {mainDefaults,loadMainConfig,validateMainConfig,defaults,parseConfig,gameConfig,STORAGE_KEY,PREVIOUS_STORAGE_KEY} from '../src/lab/config.js';
+import {mainDefaults,loadMainConfig,validateMainConfig,defaults,parseConfig,gameConfig,enableCityMissions,STORAGE_KEY,PREVIOUS_STORAGE_KEY} from '../src/lab/config.js';
 import {initGame,applyCommand,legalCommands,forkForSearch} from '../src/game/engine.js';
 import {beginRoundRondel,roundRondelCommands,roundRondelCost} from '../src/game/round-rondel.js';
 import {DEFAULT_ROUND_POLICY_ORDER,movePolicy,welfareDisplayPolicies,welfarePolicies,welfarePolicy} from '../src/game/welfare-rondel.js';
@@ -110,6 +110,21 @@ assert.deepEqual(changed.roundRondel.policyOrder,['affinity','formation','cooper
 assert.deepEqual(DEFAULT_ROUND_POLICY_ORDER,['affinity','cooperation','innovation','reliability','integration','mutualAid','formation']);
 assert.deepEqual(movePolicy(changed.roundRondel.policyOrder,'affinity','mutualAid'),['formation','cooperation','innovation','reliability','integration','mutualAid','affinity']);
 const stored=storage();stored.setItem(STORAGE_KEY,JSON.stringify(changed));assert.deepEqual(loadMainConfig(stored),changed);
+const olderEditor={...changed,roundObjectives:true,finalCoinPV:true,finalResourcePV:true};
+delete olderEditor.cityMissions;
+for(const key of [STORAGE_KEY,PREVIOUS_STORAGE_KEY]){
+ const oldEditor=storage(),raw=JSON.stringify(olderEditor);
+ oldEditor.setItem(key,raw);
+ assert.deepEqual(loadMainConfig(oldEditor),enableCityMissions(olderEditor));
+ assert.equal(oldEditor.getItem(key),raw);
+}
+const selectedLegacy={...olderEditor,cityMissions:false};
+stored.setItem(STORAGE_KEY,JSON.stringify(selectedLegacy));
+assert.deepEqual(loadMainConfig(stored),selectedLegacy);
+const differentSchedule={...olderEditor,turns:32,roundRondel:{...olderEditor.roundRondel,bounds:[8,16,24]}};
+stored.setItem(STORAGE_KEY,JSON.stringify(differentSchedule));
+assert.deepEqual(loadMainConfig(stored),differentSchedule);
+
 old.setItem(PREVIOUS_STORAGE_KEY,JSON.stringify(changed));assert.deepEqual(loadMainConfig(old),changed,'keep custom settings already using the main rules');
 assert.deepEqual(parseConfig(JSON.stringify(changed)),changed);
 for(const source of DEFAULT_ROUND_POLICY_ORDER)for(const target of DEFAULT_ROUND_POLICY_ORDER){

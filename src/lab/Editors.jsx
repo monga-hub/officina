@@ -43,7 +43,7 @@ export function BoardEditor({c,set}) {
       </div></div>
     </Card>
     <Card title="Macchinari">
-      <Toggle label="Installazioni senza limite" value={!!c.machineReserve} onChange={machineReserve=>set({machineReserve})}/>
+      {!c.cityMissions&&<Toggle label="Installazioni senza limite" value={!!c.machineReserve} onChange={machineReserve=>set({machineReserve})}/>}
       {c.machineReserve
         ? <p className="lab-muted">Con almeno una riga raggiunta e libera, ogni nuova macchina rende subito. In produzione rendono automaticamente fino a due macchine, quelle con l’incasso maggiore. Sono disponibili le macchine che rendono marchi.</p>
         : <div className="lab-fields">{SECTORS.map((s,i)=><NumberField key={s} label={`Macchinari · ${s}`} value={c.machineSlots[i]} max={10} onChange={v=>set({machineSlots:c.machineSlots.map((n,j)=>i===j?v:n)})}/>)}</div>}

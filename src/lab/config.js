@@ -33,10 +33,11 @@ export function fitsCityCalendar(turns, bounds) {
   return JSON.stringify([...(bounds || []), turns]) === JSON.stringify(CALENDAR_BOUNDS);
 }
 export function enableCityMissions(c) {
-  return { ...c, cityMissions:true, calendarMissions:false, roundObjectives:false, finalCoinPV:false, finalResourcePV:false };
+  return { ...c, cityMissions:true, machineReserve:true, calendarMissions:false, roundObjectives:false, finalCoinPV:false, finalResourcePV:false };
 }
 function readStoredConfig(raw) {
   const c = parseConfig(raw);
+  if (c.cityMissions) return c;
   if (c.cityMissions === undefined && c.roundRondel?.enabled && fitsCityCalendar(c.turns, c.roundRondel.bounds)) {
     return enableCityMissions(c);
   }
@@ -155,7 +156,7 @@ export function validate(c) {
       check(w.effect.verbo === 'perOgni' && w.effect.f2?.conta === 'tensione' && w.effect.f1?.tipo === 'moneta' && Array.isArray(w.effect.tensionRewards) && w.effect.tensionRewards.length === 5, 'Curva tensione: servono cinque premi, da tensione 0 a 4.');
       w.effect.tensionRewards.forEach(v=>integer(v,0,100,'Premio curva tensione'));
     }
-    if (c.machineReserve && w.effect.continuity) check(
+    if ((c.cityMissions || c.machineReserve) && w.effect.continuity) check(
       w.effect.verbo === 'prendi' && w.effect.f1?.tipo === 'moneta', 'La Continuità deve rendere marchi con la variante macchinari.');
     const factors = w.effect.verbo === 'scambia' ? [w.effect.f1, w.effect.f2] : [w.effect.f1];
     for (const f of factors) {
@@ -183,6 +184,7 @@ export function validate(c) {
 }
 export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
   validate(c);
+  const machineReserve = Boolean(c.cityMissions || c.machineReserve);
   const nations = NATIONS_NUOVO.filter(nation => c.workers.some(worker => worker.nation === nation));
   return { ...structuredClone(reference), nations,
     ...(usesFiveNationalities(c.workers) ? { referenceWorkerShuffleDraws: REFERENCE_WORKER_SHUFFLE_DRAWS } : {}),
@@ -193,14 +195,14 @@ export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
     ...(c.roundObjectives?{roundObjectives:true}:{}),
     ...(c.calendarMissions ? { calendarMissions: true } : {}),
     ...(c.cityMissions ? { cityMissions: true, cityScoring: CITY_SCORING } : {}),
-    ...(c.machineReserve ? { machineReserve: true } : {}),
+    ...(machineReserve ? { machineReserve: true } : {}),
     seed, headless: humans === 0, endMode: 'rounds', roundLimit: c.turns, singleContractVisit: true,
     startingCoins: [...c.startingCoins], trackModel: c.trackModel,
     tracks: Object.fromEntries(ROLES.map(r => [r, structuredClone(c.track)])),
     nodeBanks: structuredClone(STAR_NODE_BANKS),
     workers: structuredClone(c.workers), contracts: structuredClone(c.contracts), contractPV: undefined,
     contractCount: structuredClone(c.contractCount), contractMarket: c.contractMarket,
-    rowEconomy: { ...reference.rowEconomy, ...((c.machineReserve || c.machinesRequireOpenRow) ? { machinesRequireOpenRow: true } : {}), ...((c.machineReserve || c.conversionMachines === false) ? { conversionMachines: false } : {}), welfareMode: 'tokens', welfareScope: 'factory', welfareHireDiscount: false, sameNationHireDiscount: c.roundRondel?.startingPolicy!=='affinity', tensionMachineCash: true, productionThresholds: [...c.productionThresholds], productionUnlock: c.productionUnlock || 'rows', tensionDirection: c.tensionDirection || 'opposed', milestoneResource: c.productionUnlock === 'cells' ? false : c.milestoneResource, machineImmediate: c.machineReserve || c.machineImmediate,
+    rowEconomy: { ...reference.rowEconomy, ...((machineReserve || c.machinesRequireOpenRow) ? { machinesRequireOpenRow: true } : {}), ...((machineReserve || c.conversionMachines === false) ? { conversionMachines: false } : {}), welfareMode: 'tokens', welfareScope: 'factory', welfareHireDiscount: false, sameNationHireDiscount: c.roundRondel?.startingPolicy!=='affinity', tensionMachineCash: true, productionThresholds: [...c.productionThresholds], productionUnlock: c.productionUnlock || 'rows', tensionDirection: c.tensionDirection || 'opposed', milestoneResource: c.productionUnlock === 'cells' ? false : c.milestoneResource, machineImmediate: machineReserve || c.machineImmediate,
       welfareCost: c.welfareCost, welfareBank: c.welfareBank===true, welfareRondel: c.welfareRondel, welfareFreeEntry: c.welfareFreeEntry === true, welfareMaxSteps: c.welfareMaxSteps ?? 3, welfarePoliciesEnabled: {...(c.welfarePoliciesEnabled||defaults().welfarePoliciesEnabled)}, repressionBase: c.repressionBase, repressionStep: 0, contractCoins: { ...c.contractCoins } },
     slots: { ...Object.fromEntries(ROLES.map((r,i) => [r, { sopra: 3, sotto: c.machineSlots[i] }])), direzione: { sopra: 0, sotto: 0 } },
     borsaExit: { enabled: true, coins: c.cityIncome }, borsaRefresh: { enabled: false },
@@ -249,6 +251,7 @@ export function parseConfig(raw) {
     }
   }
   validate(c);
+  if (c.cityMissions) c.machineReserve = true;
   // Only the current schema is persisted; imported legacy knobs cannot alter rules.
   const optional=['cityMissions','calendarMissions','roundRondel','machineReserve','conversionMachines','machinesRequireOpenRow','finalCoinPV','finalCoinsPerPV','finalResourcePV'];
   return Object.fromEntries([...Object.keys(defaults()),...optional.filter(k=>Object.hasOwn(c,k))].map(k => [k, structuredClone(c[k])]));

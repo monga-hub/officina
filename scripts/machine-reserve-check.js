@@ -4,11 +4,12 @@ import { applyCommand, hireCost, initGame, legalCommands, WORKER_BY_ID } from '.
 import { activeMachineIds } from '../src/game/row-economy.js';
 import { gameConfig, mainDefaults, parseConfig } from '../src/lab/config.js';
 import { newStudy, observeStudy } from '../src/lab/study.js';
+import { gameSession } from '../src/lab/saved-game.js';
 
 const editor = mainDefaults();
 assert.equal(editor.machineReserve, true);
 assert.equal(parseConfig(JSON.stringify(editor)).machineReserve, true);
-const legacy = { ...editor, machineReserve: false };
+const legacy = { ...editor, cityMissions: false, machineReserve: false };
 assert.equal(parseConfig(JSON.stringify(legacy)).machineReserve, false);
 assert.equal(initGame(gameConfig(legacy)).machineReserve, undefined);
 
@@ -47,6 +48,17 @@ const cost = hireCost(state, player, large, 'terziario', 'sotto');
 const installed = applyCommand(state, install);
 assert.equal(installed.players[0].coins, player.coins - cost + 3);
 assert.deepEqual(installed.players[0].depts.terziario.sotto, [small.id, medium.id, large.id]);
+const limitedCity = { ...editor, machineReserve: false };
+assert.equal(parseConfig(JSON.stringify(limitedCity)).machineReserve, true);
+assert.equal(initGame(gameConfig(limitedCity)).machineReserve, true);
+const oldState = { ...state, machineReserve: false, sottoInstantEffect: false };
+const oldSave = { version: 1, savedAt: new Date().toISOString(), config: { ...cfg, machineReserve: false }, state: oldState, history: [oldState], paused: true };
+const resumed = gameSession(oldSave.config, oldSave);
+assert.deepEqual(resumed.state.players, oldState.players);
+assert.equal(resumed.history[0].machineReserve, true);
+assert.ok(legalCommands(resumed.state).some(c => JSON.stringify(c) === JSON.stringify(install)));
+assert.equal(applyCommand(resumed.state, install).players[0].depts.terziario.sotto.length, 3);
+assert.equal(oldSave.state.machineReserve, false);
 const blocked = structuredClone(state);
 blocked.players[0].depts.terziario.tension = 4;
 assert.equal(applyCommand(blocked, install).players[0].coins, player.coins - cost);

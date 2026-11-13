@@ -48,7 +48,7 @@ export function validateGameSave(save) {
   return save;
 }
 function contractsOnlySave(save) {
-  if ([save.config, save.state, ...save.history].every(rules => rules.contractsOnly && (!rules.roundRondel?.fundThresholds||typeof rules.roundRondel.refreshWorkers==='boolean') && !rules.borsaRefresh?.enabled && !rules.borsaFabbriche?.resourceCap?.enabled && !rules.players?.some(p=>p.resCap?.enabled) && rules.rowEconomy?.sameNationHireDiscount === (rules.roundRondel?.startingPolicy!=='affinity') && rules.rowEconomy?.tensionMachineCash === true)) return save;
+  if ([save.config, save.state, ...save.history].every(rules => rules.contractsOnly && (!rules.cityMissions||rules.machineReserve) && (!rules.roundRondel?.fundThresholds||typeof rules.roundRondel.refreshWorkers==='boolean') && !rules.borsaRefresh?.enabled && !rules.borsaFabbriche?.resourceCap?.enabled && !rules.players?.some(p=>p.resCap?.enabled) && rules.rowEconomy?.sameNationHireDiscount === (rules.roundRondel?.startingPolicy!=='affinity') && rules.rowEconomy?.tensionMachineCash === true)) return save;
   const next = structuredClone(save), states = [next.state, ...next.history];
   if (!next.config.rowEconomy?.tensionMachineCash) next.config.workers = next.config.workers.map(tensionMachineCard);
   for (const rules of [next.config, ...states]) {
@@ -57,6 +57,11 @@ function contractsOnlySave(save) {
     if(rules.borsaFabbriche?.resourceCap)rules.borsaFabbriche.resourceCap.enabled=false;
     for(const player of rules.players||[])if(player.resCap)player.resCap.enabled=false;
     rules.rowEconomy = { ...rules.rowEconomy, sameNationHireDiscount: rules.roundRondel?.startingPolicy!=='affinity', tensionMachineCash: true };
+    if (rules.cityMissions && !rules.machineReserve) {
+      rules.machineReserve = true;
+      rules.rowEconomy = { ...rules.rowEconomy, machinesRequireOpenRow: true, conversionMachines: false, machineImmediate: true };
+      if (rules !== next.config) rules.sottoInstantEffect = true;
+    }
     rules.contractsOnly = true;
     rules.pianoEnabled = false;
     rules.raceObjectives = { enabled: false, list: [] };

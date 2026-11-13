@@ -420,3 +420,10 @@
 .lab-shell button.round-request:hover{background:#f3d37e;border-color:#8d6819}
 
 .round-next-requests{padding:8px 12px;border:1px solid #c7ceb8;background:#f5f6ed;border-radius:8px}.round-next-requests ul{padding-left:18px}.round-next-requests li{margin:5px 0;font-size:13px}.round-next-requests small{display:block;color:#52644a}
+
+.turn-track-missions{display:grid;gap:3px;flex:0 1 490px;min-width:280px}
+.lab-shell .turn-track-missions li{display:flex;align-items:center;gap:3px;padding:0 3px;min-height:21px;font-size:10px;line-height:18px}
+.calendar-tokens{display:flex;gap:1px;flex-wrap:wrap}
+.calendar-token{display:inline-grid;place-items:center;min-width:17px;height:12px;border-radius:50%;border:1px solid #fff;color:#fff;font:700 9px/1 sans-serif}
+.calendar-mission-list{display:flex;gap:5px;flex-wrap:wrap}
+.lab-shell .calendar-mission-list button{padding:4px 8px;background:#f7e4b1;color:#543f1f;border-color:#c6a76b;font-weight:600}

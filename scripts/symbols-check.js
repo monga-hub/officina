@@ -16,7 +16,7 @@ try {
   const {default:Rondel}=await server.ssrLoadModule('/src/components/WelfareRondel.jsx');
   const {default:Board}=await server.ssrLoadModule('/src/lab/StarBoard.jsx');
   const {default:RoundChoice}=await server.ssrLoadModule('/src/components/RoundRondelChoice.jsx');
-  const funds=initGame(gameConfig(mainDefaults()));
+  const funds=initGame(gameConfig({...mainDefaults(),cityMissions:false,roundObjectives:true}));
   const {default:Requests,RoundObjectivesDetails}=await server.ssrLoadModule('/src/lab/RoundObjectives.jsx');
   const {CARDS,cardById}=await server.ssrLoadModule('/src/game/round-objectives.js');
   const requestStrip=render(Requests,{state:funds,player:funds.players[0],onInspect(){}});

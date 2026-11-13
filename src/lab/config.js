@@ -1,3 +1,4 @@
+import { CALENDAR_BOUNDS } from '../game/calendar-missions.js';
 import {validFundThresholds} from '../game/welfare-funds.js';
 import {validRoundSchedule} from '../game/round-rondel.js';
 import {usesFiveNationalities} from '../game/round-objectives.js';
@@ -16,7 +17,9 @@ export const PREVIOUS_STORAGE_KEY = 'officina1907-laboratorio-v1';
 export const STORAGE_KEY = 'officina1907-laboratorio-principale-v1';
 export const RULES_REVISION = 4;
 const PRESET_REVISION = 2;
-export const mainDefaults=()=>structuredClone(latestPlaytest);
+export const mainDefaults=()=>({
+  ...structuredClone(latestPlaytest), cityMissions:true, roundObjectives:false, finalCoinPV:false, finalResourcePV:false,
+});
 export const mainWorkerDeck=()=>structuredClone(latestPlaytest.workers);
 // The six-nationality reference used 72 cards in five nonempty markets.
 const REFERENCE_WORKER_SHUFFLE_DRAWS = 72 - 5;
@@ -27,9 +30,11 @@ export function validateMainConfig(c){
 }
 export function loadMainConfig(storage){
   const raw=storage.getItem(STORAGE_KEY);
-  if(raw){const c=parseConfig(raw);if(JSON.parse(raw).roundObjectives===undefined&&c.roundRondel?.bounds?.length<=3)c.roundObjectives=true;return validateMainConfig(c);}
+  if(raw){const c=parseConfig(raw);
+    const previousDefault=parseConfig(JSON.stringify(latestPlaytest));
+    if (JSON.stringify(c)===JSON.stringify(previousDefault)) return mainDefaults();if(!c.calendarMissions&&JSON.parse(raw).roundObjectives===undefined&&c.roundRondel?.bounds?.length<=3)c.roundObjectives=true;return validateMainConfig(c);}
   const previous=storage.getItem(PREVIOUS_STORAGE_KEY);
-  if(previous){const c=parseConfig(previous);if(JSON.parse(previous).roundObjectives===undefined&&c.roundRondel?.bounds?.length<=3)c.roundObjectives=true;if(c.roundRondel?.enabled&&c.roundRondel.startingPolicy==='affinity'&&c.roundRondel.fundThresholds)return validateMainConfig(c);}
+  if(previous){const c=parseConfig(previous);if(!c.calendarMissions&&JSON.parse(previous).roundObjectives===undefined&&c.roundRondel?.bounds?.length<=3)c.roundObjectives=true;if(c.roundRondel?.enabled&&c.roundRondel.startingPolicy==='affinity'&&c.roundRondel.fundThresholds)return validateMainConfig(c);}
   return mainDefaults();
 }
 export function withoutTrackPoints(track) {
@@ -64,6 +69,14 @@ export function validate(c) {
   if(c.finalResourcePV!==undefined)check(typeof c.finalResourcePV==='boolean','PV finali delle risorse non validi.');
   if (c.finalCoinPV !== undefined) check(typeof c.finalCoinPV === 'boolean', 'Conversione finale marchi non valida.');
   check(c.contractsOnly === true, 'Nel Laboratorio si contano i PV delle commesse e gli eventuali PV dei marchi e delle risorse finali.');
+  if (c.cityMissions !== undefined) check(typeof c.cityMissions === 'boolean', 'Missioni in Città non valide.');
+  if (c.cityMissions) check(!c.calendarMissions && !c.roundObjectives && !c.finalCoinPV && !c.finalResourcePV && c.roundRondel?.enabled
+    && JSON.stringify([...(c.roundRondel.bounds || []), c.turns]) === JSON.stringify(CALENDAR_BOUNDS),
+    'Le missioni in Città richiedono quattro quadrimestri da sette turni.');
+  if (c.calendarMissions !== undefined) check(typeof c.calendarMissions === 'boolean', 'Missioni calendario non valide.');
+  if (c.calendarMissions) check(c.contractsOnly && !c.roundObjectives && c.roundRondel?.enabled
+    && c.roundRondel.tokenMax === 3 && JSON.stringify([...(c.roundRondel.bounds || []), c.turns]) === JSON.stringify(CALENDAR_BOUNDS),
+    'Le missioni richiedono la rondella con un massimo di 3 gettoni per visita e quattro round da 7 turni.');
   if(c.roundObjectives!==undefined)check(typeof c.roundObjectives==='boolean','Richieste di round non valide.');
   if(c.roundObjectives)check(c.contractsOnly&&c.roundRondel?.enabled&&c.roundRondel.fundThresholds&&Array.isArray(c.roundRondel.bounds)&&c.roundRondel.bounds.length<=3,'Le dodici richieste richiedono da uno a quattro round, con al massimo tre scadenze intermedie.');
   check(!c.roundAwards?.enabled, 'Le carte premio non fanno parte di questa versione.');
@@ -158,6 +171,8 @@ export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
     ...(c.roundAwards?.enabled ? {roundAwards:structuredClone(c.roundAwards)} : {}),
     ...(c.roundRondel?.enabled ? {roundRondel:structuredClone(c.roundRondel)} : {}),
     ...(c.roundObjectives?{roundObjectives:true}:{}),
+    ...(c.calendarMissions ? { calendarMissions: true } : {}),
+    ...(c.cityMissions ? { cityMissions: true } : {}),
     ...(c.machineReserve ? { machineReserve: true } : {}),
     seed, headless: humans === 0, endMode: 'rounds', roundLimit: c.turns, singleContractVisit: true,
     startingCoins: [...c.startingCoins], trackModel: c.trackModel,
@@ -215,7 +230,7 @@ export function parseConfig(raw) {
   }
   validate(c);
   // Only the current schema is persisted; imported legacy knobs cannot alter rules.
-  const optional=['roundRondel','machineReserve','conversionMachines','machinesRequireOpenRow','finalCoinPV','finalCoinsPerPV','finalResourcePV'];
+  const optional=['cityMissions','calendarMissions','roundRondel','machineReserve','conversionMachines','machinesRequireOpenRow','finalCoinPV','finalCoinsPerPV','finalResourcePV'];
   return Object.fromEntries([...Object.keys(defaults()),...optional.filter(k=>Object.hasOwn(c,k))].map(k => [k, structuredClone(c[k])]));
 }
 export function playableConfig(c, humans = 1, pace = 'rapid') {

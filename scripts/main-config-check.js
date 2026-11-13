@@ -4,6 +4,7 @@ import {initGame,applyCommand,legalCommands,forkForSearch} from '../src/game/eng
 import {beginRoundRondel,roundRondelCommands,roundRondelCost} from '../src/game/round-rondel.js';
 import {DEFAULT_ROUND_POLICY_ORDER,movePolicy,welfareDisplayPolicies,welfarePolicies,welfarePolicy} from '../src/game/welfare-rondel.js';
 import {gameSession,saveGame,loadGame,GAME_SAVE_KEY} from '../src/lab/saved-game.js';
+import {CITY_HANDS} from '../src/game/city-missions.js';
 import {productionPreview} from '../src/components/production-choices.js';
 const plain=x=>JSON.parse(JSON.stringify(x));
 const storage=()=>{const values=new Map();return {getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v)};};
@@ -11,7 +12,7 @@ const fresh=mainDefaults();validateMainConfig(fresh);
 assert.equal(fresh.players,3);assert.equal(fresh.turns,28);assert.equal(fresh.trackModel,'righe5x4');
 assert.equal(fresh.roundRondel.startingPolicy,'affinity');assert.deepEqual(fresh.roundRondel.fundThresholds,{economy:3,personnel:4,production:3});
 assert.deepEqual(fresh.roundRondel.bounds,[7,14,21]);assert.deepEqual(fresh.roundRondel.firstSeats,[0,1,2]);
-const prior=structuredClone(fresh);prior.roundRondel.bounds=[9,18];prior.roundRondel.firstSeats=[0,1];
+const prior={...structuredClone(fresh),cityMissions:false};prior.roundRondel.bounds=[9,18];prior.roundRondel.firstSeats=[0,1];
 assert.deepEqual(parseConfig(JSON.stringify(prior)).roundRondel.bounds,[9,18]);
 let calendar=initGame(gameConfig(fresh));const deadlines=[];
 while(!calendar.gameOver){
@@ -21,9 +22,36 @@ while(!calendar.gameOver){
 }
 assert.deepEqual(deadlines,[[7,0],[14,1],[21,2]]);assert.equal(calendar.roundRondel.log.length,9);assert.equal(calendar.turn,28);
 assert.deepEqual(calendar.roundRondel.completed,[0,1,2]);
+assert.equal(fresh.cityMissions,true);
+assert.deepEqual(calendar.calendarMissions,[{},{},{}]);
+assert.equal(calendar.contracts.medium.active[0].card.id,'consegna4');
+const cityRules=gameConfig(fresh);
+const missionVisit=initGame(cityRules);
+const visitor=missionVisit.players[missionVisit.current];
+missionVisit.phase='borsa';
+visitor.node='Borsa';
+visitor.resources.Tessuti=4;
+const dept=visitor.depts.terziario;
+dept.sopra=missionVisit.banks.A.slice(0,2);
+dept.sotto=missionVisit.banks.B.slice(0,2);
+const available=legalCommands(missionVisit);
+const certification=available.find(c=>c.type==='certifyCity');
+const delivery=available.find(c=>c.type==='completeContract');
+assert.deepEqual(certification.missions,CITY_HANDS[0].slice(1));
+const certified=applyCommand(missionVisit,certification);
+assert.deepEqual(Object.values(certified.calendarMissions[visitor.id]),[{turn:1,points:7},{turn:1,points:7}]);
+const delivered=applyCommand(missionVisit,delivery);
+assert.equal(delivered.players[visitor.id].resources.Tessuti,2);
+assert.equal(delivered.players[visitor.id].contractsWon[0].pv,14);
+assert.equal(delivered.contracts.medium.active[0].card.id,'consegna1');
+assert.notEqual(delivered.current,visitor.id);
+assert.deepEqual(missionVisit.calendarMissions[visitor.id],{});
+const missionStorage=storage();
+saveGame(cityRules,{state:certified,history:[missionVisit],paused:false},missionStorage);
+assert.deepEqual(plain(loadGame(missionStorage).state),plain(certified));
 // Custom calendars use identical rules at the table and in simulations.
 for(const [turns,bounds] of [[20,[4,11,17]],[32,[8,16,24]],[12,[]],[6,[1,2,3,4,5]],[1,[]]]){
- const custom=mainDefaults();custom.roundObjectives=bounds.length<=3;custom.turns=turns;custom.roundRondel.bounds=bounds;custom.roundRondel.firstSeats=bounds.map((_,i)=>i%3);
+ const custom={...mainDefaults(),cityMissions:false};custom.roundObjectives=bounds.length<=3;custom.turns=turns;custom.roundRondel.bounds=bounds;custom.roundRondel.firstSeats=bounds.map((_,i)=>i%3);
  validateMainConfig(custom);assert.deepEqual(parseConfig(JSON.stringify(custom)),custom);
  const humanRules=gameConfig(custom,{humans:1}),simRules=gameConfig(custom);
  assert.deepEqual(humanRules.roundRondel,simRules.roundRondel);assert.equal(humanRules.roundLimit,turns);
@@ -38,11 +66,11 @@ for(const [turns,bounds] of [[20,[4,11,17]],[32,[8,16,24]],[12,[]],[6,[1,2,3,4,5
  assert.deepEqual(loadGame(persisted).config.roundRondel.bounds,bounds);
 }
 for(const bounds of [[0],[28],[7,7],[14,7],[7.5]]){
- const invalid=mainDefaults();invalid.roundRondel.bounds=bounds;invalid.roundRondel.firstSeats=bounds.map(()=>0);
+ const invalid={...mainDefaults(),cityMissions:false};invalid.roundRondel.bounds=bounds;invalid.roundRondel.firstSeats=bounds.map(()=>0);
  assert.throws(()=>gameConfig(invalid),/scadenze/);assert.throws(()=>initGame({...gameConfig(fresh),roundRondel:invalid.roundRondel}),/schedule|richieste/);
 }
 for(const enabled of [false,true])for(const search of [false,true]){
- const c=mainDefaults();c.turns=4;c.roundRondel={...c.roundRondel,bounds:[1,3],firstSeats:[0,1],refreshWorkers:enabled};
+ const c={...mainDefaults(),cityMissions:false};c.turns=4;c.roundRondel={...c.roundRondel,bounds:[1,3],firstSeats:[0,1],refreshWorkers:enabled};
  const config=gameConfig(c);config.borsaFabbriche.enabled=false;
  let state=initGame(config);state.banks.A=[];state.banks.B=state.banks.B.slice(0,1);state.banks.C=state.banks.C.slice(0,2);
  if(search)state=forkForSearch(state);

@@ -1,3 +1,4 @@
+import { CITY_HANDS, CITY_CATEGORIES, cityPoints, periodOf, productionPoints } from '../game/city-missions.js';
 import {WELFARE_FUNDS,fundBalances} from '../game/welfare-funds.js';
 import WelfareRondel from './WelfareRondel.jsx';
 import GuidedWelfareActions from './GuidedWelfareActions.jsx';
@@ -254,6 +255,29 @@ function BorsaActions({ state, p, legal, dispatch }) {
   const exitPathUsed = state.borsaExitUsed || state.borsaRefreshUsed;
   const SIZE_LABEL = { small: 'piccola', medium: 'media', large: 'grande' };
   const REFRESH_LABEL = { welfare: 'Rinfresca mercato Welfare', workers: 'Rinfresca banchi operai' };
+  if (state.cityMissions) {
+    const certificate = legal.find(c => c.type === 'certifyCity');
+    const hand = CITY_HANDS[periodOf(state.turn)];
+    return <section aria-label="Missioni in Città">
+      <h3>Missioni in Città</h3>
+      {certificate && <button className="primary" onClick={() => dispatch(certificate)}>
+        Certifica {certificate.missions.map(id => CITY_CATEGORIES[hand.indexOf(id)].name).join(' e ')} · {cityPoints(state.turn) * certificate.missions.length} PV
+      </button>}
+      <div className="btn-row col">
+        {completes.map(c => {
+          const req = state.contracts[c.size].active[c.slotIndex].card.reqs[c.reqIndex];
+          const lot = [...new Set(req)].map(sector => `${req.filter(s => s === sector).length} ${RESOURCE_OF[sector].toLowerCase()}`).join(' + ');
+          return <button key={c.reqIndex} className="primary" onClick={() => dispatch(c)}>Consegna {lot} · {productionPoints(state.turn)} PV</button>;
+        })}
+      </div>
+      {!certificate && !completes.length && <p>Nessuna missione pronta in questa visita.</p>}
+      <div className="city-turn-controls">
+        {exitCmd && <button onClick={() => dispatch(exitCmd)}>Incassa {exitCmd.coins} marchi</button>}
+        <button onClick={() => dispatch({ type: 'endTurn' })}>Termina turno</button>
+      </div>
+    </section>;
+  }
+
 
   return (
     <div>

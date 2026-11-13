@@ -1,3 +1,5 @@
+import { CITY_HANDS, CITY_LOTS, periodOf, productionPoints, cityCertificates, certifyCity } from './city-missions.js';
+import { calendarPoints, recordCalendarMissions } from './calendar-missions.js';
 import {initRoundObjectives,objectivePotential,settleRoundObjectives,usesFiveNationalities} from './round-objectives.js';
 import {WELFARE_FUNDS,fundBalances,policyBoosted,welfareAllocations,changeFund,allocationLabel} from './welfare-funds.js';
 import { initRoundRondel, beginRoundRondel, roundRondelCommands, applyRoundRondel } from './round-rondel.js';
@@ -578,6 +580,8 @@ export function initGame(config) {
   for (const role of DEPT_ROLES) trackTileStock[role] = Object.fromEntries(trackTileDeck.map(t => [t.id, t.copies ?? Infinity]));
 
   const state = {
+    ...(config.calendarMissions || config.cityMissions ? { calendarMissions: players.map(() => ({})) } : {}),
+    ...(config.cityMissions ? { cityMissions: true, calendarDeck: CITY_HANDS } : {}),
     ...(config.roundObjectives?{roundObjectives:initRoundObjectives(n,seed,[...(config.roundRondel?.bounds||[]),config.roundLimit],usesFiveNationalities(workerDeck))}:{}),
     seed, nPlayers: n, industrial, trackModel, rowTrack, rowEconomy,
     headless: !!config.headless, // true nei batch: disattiva il log di partita
@@ -687,6 +691,7 @@ export function initGame(config) {
       if (reward?.coins) addCoins(state,p,reward.coins,'tracciati');
     }
   }
+  if (state.cityMissions) openSupplyLots(state);
   startTurn(state);
   checkObjectivesAll(state);
   return state;
@@ -1039,6 +1044,7 @@ function advanceTrack(state, player, dept, steps, reason) {
     if (cell?.pv) gains.push(`soglia ${cell.pv} PV`);
   }
   dept.prod = to;
+  if (state.calendarMissions && !state.cityMissions) recordCalendarMissions(state, player);
   if (to > from) log(state, `${player.name}: ${dept.sector} avanza a ${to}${gains.length ? ' (' + gains.join(', ') + ')' : ''}${reason ? ' — ' + reason : ''}.`);
   checkTileUnlocks(state, player, dept, from, to);
 }
@@ -1405,8 +1411,10 @@ export function scorePlayer(state, p) {
   const blockedCount = DEPT_ROLES.reduce((a, r) => a + p.depts[r].blocked.length, 0);
   const finalCoinPoints = state.finalCoinPV ? Math.floor(p.coins / state.rules.coinsPerPV) : 0;
   const finalResourcePoints=state.finalResourcePV?Math.min(...SECTORS.map(sector=>p.resources[RESOURCE_OF[sector]]||0)):0;
+  const pvCalendarMissions = calendarPoints(state, p.id);
   if (state.contractsOnly) return {
-    playerId: p.id, name: p.name, pvContracts, total: pvContracts + finalCoinPoints + finalResourcePoints + (state.roundObjectives?.banked[p.id]||0), ...(state.roundObjectives?{pvRoundCards:state.roundObjectives.banked[p.id]}:{}),
+    playerId: p.id, name: p.name, pvContracts, total: pvContracts + finalCoinPoints + finalResourcePoints + (state.roundObjectives?.banked[p.id]||0) + pvCalendarMissions,
+    ...(state.calendarMissions ? { pvCalendarMissions } : {}), ...(state.roundObjectives?{pvRoundCards:state.roundObjectives.banked[p.id]}:{}),
     pvWelfare: 0, pvObjectives: 0, pvTrack: 0, pvCoins: finalCoinPoints, pvResources: finalResourcePoints,
     pvStrikes: 0, pvBorsa: 0, pvFactoryMajority: 0, pvDeptComplete: 0, pvRace: 0,
     blockedCount, coins: p.coins, nContracts: p.contractsWon.length,
@@ -1453,7 +1461,7 @@ function endGame(state) {
     });
   }
   const results = state.players.map(p => scorePlayer(state, p));
-  results.sort((a, b) => b.total - a.total || b.coins - a.coins || b.nContracts - a.nContracts);
+  results.sort((a, b) => b.total - a.total || b.coins - a.coins || (state.cityMissions ? 0 : b.nContracts - a.nContracts));
   state.results = results;
   log(state, `FINE PARTITA. Vince ${results[0].name} con ${results[0].total} PV.`);
 }
@@ -1573,6 +1581,7 @@ function finishTurn(state) {
     }
     state.roundTurns = 0;
     state.turn += 1;
+    if (state.cityMissions && (state.turn - 1) % 7 === 0) openSupplyLots(state);
     // rete di sicurezza: se il Clock non può più avanzare (es. requisito milestone irraggiungibile
     // che blocca una taglia), la partita finirebbe mai. Cap round generoso (~3× la durata normale).
     if (state.turn > MAX_ROUNDS) { log(state, `Raggiunto il limite di ${MAX_ROUNDS} round: la partita si chiude d'ufficio.`); endGame(state); return; }
@@ -1859,8 +1868,30 @@ function unblockCommands(state, p) {
   return cmds;
 }
 
+function openSupplyLots(state) {
+  const period = periodOf(state.turn);
+  const mission = state.calendarDeck[period][0];
+  const sectors = SECTORS;
+  const [primary, secondary] = CITY_LOTS[period];
+  const lots = [{
+    id: mission, size: 'medium', pv: [0, 0],
+    reqs: sectors.flatMap(sector => {
+      const main = Array(primary).fill(sector);
+      return secondary
+        ? sectors.filter(other => other !== sector).map(other => [...main, ...Array(secondary).fill(other)])
+        : [main];
+    }), engine: null,
+  }];
+  state.contracts = { small: { deck: [], active: [] }, medium: { deck: [], active: lots.map(card => makeContractSlot([card])) },
+    large: { deck: [], active: [] } };
+}
+
 function borsaCommands(state, p) {
   const cmds = [];
+  if (state.cityMissions && !state.borsaExitUsed && state.contractsThisVisit === 0) {
+    const missions = cityCertificates(state, p, WORKER_BY_ID);
+    if (missions.length) cmds.push({ type: 'certifyCity', missions });
+  }
   // Vendi e Scambia: 1 uso ciascuno per visita, tariffa unica. Nessun tier sbloccato dagli Impiegati.
   const sr = state.borsa.sell, cr = state.borsa.convert;
   if (sr.enabled && state.sellUsedThisVisit < 1) {
@@ -2119,6 +2150,7 @@ export function applyCommand(prev, cmd) {
       const factory = state.rowEconomy.welfareScope === 'factory';
       if (tokenWelfare(state)) {
         p.welfareTokens = (p.welfareTokens || 0) + gainedTokens;
+        if (state.calendarMissions && !state.cityMissions) recordCalendarMissions(state, p);
         state.turnFlags ||= {};
         state.turnFlags.welfareTokensPurchased = (state.turnFlags.welfareTokensPurchased || 0) + gainedTokens;
       } else for (const role of factory ? DEPT_ROLES : [cmd.role]) p.depts[role].sustainableWelfare = (p.depts[role].sustainableWelfare || 0) + 1;
@@ -2254,6 +2286,11 @@ export function applyCommand(prev, cmd) {
       checkObjectives(state, p);
       return state;
     }
+    case 'certifyCity':
+      certifyCity(state, p, cmd.missions);
+      log(state, `${p.name} certifica ${cmd.missions.join(', ')} in Città.`);
+      finishTurn(state);
+      return state;
     case 'completeContract':
       return doContract(state, p, cmd);
     case 'completeRace': {
@@ -2811,8 +2848,8 @@ function doContract(state, p, cmd) {
   slot.doneReq[cmd.reqIndex] = true;
   const place = state.singlePlace ? 0 : (slot.places[0] === null ? 0 : 1);
   slot.places[place] = p.id;
-  const pv = slot.card.pv[place];
-  if (state.rowEconomy?.enabled) addCoins(state, p, state.rowEconomy.contractCoins[cmd.size], 'commessa');
+  const pv = state.cityMissions ? productionPoints(state.turn) : slot.card.pv[place];
+  if (state.rowEconomy?.enabled && !state.cityMissions) addCoins(state, p, state.rowEconomy.contractCoins[cmd.size], 'commessa');
   if (welfarePolicy(state, p)?.id === 'reliability') {
     const amount=policyBoosted(state,'reliability')?4:2;
     addCoins(state, p, amount, 'politicaWelfare');
@@ -2832,9 +2869,12 @@ function doContract(state, p, cmd) {
     log(state, `${p.name}: la commessa va sotto la Direzione — produrrà ${yieldTxt} per ${uses} turni.`);
   }
   state.contractsThisVisit += 1;
-  log(state, `${p.name} completa una Commessa ${cmd.size === 'small' ? 'piccola' : cmd.size === 'medium' ? 'media' : 'grande'} (${place + 1}° posto, ${pv} PV). Clock +1.`);
+  if (state.cityMissions) log(state, `${p.name} consegna un lotto in Città (+${pv} PV).`);
+  else log(state, `${p.name} completa una Commessa ${cmd.size === 'small' ? 'piccola' : cmd.size === 'medium' ? 'media' : 'grande'} (${place + 1}° posto, ${pv} PV). Clock +1.`);
   // rinfresca quando la carta è esaurita: single-place o tutte le sue commesse completate
-  if (state.singlePlace || slot.doneReq.every(Boolean)) {
+  if (state.cityMissions) {
+    entry.active[slotIndex] = makeContractSlot([slot.card]);
+  } else if (state.singlePlace || slot.doneReq.every(Boolean)) {
     drawContract(entry, slotIndex);
     log(state, `Carta Commesse sostituita.`);
   }

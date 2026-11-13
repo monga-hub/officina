@@ -4,7 +4,7 @@ import {initGame,applyCommand,legalCommands,scorePlayer,roundObjectivePotential,
 import {chooseTimedCommand,evaluate} from '../src/game/ai.js';
 import {CARDS,objectiveDeck,initRoundObjectives,cardById,cardPoints,objectiveMetrics,settleRoundObjectives,validRoundObjectives} from '../src/game/round-objectives.js';
 import {gameSession,saveGame,loadGame,GAME_SAVE_KEY} from '../src/lab/saved-game.js';
-const plain=x=>JSON.parse(JSON.stringify(x)),c=mainDefaults(),cfg=gameConfig(c),storage=()=>{const m=new Map();return{getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,v)};};
+const plain=x=>JSON.parse(JSON.stringify(x)),c={...mainDefaults(),cityMissions:false,roundObjectives:true},cfg=gameConfig(c),storage=()=>{const m=new Map();return{getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,v)};};
 assert.equal(cfg.roundObjectives,true);assert.equal(CARDS.length,12);
 const workers=mainWorkerDeck();
 assert.equal(workers.length,75);

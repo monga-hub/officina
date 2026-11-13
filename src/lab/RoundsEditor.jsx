@@ -1,11 +1,13 @@
 import React from 'react';
 import {RequestDeck} from './RoundObjectives.jsx';
 import {usesFiveNationalities} from '../game/round-objectives.js';
+import {CALENDAR_BOUNDS} from '../game/calendar-missions.js';
 import {Card,NumberField,Toggle} from './Editors.jsx';
 
 export default function RoundsEditor({c,set}) {
   const bounds=c.roundRondel.bounds;
-  const update=(turns,ends)=>set({turns,roundRondel:{...c.roundRondel,bounds:ends,firstSeats:ends.map((_,i)=>i%c.players)}});
+  const fitsMissions=(turns,ends)=>JSON.stringify([...ends,turns])===JSON.stringify(CALENDAR_BOUNDS);
+  const update=(turns,ends)=>set({turns,roundRondel:{...c.roundRondel,bounds:ends,firstSeats:ends.map((_,i)=>i%c.players)},calendarMissions:c.calendarMissions===true&&fitsMissions(turns,ends),cityMissions:c.cityMissions===true&&fitsMissions(turns,ends)});
   const toggle=turn=>update(c.turns,bounds.includes(turn)?bounds.filter(end=>end!==turn):[...bounds,turn].sort((a,b)=>a-b));
   const ends=[...bounds,c.turns];
   return <Card title="Durata e round">
@@ -16,8 +18,11 @@ export default function RoundsEditor({c,set}) {
     </div>
     <p><b>{ends.length} periodi</b> · {bounds.length} scelte della rondella per giocatore.</p>
     <ol className="rounds-summary">{ends.map((end,i)=><li key={end}>Turni {(ends[i-1]||0)+1}–{end}: {i===ends.length-1?'fine partita':`rondella · sceglie per primo il giocatore ${c.roundRondel.firstSeats[i]+1}`}</li>)}</ol>
+    {fitsMissions(c.turns,bounds)&&<Toggle label="Missioni in Città · 12 PV per consegna" value={c.cityMissions===true} onChange={cityMissions=>set(cityMissions?{cityMissions,calendarMissions:false,roundObjectives:false,finalCoinPV:false,finalResourcePV:false}:{cityMissions})}/>}
+    {c.cityMissions&&<p>Una terna fissa per quadrimestre. Consegne ripetibili, certificazioni di Economia e Personale una volta per quadrimestre.</p>}
+    {c.calendarMissions&&<p>Le tre missioni sono visibili dal primo turno. Il gettone va nella casella in cui completi la missione e i suoi PV restano acquisiti.</p>}
     <h3>Cosa succede a fine round</h3>
-    <Toggle label="Richieste comuni · mazzo v2" value={c.roundObjectives===true} onChange={roundObjectives=>set({roundObjectives})}/>
+    <Toggle label="Richieste comuni · mazzo v2" value={c.roundObjectives===true} onChange={roundObjectives=>set(roundObjectives?{roundObjectives,calendarMissions:false,cityMissions:false}:{roundObjectives})}/>
     <p>Tre carte estratte a inizio partita e tre nuove a ogni scadenza, senza ripetizioni. Tutti possono ottenere 0/2/4/6 PV per carta; i punti incassati restano acquisiti. Il conteggio precede la scelta della rondella. Il mazzo consente al massimo quattro periodi: rimuovi eventuali scadenze in eccesso prima di attivarlo.</p>
     {c.roundObjectives&&c.turns!==28&&<p className="lab-callout">Le soglie sono calibrate per quattro periodi di sette turni. Un calendario diverso cambia la difficoltà degli obiettivi.</p>}
     <RequestDeck rules={{fiveNationalities:usesFiveNationalities(c.workers)}}/>

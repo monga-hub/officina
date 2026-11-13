@@ -1,3 +1,5 @@
+import {CITY_HANDS,cityPoints,periodOf} from '../game/city-missions.js';
+import {CALENDAR_BOUNDS,CALENDAR_MISSIONS} from '../game/calendar-missions.js';
 import {validRoundObjectives} from '../game/round-objectives.js';
 import {WELFARE_FUNDS,fundBalances} from '../game/welfare-funds.js';
 import { initGame, scorePlayer } from '../game/engine.js';
@@ -8,6 +10,13 @@ import { tensionMachineCard } from '../game/row-economy.js';
 export const GAME_SAVE_KEY='officina1907-partita-v1';
 export const SAVED_UNDO_LIMIT=10;
 const ROLES=['terziario','secondario','primario'];
+function validCalendar(markers,players,turn,city) {
+  return Array.isArray(markers)&&markers.length===players&&markers.every(row=>row&&typeof row==='object'&&!Array.isArray(row)
+    &&Object.entries(row).every(([id,marker])=>marker&&Number.isInteger(marker.turn)&&marker.turn>=1&&marker.turn<=turn
+      &&(city ? CITY_HANDS[periodOf(marker.turn)]?.slice(1).includes(id)&&cityPoints(marker.turn)===marker.points
+        : CALENDAR_MISSIONS.find(mission=>mission.id===id)?.points[CALENDAR_BOUNDS.findIndex(end=>marker.turn<=end)]===marker.points)
+      &&Number.isInteger(marker.points)));
+}
 function validState(state,config) {
   return state&&Array.isArray(state.players)&&state.players.length===config.players.length
     &&state.nPlayers===state.players.length&&Number.isInteger(state.current)&&state.current>=0&&state.current<state.players.length
@@ -15,6 +24,10 @@ function validState(state,config) {
     &&(state.phase!=='roundRondel'||(state.roundRondel?.active&&Array.isArray(state.roundRondel.log)&&Array.isArray(state.roundRondel.completed)&&state.roundRondel.active.order[state.roundRondel.active.at]===state.current))
     &&(!state.roundRondel?.fundThresholds||(fundBalances(state)&&Object.keys(fundBalances(state)).length===3&&WELFARE_FUNDS.every(f=>Number.isInteger(fundBalances(state)[f.id])&&fundBalances(state)[f.id]>=0)&&Object.values(fundBalances(state)).reduce((a,b)=>a+b,0)===state.welfareBank))
     &&(state.roundRondel?.policyOrder===undefined||validPolicyOrder(state.roundRondel.policyOrder))
+    &&Boolean(config.cityMissions)===Boolean(state.cityMissions)
+    &&Boolean(config.calendarMissions||config.cityMissions)===Boolean(state.calendarMissions)
+    &&(!state.cityMissions||JSON.stringify(state.calendarDeck)===JSON.stringify(CITY_HANDS))
+    &&(!state.calendarMissions||validCalendar(state.calendarMissions,state.nPlayers,state.turn,state.cityMissions))
     &&Boolean(config.roundObjectives)===Boolean(state.roundObjectives)
     &&(!config.roundObjectives||JSON.stringify(state.roundObjectives?.bounds)===JSON.stringify([...(config.roundRondel?.bounds||[]),config.roundLimit]))
     &&(!state.roundObjectives||validRoundObjectives(state.roundObjectives,state.nPlayers))
@@ -52,7 +65,7 @@ function contractsOnlySave(save) {
     state.racesThisVisit = 0;
     if (state.gameOver) {
       state.results = state.players.map(p => scorePlayer(state, p))
-        .sort((a, b) => b.total - a.total || b.coins - a.coins || b.nContracts - a.nContracts);
+        .sort((a, b) => b.total - a.total || b.coins - a.coins || (state.cityMissions ? 0 : b.nContracts - a.nContracts));
       const ending = state.log.findLast(entry => entry.text.startsWith('FINE PARTITA.'));
       if (ending) ending.text = `FINE PARTITA. Vince ${state.results[0].name} con ${state.results[0].total} PV.`;
     }

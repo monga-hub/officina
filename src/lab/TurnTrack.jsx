@@ -1,5 +1,5 @@
 import React from 'react';
-import { CITY_CATEGORIES, CITY_HANDS, periodOf } from '../game/city-missions.js';
+import { CITY_CATEGORIES, CITY_HANDS, cityDayBonus, periodOf } from '../game/city-missions.js';
 import { CALENDAR_MISSIONS } from '../game/calendar-missions.js';
 
 export default function TurnTrack({state}) {
@@ -15,9 +15,12 @@ export default function TurnTrack({state}) {
         <ol start={start} aria-label={`${index+1}° periodo`}>
           {Array.from({length:end-start+1},(_,i)=>start+i).map(turn=>{
             const deadline=turn!==end?'':final?' · Fine partita':state.roundObjectives?' · Fine periodo: richieste e scelta della rondella':' · Fine periodo: scelta della rondella';
+            const bonus=state.cityMissions?cityDayBonus(turn,state.cityScoring):0;
+            const bonusLabel=bonus? ` · Bonus missioni in Città: +${bonus} PV` : '';
             return <li key={turn} aria-current={turn===current?'step':undefined}
-              className={`${turn<current?'turn-past':''} ${turn===end?'turn-deadline':''}`} title={`Turno ${turn}${deadline}`}>
+              className={`${turn<current?'turn-past':''} ${turn===end?'turn-deadline':''}`} title={`Turno ${turn}${deadline}${bonusLabel}`}>
               {turn}
+              {bonus>0&&<span className="calendar-day-bonus">+{bonus} PV</span>}
               {markers&&<span className="calendar-tokens">{markers.flatMap((row,seat)=>{
                 const player=state.players[seat];
                 const missions=state.cityMissions

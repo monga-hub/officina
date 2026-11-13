@@ -21,11 +21,13 @@ export const periodOf = turn => Math.floor((turn - 1) / 7);
 export const CITY_SCORING = '5-2';
 export const productionPoints = (turn, scoring) => cityPoints(turn, scoring) + (scoring === CITY_SCORING ? 3 : 7);
 
-export function cityPoints(turn, scoring) {
+export function cityDayBonus(turn, scoring) {
   const day = (turn - 1) % 7 + 1;
-  if (scoring === CITY_SCORING) return day <= 2 ? 3 : 2;
-  return 5 + (day <= 2 ? 2 : day <= 5 ? 1 : 0);
+  if (scoring === CITY_SCORING) return day <= 2 ? 1 : 0;
+  return day <= 2 ? 2 : day <= 5 ? 1 : 0;
 }
+
+export const cityPoints = (turn, scoring) => (scoring === CITY_SCORING ? 2 : 5) + cityDayBonus(turn, scoring);
 
 export function cityCertificates(state, player, workers) {
   const period = periodOf(state.turn);

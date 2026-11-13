@@ -71,6 +71,11 @@ try {
   assert.equal((quarters.match(/↻ Rondella/g)||[]).length,3);
   for(const end of [7,14,21])assert.ok(quarters.includes(`Turno ${end} · Fine periodo`));
   assert.match(quarters,/4° periodo/);
+  const missionTrack=render(TurnTrack,{state:initGame(gameConfig(mainDefaults()))});
+  assert.deepEqual([...missionTrack.matchAll(/title="Turno (\d+) · Bonus missioni in Città: \+1 PV"/g)].map(m=>+m[1]),[1,2,8,9,15,16,22,23]);
+  assert.equal((missionTrack.match(/class="calendar-day-bonus">\+1 PV/g)||[]).length,8);
+  assert.doesNotMatch(quarters,/calendar-day-bonus/);
+
   assert.match(render(Amount,{kind:'coin',value:0}),/aria-label="0 marchi"/);
   assert.match(render(Amount,{kind:'pv',value:15}),/class="amount-token amount-pv"/);
   assert.match(render(Amount,{kind:'pv',value:15}),/>15<\/span>/);

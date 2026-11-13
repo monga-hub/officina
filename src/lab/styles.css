@@ -425,6 +425,7 @@
 .turn-track-missions .turn-period{min-width:max-content}
 .turn-track-missions .turn-period ol{height:100%}
 .lab-shell .turn-track-missions li{display:flex;flex-direction:column;align-items:center;min-width:21px;min-height:50px;line-height:15px;font-size:11px}
+.calendar-day-bonus{padding:0 1px;border-radius:3px;background:#f7e4b1;color:#543f1f;font:700 8px/11px sans-serif;white-space:nowrap}
 .calendar-tokens{display:grid;grid-template-columns:repeat(2,9px);gap:1px}
 .calendar-token{display:grid;place-items:center;width:9px;height:9px;border-radius:50%;color:#fff;font:700 8px/1 sans-serif}
 .calendar-mission-list{display:flex;gap:5px;flex-wrap:wrap}

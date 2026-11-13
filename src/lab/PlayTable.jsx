@@ -2,7 +2,7 @@ import RoundObjectives,{RoundObjectivesDetails} from './RoundObjectives.jsx';
 import WelfareRondel from '../components/WelfareRondel.jsx';
 import { rondelEnabled, welfareMaxSteps, freeWelfareEntry } from '../game/welfare-rondel.js';
 import React, { useEffect, useRef, useState } from 'react';
-import { currentPlayer, legalCommands, WORKER_BY_ID, scorePlayer } from '../game/engine.js';
+import { currentPlayer, legalCommands, WORKER_BY_ID, scorePlayer, welfareRecoveryCommands } from '../game/engine.js';
 import { deciderId } from '../game/ai.js';
 import { rowPressureState } from '../game/row-pressure.js';
 import { rowNodeLabel, tokenWelfare } from '../game/row-economy.js';
@@ -67,7 +67,8 @@ export default function PlayTable({state,dispatch,undo,paused,setPaused,onClose,
   const player=state.players[view], moves=!decider.isAI&&!state.pending?legalCommands(state).filter(c=>c.type==='move'):[];
   const tokens=tokenWelfare(state),welfare=tokens?(player.welfareTokens||0):(player.depts.terziario.sustainableWelfare||0);
   const welfareLabel=`${welfare} ${tokens?'gettoni welfare':'welfare'}`;
-  const actionTitle=state.phase==='roundRondel'?'Scelta della politica':{activate:'Produzione',repress:'Repressione',investWelfare:'Welfare'}[actionType];
+  const canRecover=actionType==='activate'&&state.phase==='action'&&!p.isAI&&welfareRecoveryCommands(state,p).length>0;
+  const actionTitle=state.phase==='roundRondel'?'Scelta della politica':{activate:canRecover?'Produzione e cura':'Produzione',repress:'Repressione',investWelfare:'Welfare'}[actionType];
   const nodeCommands=!p.isAI&&!state.pending?legalCommands(state).filter(c=>c.type===actionType):[];
   const missionTurn=state.roundRondel?.active?.endTurn??state.turn;
   const period=periodOf(missionTurn);
@@ -113,7 +114,10 @@ export default function PlayTable({state,dispatch,undo,paused,setPaused,onClose,
     </dialog></TableOverlay>}
     <TableOverlay><dialog ref={actionsRef} className="table-action-dialog" aria-label={actionTitle||'Azioni del nodo'} onCancel={()=>setActionsOpen(false)} onClick={e=>{if(e.target===e.currentTarget)setActionsOpen(false);}}>
       <button className="dialog-close" onClick={()=>setActionsOpen(false)}>Torna al tabellone ×</button>
-      {actionType?<section className="node-action-choices"><h2>{actionTitle}{actionType==='activate'?` · ${p.node}`:''}</h2>{actionType==='activate'?<ProductionActions state={state} p={p} activations={nodeCommands} dispatch={runNodeAction}/>:<RowEconomyActions state={state} p={p} legal={nodeCommands} dispatch={runNodeAction}/>}</section>:<aside id="azioni" className="play-action-column" aria-label="Le tue azioni">
+      {actionType?<section className="node-action-choices"><h2>{actionTitle}{actionType==='activate'?` · ${p.node}`:''}</h2>{actionType==='activate'?<>
+        <ProductionActions state={state} p={p} activations={nodeCommands} dispatch={runNodeAction}/>
+        {canRecover&&<button type="button" onClick={()=>runNodeAction({type:'pass'})}>Cura senza produrre</button>}
+      </>:<RowEconomyActions state={state} p={p} legal={nodeCommands} dispatch={runNodeAction}/>}</section>:<aside id="azioni" className="play-action-column" aria-label="Le tue azioni">
         <section className="lab-card play-action-card">
           {moves.length>0?<><p className="lab-eyebrow">1 / POSIZIONAMENTO</p><h2>Scegli un nodo sulla stella</h2><p>Sposta il procuratore su uno dei nodi illuminati. Poi scegli l’azione o la carta da acquistare.</p><button className="star-return" onClick={()=>setActionsOpen(false)}>Torna alla stella</button><p className="lab-muted">Ogni nodo permette di acquistare una delle due carte adiacenti.</p></>:<ActionPanel state={state} dispatch={dispatch} renderHireCard={props=><HireCard {...props}/>}/>}
           {paused&&p.isAI&&<p className="lab-callout">Premi «Riprendi IA» per far giocare l’avversario.</p>}

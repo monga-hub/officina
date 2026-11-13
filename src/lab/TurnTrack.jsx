@@ -30,7 +30,7 @@ export default function TurnTrack({state}) {
                   if(marker?.turn!==turn)return [];
                   const label=`${player.name} · ${name} · +${marker.points??marker.pv} PV`;
                   return <span key={`${seat}-${id}`} className="calendar-token" style={{backgroundColor:player.color,color:seat===3?'#29210a':undefined}}
-                    role="img" aria-label={label} title={label}>{symbol}{seat+1}</span>;
+                    role="img" aria-label={label} title={label}>{symbol}</span>;
                 });
               })}</span>}
             </li>;

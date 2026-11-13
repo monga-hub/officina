@@ -75,10 +75,27 @@ export default function PlayTable({state,dispatch,undo,paused,setPaused,onClose,
   return <TableViewport><div className="lab-shell play-table table-overview">
     <header className="play-header"><div><p className="lab-eyebrow">OFFICINA 1907 / AL TAVOLO</p><h1>Turno {state.turn}<small> / {state.roundLimit}</small></h1></div><TurnTrack state={state}/><div className="play-turn" role="status"><b>{p.name}{p.isAI?' · IA':''}</b><span>{thinking?'Sta valutando le alternative…':paused?'IA in pausa':state.pending?'Completa la scelta':state.phase==='roundRondel'?'Fine round · scegli la politica':state.phase==='move'?'Scegli dove andare':`Sei a ${rowNodeLabel(state,p.node)}`}</span></div><div className="lab-actions"><button onClick={undo} disabled={!undo}>↶ Annulla mossa</button><button onClick={()=>setPaused(!paused)}>{paused?'Riprendi IA':'Pausa IA'}</button><button onClick={onClose}>Torna al laboratorio</button></div></header>
     {error&&<p className="lab-error" role="alert">{error}</p>}{saveError&&<p className="lab-error" role="alert">{saveError}</p>}
-    <nav className="play-jumps" aria-label="Comandi del tavolo"><div className="play-jump-actions"><button onClick={()=>{setActionType(null);setActionsOpen(true);}}>{state.phase==='roundRondel'?'Scegli la politica':'Azioni del nodo'}</button><button onClick={()=>setInfo({type:'log'})}>Registro</button><button onClick={()=>setInfo({type:'symbols'})}>Simboli</button></div><RoundObjectives state={state} player={player} onInspect={()=>setInfo({type:'requests'})}/>{state.cityMissions&&<div className="calendar-mission-list" aria-label="Missioni in Città">{CITY_CATEGORIES.map((category,i)=><button type="button" key={category.name} title={CITY_REQUIREMENTS[period][i]} onClick={()=>setInfo({type:'missions'})}>{category.symbol} {category.name} · {i===0?productionPoints(missionTurn):cityPoints(missionTurn)} PV</button>)}</div>}{state.calendarMissions&&!state.cityMissions&&<div className="calendar-mission-list" aria-label="Missioni comuni">{CALENDAR_MISSIONS.map(mission=><button type="button" key={mission.id} title={mission.description} onClick={()=>setInfo({type:'missions'})}>{mission.symbol} {mission.name}</button>)}</div>}<span className="game-save-state">{saved?'✓ Partita salvata':'Salvataggio non disponibile'}</span></nav>
+    <nav className="play-jumps" aria-label="Comandi del tavolo"><div className="play-jump-actions"><button onClick={()=>{setActionType(null);setActionsOpen(true);}}>{state.phase==='roundRondel'?'Scegli la politica':'Azioni del nodo'}</button><button onClick={()=>setInfo({type:'log'})}>Registro</button><button onClick={()=>setInfo({type:'symbols'})}>Simboli</button></div><RoundObjectives state={state} player={player} onInspect={()=>setInfo({type:'requests'})}/>{state.calendarMissions&&!state.cityMissions&&<div className="calendar-mission-list" aria-label="Missioni comuni">{CALENDAR_MISSIONS.map(mission=><button type="button" key={mission.id} title={mission.description} onClick={()=>setInfo({type:'missions'})}>{mission.symbol} {mission.name}</button>)}</div>}<span className="game-save-state">{saved?'✓ Partita salvata':'Salvataggio non disponibile'}</span></nav>
     <main className="play-layout">
       <StarBoard state={state} dispatch={dispatch} onActions={()=>{setActionType(null);setActionsOpen(true);}} onNodeAction={type=>{setActionType(type);setActionsOpen(true);}}/>
-      <section id="commesse" className="lab-card play-contracts play-contracts-side" aria-label="Rondella e commesse"><WelfareRondel state={state} player={player}/>{!state.cityMissions&&<ContractsPanel state={state} player={player}/>}</section>
+      <section id="commesse" className="lab-card play-contracts play-contracts-side" aria-label={state.cityMissions?'Rondella e missioni':'Rondella e commesse'}>
+        <WelfareRondel state={state} player={player}/>
+        {state.cityMissions?<section className="city-missions-panel" aria-labelledby="city-missions-title">
+          <h2 id="city-missions-title">Missioni in Città</h2>
+          <p>{period+1}° quadrimestre · Scadenza T{(period+1)*7}</p>
+          <div className="city-mission-cards">
+            {CITY_CATEGORIES.map(({name,symbol},i)=><article className="city-mission-card" key={name}>
+              <header>
+                <h3><span aria-hidden="true">{symbol}</span> {name}</h3>
+                <strong>{i===0?productionPoints(missionTurn):cityPoints(missionTurn)} PV</strong>
+              </header>
+              <p>{CITY_REQUIREMENTS[period][i]}.</p>
+              <small>{i===0?'Consegna ripetibile':'Una certificazione per giocatore'}</small>
+            </article>)}
+          </div>
+          <button type="button" onClick={()=>setInfo({type:'missions'})}>{period+1<CITY_REQUIREMENTS.length?'Prossime missioni ↗':'Dettagli delle missioni ↗'}</button>
+        </section>:<ContractsPanel state={state} player={player}/>}
+      </section>
       <div id="fabbrica" className="play-factory-column">
         <div className="play-player-tabs" aria-label="Plance dei giocatori">{state.players.map(x=><button key={x.id} aria-pressed={view===x.id} onClick={()=>setView(x.id)}>{x.name}{x.isAI?' · IA':''} <small><Amount kind="pv" value={scorePlayer(state,x).total}/></small></button>)}</div>
         <section className="lab-card play-factory">

@@ -5,6 +5,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { initGame, WORKER_BY_ID } from '../src/game/engine.js';
 import { cardArtKey } from '../src/lab/cards.js';
 import { mainDefaults, playableConfig } from '../src/lab/config.js';
+import { STAR_MARKETS } from '../src/lab/markets.js';
 
 const nations = {
   Italiani: ['italia', 'naz_italia.png'],
@@ -19,12 +20,16 @@ const sectors = {
   Metallurgica: 'reparto_metallurgia.png',
   Chimica: 'reparto_chimica.png',
 };
+const backs = { A: 'rosso', B: 'viola', C: 'verde', D: 'giallo', E: 'marrone' };
 
 function activeCards() {
   // Il motore converte in marchi le rendite storiche in risorse durante initGame.
   const config = playableConfig(mainDefaults());
   initGame(config);
-  return config.workers.map(({ id }) => {
+  const deckOrder = STAR_MARKETS.map(market => market.bank);
+  assert(config.workers.every(card => deckOrder.includes(card.deck)), 'Mazzo fisico non definito');
+  // Sort a copy for printing; the simulator keeps its original shuffle input.
+  return [...config.workers].sort((a, b) => deckOrder.indexOf(a.deck) - deckOrder.indexOf(b.deck)).map(({ id }) => {
     const card = WORKER_BY_ID[id];
     const effect = card.effect;
     const quantity = effect.f1?.q;
@@ -45,6 +50,8 @@ function activeCards() {
     }
     return {
       id,
+      deck: card.deck,
+      back: `retro-${backs[card.deck]}.png`,
       value: card.v,
       quantity,
       unit,
@@ -115,6 +122,7 @@ function planUpdate(document, cards, rules) {
     // Si sostituisce anche il ritaglio calcolato per la nuova immagine.
     for (const [fieldId, name] of Object.entries({
       illustrazione: card.portrait, fascia: card.band, nazionalita: card.badge, reparto: card.sector,
+      'retro-mazzo': card.back,
       'rendita-moneta': 'marchi_fondo.png', ...(card.unit ? { 'rendita-unita': card.unit } : {}),
     })) {
       const field = nextFields[fieldId];

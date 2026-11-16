@@ -1062,7 +1062,7 @@
     },
     {
       "id": "nw_gr5",
-      "nation": "Greci",
+      "nation": "Spagnoli",
       "sector": "Tessile",
       "v": 4,
       "effect": {
@@ -1079,7 +1079,7 @@
     },
     {
       "id": "nw_gr7",
-      "nation": "Greci",
+      "nation": "Spagnoli",
       "sector": "Tessile",
       "v": 3,
       "effect": {
@@ -1096,7 +1096,7 @@
     },
     {
       "id": "nw_gr8",
-      "nation": "Greci",
+      "nation": "Spagnoli",
       "sector": "Tessile",
       "v": 2,
       "effect": {
@@ -1112,7 +1112,7 @@
     },
     {
       "id": "nw_5n_5_1",
-      "nation": "Greci",
+      "nation": "Spagnoli",
       "sector": "Tessile",
       "v": 3,
       "effect": {
@@ -1127,7 +1127,7 @@
     },
     {
       "id": "nw_gr6",
-      "nation": "Greci",
+      "nation": "Spagnoli",
       "sector": "Tessile",
       "v": 3,
       "effect": {
@@ -1142,7 +1142,7 @@
     },
     {
       "id": "nw_gr10",
-      "nation": "Greci",
+      "nation": "Spagnoli",
       "sector": "Metallurgica",
       "v": 3,
       "effect": {
@@ -1157,7 +1157,7 @@
     },
     {
       "id": "nw_gr11",
-      "nation": "Greci",
+      "nation": "Spagnoli",
       "sector": "Metallurgica",
       "v": 2,
       "effect": {
@@ -1173,7 +1173,7 @@
     },
     {
       "id": "nw_gr9",
-      "nation": "Greci",
+      "nation": "Spagnoli",
       "sector": "Metallurgica",
       "v": 2,
       "effect": {
@@ -1189,7 +1189,7 @@
     },
     {
       "id": "nw_gr12",
-      "nation": "Greci",
+      "nation": "Spagnoli",
       "sector": "Metallurgica",
       "v": 4,
       "effect": {
@@ -1206,7 +1206,7 @@
     },
     {
       "id": "nw_5n_5_2",
-      "nation": "Greci",
+      "nation": "Spagnoli",
       "sector": "Metallurgica",
       "v": 4,
       "effect": {
@@ -1220,7 +1220,7 @@
     },
     {
       "id": "nw_gr1",
-      "nation": "Greci",
+      "nation": "Spagnoli",
       "sector": "Chimica",
       "v": 3,
       "effect": {
@@ -1237,7 +1237,7 @@
     },
     {
       "id": "nw_gr3",
-      "nation": "Greci",
+      "nation": "Spagnoli",
       "sector": "Chimica",
       "v": 3,
       "effect": {
@@ -1252,7 +1252,7 @@
     },
     {
       "id": "nw_gr4",
-      "nation": "Greci",
+      "nation": "Spagnoli",
       "sector": "Chimica",
       "v": 4,
       "effect": {
@@ -1268,7 +1268,7 @@
     },
     {
       "id": "nw_5n_5_3",
-      "nation": "Greci",
+      "nation": "Spagnoli",
       "sector": "Chimica",
       "v": 2,
       "effect": {
@@ -1283,7 +1283,7 @@
     },
     {
       "id": "nw_gr2",
-      "nation": "Greci",
+      "nation": "Spagnoli",
       "sector": "Chimica",
       "v": 3,
       "effect": {

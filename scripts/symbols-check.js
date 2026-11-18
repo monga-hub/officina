@@ -9,7 +9,7 @@ try {
   const {Amount,MachineEffect,Development}=await server.ssrLoadModule('/src/lab/GameSymbols.jsx');
   const render=(component,props)=>renderToStaticMarkup(React.createElement(component,props));
   const {default:RoundsEditor}=await server.ssrLoadModule('/src/lab/RoundsEditor.jsx');
-  const {mainDefaults,gameConfig}=await server.ssrLoadModule('/src/lab/config.js');
+  const {mainDefaults,gameConfig,enableCityMissions}=await server.ssrLoadModule('/src/lab/config.js');
   assert.match(render(RoundsEditor,{c:mainDefaults(),set(){}}),/Ricambio dei mazzi operai/);
   const {initGame,legalCommands}=await server.ssrLoadModule('/src/game/engine.js');
   const {beginRoundRondel}=await server.ssrLoadModule('/src/game/round-rondel.js');
@@ -71,7 +71,8 @@ try {
   assert.equal((quarters.match(/↻ Rondella/g)||[]).length,3);
   for(const end of [7,14,21])assert.ok(quarters.includes(`Turno ${end} · Fine periodo`));
   assert.match(quarters,/4° periodo/);
-  const missionTrack=render(TurnTrack,{state:initGame(gameConfig(mainDefaults()))});
+  assert.doesNotMatch(render(TurnTrack,{state:initGame(gameConfig(mainDefaults()))}),/calendar-day-bonus/);
+  const missionTrack=render(TurnTrack,{state:initGame(gameConfig(enableCityMissions(mainDefaults())))});
   assert.deepEqual([...missionTrack.matchAll(/title="Turno (\d+) · Bonus missioni in Città: \+1 PV"/g)].map(m=>+m[1]),[1,2,8,9,15,16,22,23]);
   assert.equal((missionTrack.match(/class="calendar-day-bonus">\+1 PV/g)||[]).length,8);
   assert.doesNotMatch(quarters,/calendar-day-bonus/);

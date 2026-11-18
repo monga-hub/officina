@@ -1,74 +1,69 @@
 import assert from 'node:assert/strict';
-import {mainDefaults,mainWorkerDeck,defaults,gameConfig,parseConfig,loadMainConfig,STORAGE_KEY} from '../src/lab/config.js';
-import {initGame,applyCommand,legalCommands,scorePlayer,roundObjectivePotential,WORKER_BY_ID} from '../src/game/engine.js';
-import {chooseTimedCommand,evaluate} from '../src/game/ai.js';
-import {CARDS,objectiveDeck,initRoundObjectives,cardById,cardPoints,objectiveMetrics,settleRoundObjectives,validRoundObjectives} from '../src/game/round-objectives.js';
+import {mainDefaults,gameConfig,parseConfig,loadMainConfig,STORAGE_KEY,PREVIOUS_STORAGE_KEY} from '../src/lab/config.js';
+import {initGame,applyCommand,legalCommands,scorePlayer,WORKER_BY_ID} from '../src/game/engine.js';
+import {evaluate} from '../src/game/ai.js';
+import {initRoundObjectives,settleRoundObjectives,CARDS} from '../src/game/round-objectives.js';
 import {gameSession,saveGame,loadGame,GAME_SAVE_KEY} from '../src/lab/saved-game.js';
-const plain=x=>JSON.parse(JSON.stringify(x)),c={...mainDefaults(),cityMissions:false,roundObjectives:true},cfg=gameConfig(c),storage=()=>{const m=new Map();return{getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,v)};};
-assert.equal(cfg.roundObjectives,true);assert.equal(CARDS.length,12);
-const workers=mainWorkerDeck();
-assert.equal(workers.length,75);
-assert.equal(new Set(workers.map(w=>w.id)).size,75);
-const nations=new Set(workers.map(w=>w.nation));
-assert.equal(nations.size,5);
-assert.deepEqual(new Set(cfg.nations),nations);
-function verifyProfiles(cards) {
- assert.equal(cards.length,15);
- assert.deepEqual([2,3,4].map(v=>cards.filter(w=>w.v===v).length),[4,7,4]);
- assert.deepEqual(['fisso','tensione','continuita'].map(kind=>cards.filter(w=>
-  (w.effect.continuity?'continuita':w.effect.verbo==='perOgni'?'tensione':'fisso')===kind).length),[7,4,4]);
+const storage=()=>{const m=new Map();return{getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,v)};};
+const editor={...mainDefaults(),roundObjectives:true,finalCoinPV:true,finalResourcePV:true};
+for(const key of [STORAGE_KEY,PREVIOUS_STORAGE_KEY]){
+ const store=storage(),raw=JSON.stringify(editor);store.setItem(key,raw);
+ const loaded=loadMainConfig(store);assert.equal(loaded.roundObjectives,false);
+ assert.equal(loaded.finalCoinPV,true);assert.equal(loaded.finalResourcePV,true);
+ assert.equal(store.getItem(key),raw,'Reading preferences must not rewrite user storage');
 }
-for(const bank of 'ABCDE'){
- const cards=workers.filter(w=>w.deck===bank);
- verifyProfiles(cards);
- assert.equal(new Set(cards.map(w=>w.nation+'/'+w.sector)).size,15);
-}
-for(const nation of nations)verifyProfiles(workers.filter(w=>w.nation===nation));
-for(const sector of ['Tessile','Metallurgica','Chimica'])assert.equal(workers.filter(w=>w.sector===sector).length,25);
-const current=initGame(cfg);
-assert.equal(current.roundObjectives.fiveNationalities,true);
-const previousConfig=gameConfig({...c,workers:defaults().workers});
-const previous=initGame(previousConfig);
-assert.equal(previous.roundObjectives.fiveNationalities,undefined);
-assert.deepEqual(current.contracts,previous.contracts);
-assert.deepEqual(cardById('internazionale',current.roundObjectives).thresholds[2],[3,4,5]);
-assert.deepEqual(cardById('internazionale',previous.roundObjectives).thresholds[2],[4,5,6]);
-assert.equal(cardPoints('internazionale',{nations:5},2,current.roundObjectives).pv,6);
-assert.equal(cardPoints('internazionale',{nations:5},2,previous.roundObjectives).pv,4);
-const previousStorage=storage();
-saveGame(previousConfig,{state:previous,history:[],paused:true},previousStorage);
-assert.equal(loadGame(previousStorage).state.roundObjectives.fiveNationalities,undefined);
+assert.equal(parseConfig(JSON.stringify(editor)).roundObjectives,false);
+const config=gameConfig(editor);assert.equal(config.roundObjectives,undefined);
+assert.equal(initGame({...config,roundObjectives:true}).roundObjectives,undefined,'Legacy flag cannot enable new requests');
 
-for(let seed=0;seed<30;seed++){const deck=objectiveDeck(seed);assert.equal(new Set(deck).size,12);assert.deepEqual(deck,objectiveDeck(seed));}
-assert.notDeepEqual(objectiveDeck(1907),objectiveDeck(1908));
-const enabled=initGame(cfg),disabled=initGame({...cfg,roundObjectives:false});
-assert.deepEqual(enabled.banks,disabled.banks);assert.deepEqual(enabled.contracts,disabled.contracts);assert.deepEqual(enabled.players,disabled.players);
-const metrics={tokens:3,coins:15,nations:4,repeatedNations:2,largestGroup:3,maxProd:18,minProd:9,donations:{economy:3,personnel:2,production:2},funds:{economy:3,personnel:3,production:3},departments:[{workers:4,prod:14,nations:3,machines:2,machineKinds:['fisso','tensione'],free:true,tension:1},{workers:2,prod:9,nations:2,machines:1,machineKinds:['continuita'],free:false,tension:3},{workers:1,prod:5,nations:1,machines:0,machineKinds:[],free:true,tension:0}]};
-assert.deepEqual(CARDS.map(card=>[card.id,cardPoints(card.id,metrics,0).pv]),[['internazionale',6],['affiatata',6],['cosmopoliti',4],['organico',6],['automazione',2],['specializzato',6],['equilibrata',6],['complementare',4],['benessere',2],['riserva',6],['bilancio',6],['finanziamento',4]]);
-assert.equal(cardPoints('riserva',{...metrics,departments:[],tokens:4},3).pv,6);
-assert.equal(cardPoints('riserva',metrics,1).pv,4);
-assert.equal(cardPoints('finanziamento',{...metrics,donations:{economy:3,personnel:0,production:0}},0).pv,2);
-assert.equal(cardPoints('finanziamento',{...metrics,funds:{economy:2,personnel:3,production:2}},0).pv,0);
-for(let r=0;r<4;r++){assert.equal(cardPoints('complementare',metrics,r).pv,4);assert.equal(cardPoints('complementare',{...metrics,departments:[...metrics.departments,{machineKinds:['continuita'],free:true}]},r).pv,6);}
-for(const [turns,bounds] of [[28,[7,14,21]],[20,[4,11,17]],[12,[]],[4,[1,2,3]]]){
- const editor={...c,turns,roundRondel:{...c.roundRondel,bounds,firstSeats:bounds.map((_,i)=>i%3)}};let s=initGame(gameConfig(editor));const deck=s.roundObjectives.deck.slice(),saved=storage(),beforeInitial=plain(s);saveGame(gameConfig(editor),{state:s,history:[],paused:true},saved);assert.deepEqual(loadGame(saved).state,plain(s));
- while(!s.gameOver){const before=plain(s),rr=JSON.stringify(s.roundObjectives),legal=legalCommands(s),cmd=legal.find(c=>['pass','endTurn','skipWelfareToken'].includes(c.type))||legal[0];const next=applyCommand(s,cmd);assert.deepEqual(plain(s),before);assert.equal(JSON.stringify(s.roundObjectives),rr);assert.ok(validRoundObjectives(next.roundObjectives,3));s=next;}
- assert.deepEqual(s.roundObjectives.completed,[...bounds,turns]);assert.deepEqual(s.roundObjectives.deck,deck);assert.deepEqual(s.roundObjectives.active,[]);
- for(const p of s.players)assert.equal(scorePlayer(s,p).pvRoundCards,s.roundObjectives.log.reduce((n,row)=>n+row.awards[p.id].pv,0));
- const locked=plain(s.roundObjectives);settleRoundObjectives(s,turns,WORKER_BY_ID);assert.deepEqual(plain(s.roundObjectives),locked);
- saveGame(gameConfig(editor),{state:s,history:[beforeInitial],paused:true},saved);const restored=loadGame(saved);assert.deepEqual(restored.state,plain(s));assert.deepEqual(restored.history[0],beforeInitial);
- const bad=JSON.parse(saved.getItem(GAME_SAVE_KEY));bad.state.roundObjectives.banked[0]++;saved.setItem(GAME_SAVE_KEY,JSON.stringify(bad));assert.throws(()=>loadGame(saved),/leggibile/);
-}
-// The last player's optional cure must precede settlement, and preview draws remain unknown.
-let s=initGame(cfg);Object.assign(s,{turn:7,current:2,roundTurns:2,roundStart:0,phase:'action'});s.players[2].node='Servizi';s.roundObjectives.deck=['finanziamento','riserva','bilancio',...CARDS.map(c=>c.id).filter(id=>!['finanziamento','riserva','bilancio'].includes(id))];s.roundObjectives.active=s.roundObjectives.deck.slice(0,3);
-const cmd=legalCommands(s).find(c=>c.type==='investWelfare'&&c.count===3&&c.funds?.production===3);assert.ok(cmd);const before=plain(s),after=applyCommand(s,cmd);assert.deepEqual(plain(s),before);assert.equal(after.roundObjectives.log[0].awards[2].cards[0].pv,2);assert.equal(after.roundObjectives.log[0].awards[2].cards[1].pv,6);assert.equal(after.phase,'roundRondel');assert.ok(after.roundObjectives.contributions.every(x=>Object.values(x).every(n=>n===0)));
-const preview=applyCommand({...s,roundObjectives:{...s.roundObjectives,preview:true}},cmd);assert.deepEqual(preview.roundObjectives.active,[]);assert.deepEqual(preview.roundObjectives.banked,after.roundObjectives.banked);
-s=initGame(cfg);Object.assign(s,{turn:7,current:2,roundTurns:2,phase:'action'});s.players[2].node='Tessile';s.players[2].depts.terziario.tension=1;s.players[2].welfareTokens=1;s.players[2].welfareBoughtThisTurn=0;
-let ending=applyCommand(s,{type:'pass'});assert.equal(ending.pending.type,'welfareToken');assert.equal(ending.roundObjectives.log.length,0);const cure=legalCommands(ending).find(c=>c.type==='spendWelfareToken');assert.ok(cure);ending=applyCommand(ending,cure);assert.equal(ending.roundObjectives.log.length,1);
-// Legacy saved matches stay without retroactive cards; editor upgrades preserve custom layouts.
-const legacy=storage();saveGame({...cfg,roundObjectives:false},{state:disabled,history:[],paused:true},legacy);assert.equal(loadGame(legacy).state.roundObjectives,undefined);assert.equal(gameSession(cfg,loadGame(legacy)).state.roundObjectives,undefined);
-const oldEditor=structuredClone(c);delete oldEditor.roundObjectives;oldEditor.cityIncome=8;legacy.setItem(STORAGE_KEY,JSON.stringify(oldEditor));assert.equal(loadMainConfig(legacy).roundObjectives,true);assert.equal(loadMainConfig(legacy).cityIncome,8);assert.equal(parseConfig(JSON.stringify(oldEditor)).roundObjectives,false);
-assert.throws(()=>gameConfig({...c,roundRondel:{...c.roundRondel,bounds:[2,4,6,8],firstSeats:[0,1,2,0]}}),/quattro round/);
-s=initGame(cfg);const clean=plain(s),chosen=chooseTimedCommand(s,{budgetMs:80});assert.ok(legalCommands(s).some(c=>JSON.stringify(c)===JSON.stringify(chosen)));assert.deepEqual(plain(s),clean);
-const potential=roundObjectivePotential(s,s.players[0]);assert.ok(Number.isFinite(potential));assert.ok(Number.isFinite(evaluate(s,0)));
-console.log('OK: twelve v2 cards, seeded shuffle independent of worker decks, all card metrics, custom deadlines, immutable banking after cures, hidden preview draws, saved/undo validation and legacy preservation, legal timed AI.');
+// Reconstruct an actual legacy save, including an awarded round and an undo state.
+const oldConfig={...config,roundObjectives:true},legacy=initGame(config);
+legacy.roundObjectives=initRoundObjectives(legacy.nPlayers,config.seed,[7,14,21,28],true);
+legacy.roundObjectives.deck=['bilancio','riserva','finanziamento',...CARDS.map(c=>c.id).filter(id=>!['bilancio','riserva','finanziamento'].includes(id))];
+legacy.roundObjectives.active=legacy.roundObjectives.deck.slice(0,3);
+legacy.players[0].coins=60;legacy.players[0].resources={Tessuti:2,Acciaio:3,Coloranti:4};
+legacy.players[0].contractsWon=[{id:'already-delivered',pv:5}];
+const history=structuredClone(legacy);
+legacy.turn=7;settleRoundObjectives(legacy,7,WORKER_BY_ID);legacy.turn=8;
+assert.ok(legacy.roundObjectives.banked[0]>0);
+const before=structuredClone(legacy),store=storage();
+const raw=JSON.stringify({version:1,savedAt:'2026-11-18T08:00:00Z',config:oldConfig,state:legacy,history:[history],paused:true});
+store.setItem(GAME_SAVE_KEY,raw);
+const migrated=loadGame(store);
+assert.equal(store.getItem(GAME_SAVE_KEY),raw,'Loading keeps the original save until the next autosave');
+for(const entry of [migrated.config,migrated.state,...migrated.history])assert.equal(entry.roundObjectives,undefined);
+assert.deepEqual(legacy,before,'Migration must not mutate the source state');
+assert.deepEqual(migrated.state.players,legacy.players);
+assert.deepEqual(migrated.state.contracts,legacy.contracts);
+assert.deepEqual(migrated.state.roundRondel,legacy.roundRondel,'Welfare funds and policies are preserved');
+assert.equal(migrated.state.turn,8);
+const score=scorePlayer(migrated.state,migrated.state.players[0]);
+assert.equal(score.pvContracts,5);assert.equal(score.pvCoins,6);assert.equal(score.pvResources,2);assert.equal(score.total,13);
+assert.equal(scorePlayer(legacy,legacy.players[0]).total,13,'Raw legacy banked requests no longer count either');
+assert.equal(evaluate(legacy,0),evaluate({...legacy,roundObjectives:undefined},0),'AI ignores legacy request rewards');
+const session=gameSession(config,migrated);assert.deepEqual(session.state,migrated.state);
+saveGame(migrated.config,session,store);assert.deepEqual(loadGame(store).state,migrated.state);
+const undone=gameSession(config,{...migrated,state:migrated.history[0],history:[]});
+assert.equal(undone.state.roundObjectives,undefined);
+
+// Old final standings are recalculated without request points, preserving other PV.
+const completed=JSON.parse(raw);completed.state.gameOver=true;completed.state.phase='done';
+completed.state.results=[{playerId:0,total:999,pvRoundCards:999}];store.setItem(GAME_SAVE_KEY,JSON.stringify(completed));
+const final=loadGame(store);assert.equal(final.state.results.find(p=>p.playerId===0).total,13);
+assert.ok(final.state.results.every(p=>p.pvRoundCards===undefined));
+
+// The former request deadline still runs the rondel, but never awards requests.
+let boundary=initGame(config);Object.assign(boundary,{turn:7,current:2,roundTurns:2,roundStart:0,phase:'action'});
+boundary.players[2].node='Servizi';boundary.roundObjectives=structuredClone(history.roundObjectives);
+const invest=legalCommands(boundary).find(c=>c.type==='investWelfare'&&c.count===3&&c.funds?.production===3);assert.ok(invest);
+const advanced=applyCommand(boundary,invest);assert.equal(advanced.phase,'roundRondel');
+assert.deepEqual(advanced.roundObjectives,boundary.roundObjectives,'No request settlement or contribution side effect');
+assert.ok(!advanced.log.some(e=>e.text.startsWith('Richieste round')));
+
+// Contract delivery still pays its PV and replaces the market card.
+let city=initGame(config);city.phase='borsa';city.players[0].resources={Tessuti:20,Acciaio:20,Coloranti:20};
+const deliver=legalCommands(city).find(c=>c.type==='completeContract');assert.ok(deliver);
+const delivered=applyCommand(city,deliver);assert.equal(delivered.players[0].contractsWon.length,1);
+assert.ok(scorePlayer(delivered,delivered.players[0]).pvContracts>0);
+assert.equal(delivered.roundObjectives,undefined);
+console.log('OK: requests retired from preferences, new games, legacy saves/history/final scores, AI and round triggers; contract PV, final conversions and Welfare preserved.');

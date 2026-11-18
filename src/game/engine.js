@@ -1,6 +1,5 @@
 import { CITY_HANDS, CITY_LOTS, periodOf, productionPoints, cityCertificates, certifyCity } from './city-missions.js';
 import { calendarPoints, recordCalendarMissions } from './calendar-missions.js';
-import {initRoundObjectives,objectivePotential,settleRoundObjectives,usesFiveNationalities} from './round-objectives.js';
 import {WELFARE_FUNDS,fundBalances,policyBoosted,welfareAllocations,changeFund,allocationLabel} from './welfare-funds.js';
 import { initRoundRondel, beginRoundRondel, roundRondelCommands, applyRoundRondel } from './round-rondel.js';
 import { initRoundAwards, beginRoundAwards, roundAwardCommands, applyRoundAward, roundVoucherDiscount, spendRoundVoucher } from './round-awards.js';
@@ -582,7 +581,6 @@ export function initGame(config) {
   const state = {
     ...(config.calendarMissions || config.cityMissions ? { calendarMissions: players.map(() => ({})) } : {}),
     ...(config.cityMissions ? { cityMissions: true, calendarDeck: CITY_HANDS, ...(config.cityScoring ? { cityScoring: config.cityScoring } : {}) } : {}),
-    ...(config.roundObjectives?{roundObjectives:initRoundObjectives(n,seed,[...(config.roundRondel?.bounds||[]),config.roundLimit],usesFiveNationalities(workerDeck))}:{}),
     seed, nPlayers: n, industrial, trackModel, rowTrack, rowEconomy,
     headless: !!config.headless, // true nei batch: disattiva il log di partita
     // coinsRepeat: true = le caselle marchi riproducono a ogni attivazione (default);
@@ -1405,7 +1403,6 @@ function factoryMajorityPV(state, p) {
 
 // ---------- Fine partita ----------
 // PV correnti di un giocatore (puro, non muta lo stato) — usato sia a fine partita sia per la timeline PV per round.
-export const roundObjectivePotential=(state,p)=>objectivePotential(state,p,WORKER_BY_ID);
 export function scorePlayer(state, p) {
   const pvContracts = p.contractsWon.reduce((a, c) => a + c.pv, 0);
   const blockedCount = DEPT_ROLES.reduce((a, r) => a + p.depts[r].blocked.length, 0);
@@ -1413,8 +1410,8 @@ export function scorePlayer(state, p) {
   const finalResourcePoints=state.finalResourcePV?Math.min(...SECTORS.map(sector=>p.resources[RESOURCE_OF[sector]]||0)):0;
   const pvCalendarMissions = calendarPoints(state, p.id);
   if (state.contractsOnly) return {
-    playerId: p.id, name: p.name, pvContracts, total: pvContracts + finalCoinPoints + finalResourcePoints + (state.roundObjectives?.banked[p.id]||0) + pvCalendarMissions,
-    ...(state.calendarMissions ? { pvCalendarMissions } : {}), ...(state.roundObjectives?{pvRoundCards:state.roundObjectives.banked[p.id]}:{}),
+    playerId: p.id, name: p.name, pvContracts, total: pvContracts + finalCoinPoints + finalResourcePoints + pvCalendarMissions,
+    ...(state.calendarMissions ? { pvCalendarMissions } : {}),
     pvWelfare: 0, pvObjectives: 0, pvTrack: 0, pvCoins: finalCoinPoints, pvResources: finalResourcePoints,
     pvStrikes: 0, pvBorsa: 0, pvFactoryMajority: 0, pvDeptComplete: 0, pvRace: 0,
     blockedCount, coins: p.coins, nContracts: p.contractsWon.length,
@@ -1547,11 +1544,6 @@ function finishTurn(state) {
   }
   state.roundTurns += 1;
   const lastOfRound = state.roundTurns >= state.nPlayers;
-  if(lastOfRound&&state.roundObjectives){
-    const round=state.roundObjectives.round;
-    settleRoundObjectives(state,state.turn,WORKER_BY_ID);
-    if(!state.roundObjectives.preview&&state.roundObjectives.round!==round)for(const award of state.roundObjectives.log.at(-1)?.awards||[])log(state,`Richieste round ${round+1}: ${state.players[award.seat].name} incassa ${award.pv} PV (${award.banked} acquisiti).`);
-  }
   // Trigger di fine partita "mazzi commesse esauriti": quando tutte e 3 le pile di pesca sono vuote
   // (le commesse già scoperte sul tabellone restano giocabili), si completa il giro corrente fino al
   // primo giocatore, poi conteggio finale — stessa semantica del Clock (finalRound), non immediato.
@@ -2105,8 +2097,6 @@ export function applyCommand(prev, cmd) {
   // Le scelte salvate prima delle quantità indicavano implicitamente un gettone.
   if (cmd.type === 'spendWelfareToken' && cmd.count === undefined) cmd = { ...cmd, count: 1 };
   const state = cloneState(prev, cmd);
-  if(prev.roundObjectives){const rr=prev.roundObjectives;state.roundObjectives={...rr,banked:rr.banked.slice(),contributions:rr.contributions.map(x=>({...x}))};}
-  if(state.roundObjectives&&cmd.type==='investWelfare')for(const [fund,n]of Object.entries(cmd.funds||{}))state.roundObjectives.contributions[state.current][fund]+=n;
   const p = currentPlayer(state);
 
   // Le nuove varianti hanno più requisiti: UI e agenti non possono aggirarli con un comando obsoleto.

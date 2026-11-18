@@ -36,12 +36,7 @@ export function enableCityMissions(c) {
   return { ...c, cityMissions:true, machineReserve:true, calendarMissions:false, roundObjectives:false, finalCoinPV:false, finalResourcePV:false };
 }
 function readStoredConfig(raw) {
-  const c = parseConfig(raw);
-  if (c.cityMissions) return c;
-  if (!c.calendarMissions && JSON.parse(raw).roundObjectives === undefined && c.roundRondel?.bounds?.length <= 3) {
-    c.roundObjectives = true;
-  }
-  return c;
+  return parseConfig(raw);
 }
 export function loadMainConfig(storage){
   const raw = storage.getItem(STORAGE_KEY);
@@ -189,7 +184,6 @@ export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
     borsaFabbriche: {...structuredClone(reference.borsaFabbriche), resourceCap: {...reference.borsaFabbriche.resourceCap, enabled:false}},
     ...(c.roundAwards?.enabled ? {roundAwards:structuredClone(c.roundAwards)} : {}),
     ...(c.roundRondel?.enabled ? {roundRondel:structuredClone(c.roundRondel)} : {}),
-    ...(c.roundObjectives?{roundObjectives:true}:{}),
     ...(c.calendarMissions ? { calendarMissions: true } : {}),
     ...(c.cityMissions ? { cityMissions: true, cityScoring: CITY_SCORING } : {}),
     ...(machineReserve ? { machineReserve: true } : {}),
@@ -216,7 +210,7 @@ export function parseConfig(raw) {
   // Editor migrations preserve custom prices; current rules apply to all lab configurations.
   if (c?.schema === 'officina-lab-1') {
     c.cityRefresh=false;
-    c.roundObjectives??=false;
+    c.roundObjectives=false;
     if(c.roundRondel?.fundThresholds)c.roundRondel.refreshWorkers??=true;
     const migrateLargePV = c.presetRevision == null || c.presetRevision === 1;
     const migrateMachines = c.rulesRevision == null || [1, 2, 3].includes(c.rulesRevision);

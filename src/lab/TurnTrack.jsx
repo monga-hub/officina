@@ -14,7 +14,7 @@ export default function TurnTrack({state}) {
       return <div className="turn-period" key={end} style={{flex:end-start+1}}>
         <ol start={start} aria-label={`${index+1}° periodo`}>
           {Array.from({length:end-start+1},(_,i)=>start+i).map(turn=>{
-            const deadline=turn!==end?'':final?' · Fine partita':state.roundObjectives?' · Fine periodo: richieste e scelta della rondella':' · Fine periodo: scelta della rondella';
+            const deadline=turn!==end?'':final?' · Fine partita':' · Fine periodo: scelta della rondella';
             const bonus=state.cityMissions?cityDayBonus(turn,state.cityScoring):0;
             const bonusLabel=bonus? ` · Bonus missioni in Città: +${bonus} PV` : '';
             return <li key={turn} aria-current={turn===current?'step':undefined}

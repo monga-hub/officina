@@ -88,7 +88,7 @@ assert.equal(missionStorage.getItem(GAME_SAVE_KEY),savedCityBytes,'resuming City
 // Custom calendars use identical rules at the table and in simulations.
 for(const [turns,bounds] of [[20,[4,11,17]],[32,[8,16,24]],[12,[]],[6,[1,2,3,4,5]],[1,[]]]){
  const custom={...mainDefaults(),cityMissions:false};custom.roundObjectives=bounds.length<=3;custom.turns=turns;custom.roundRondel.bounds=bounds;custom.roundRondel.firstSeats=bounds.map((_,i)=>i%3);
- validateMainConfig(custom);assert.deepEqual(parseConfig(JSON.stringify(custom)),custom);
+ validateMainConfig(custom);assert.deepEqual(parseConfig(JSON.stringify(custom)),{...custom,roundObjectives:false});
  const humanRules=gameConfig(custom,{humans:1}),simRules=gameConfig(custom);
  assert.deepEqual(humanRules.roundRondel,simRules.roundRondel);assert.equal(humanRules.roundLimit,turns);
  let state=initGame(simRules);const seen=[];
@@ -155,15 +155,15 @@ delete olderEditor.cityMissions;
 for(const key of [STORAGE_KEY,PREVIOUS_STORAGE_KEY]){
  const oldEditor=storage(),raw=JSON.stringify(olderEditor);
  oldEditor.setItem(key,raw);
- assert.deepEqual(loadMainConfig(oldEditor),olderEditor);
+ assert.deepEqual(loadMainConfig(oldEditor),{...olderEditor,roundObjectives:false});
  assert.equal(oldEditor.getItem(key),raw);
 }
 const selectedLegacy={...olderEditor,cityMissions:false};
 stored.setItem(STORAGE_KEY,JSON.stringify(selectedLegacy));
-assert.deepEqual(loadMainConfig(stored),selectedLegacy);
+assert.deepEqual(loadMainConfig(stored),{...selectedLegacy,roundObjectives:false});
 const differentSchedule={...olderEditor,turns:32,roundRondel:{...olderEditor.roundRondel,bounds:[8,16,24]}};
 stored.setItem(STORAGE_KEY,JSON.stringify(differentSchedule));
-assert.deepEqual(loadMainConfig(stored),differentSchedule);
+assert.deepEqual(loadMainConfig(stored),{...differentSchedule,roundObjectives:false});
 
 old.setItem(PREVIOUS_STORAGE_KEY,JSON.stringify(changed));assert.deepEqual(loadMainConfig(old),changed,'keep custom settings already using the main rules');
 assert.deepEqual(parseConfig(JSON.stringify(changed)),changed);

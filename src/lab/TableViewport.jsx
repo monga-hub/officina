@@ -23,7 +23,8 @@ export default function TableViewport({children}) {
     return()=>{observer.disconnect();window.removeEventListener('resize',measure);};
   },[]);
   const compact=size.width<1254, width=compact?1600:size.width;
-  const scale=Math.min(1,size.width/width,size.availableHeight/Math.max(1,size.tableHeight));
+  // Desktop uses the available width; scroll vertically when the tracks need more room.
+  const scale=compact?Math.min(1,size.width/width,size.availableHeight/Math.max(1,size.tableHeight)):1;
   const playHeight=Math.max(540,(compact?720:size.availableHeight)-size.tableTop-8);
   return <div ref={host} className={`table-fit-host${compact?' table-fit-compact':''}`}>
     <div className="table-fit-scroll">

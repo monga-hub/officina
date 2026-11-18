@@ -2088,5 +2088,5 @@
   "finalCoinPV": true,
   "finalCoinsPerPV": 10,
   "finalResourcePV": true,
-  "roundObjectives": true
+  "roundObjectives": false
 }

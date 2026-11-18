@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { chooseLabCommand, chooseTimedCommand, lastDecision } from '../src/game/ai.js';
 import { applyCommand, hireCost, initGame, legalCommands, WORKER_BY_ID } from '../src/game/engine.js';
 import { activeMachineIds } from '../src/game/row-economy.js';
-import { gameConfig, mainDefaults, parseConfig } from '../src/lab/config.js';
+import { gameConfig, mainDefaults, parseConfig, enableCityMissions } from '../src/lab/config.js';
 import { newStudy, observeStudy } from '../src/lab/study.js';
 import { gameSession } from '../src/lab/saved-game.js';
 
@@ -13,7 +13,7 @@ const legacy = { ...editor, cityMissions: false, machineReserve: false };
 assert.equal(parseConfig(JSON.stringify(legacy)).machineReserve, false);
 assert.equal(initGame(gameConfig(legacy)).machineReserve, undefined);
 
-const cfg = gameConfig({ ...editor, machineImmediate: false }, { seed: 1909 });
+const cfg = gameConfig(enableCityMissions({ ...editor, machineImmediate: false }), { seed: 1909 });
 assert.ok(cfg.machineReserve && cfg.rowEconomy.machineImmediate && cfg.rowEconomy.machinesRequireOpenRow);
 assert.equal(cfg.rowEconomy.conversionMachines, false);
 const state = initGame(cfg);
@@ -48,7 +48,7 @@ const cost = hireCost(state, player, large, 'terziario', 'sotto');
 const installed = applyCommand(state, install);
 assert.equal(installed.players[0].coins, player.coins - cost + 3);
 assert.deepEqual(installed.players[0].depts.terziario.sotto, [small.id, medium.id, large.id]);
-const limitedCity = { ...editor, machineReserve: false };
+const limitedCity = { ...enableCityMissions(editor), machineReserve: false };
 assert.equal(parseConfig(JSON.stringify(limitedCity)).machineReserve, true);
 assert.equal(initGame(gameConfig(limitedCity)).machineReserve, true);
 const oldState = { ...state, machineReserve: false, sottoInstantEffect: false };

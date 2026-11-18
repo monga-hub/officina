@@ -19,7 +19,7 @@ export const STORAGE_KEY = 'officina1907-laboratorio-principale-v1';
 export const RULES_REVISION = 4;
 const PRESET_REVISION = 2;
 export const mainDefaults=()=>({
-  ...structuredClone(latestPlaytest), cityMissions:true, roundObjectives:false, finalCoinPV:false, finalResourcePV:false,
+  ...structuredClone(latestPlaytest), cityMissions:false, roundObjectives:false, finalCoinPV:false, finalResourcePV:false,
 });
 export const mainWorkerDeck=()=>structuredClone(latestPlaytest.workers);
 // The six-nationality reference used 72 cards in five nonempty markets.
@@ -38,9 +38,6 @@ export function enableCityMissions(c) {
 function readStoredConfig(raw) {
   const c = parseConfig(raw);
   if (c.cityMissions) return c;
-  if (c.cityMissions === undefined && c.roundRondel?.enabled && fitsCityCalendar(c.turns, c.roundRondel.bounds)) {
-    return enableCityMissions(c);
-  }
   if (!c.calendarMissions && JSON.parse(raw).roundObjectives === undefined && c.roundRondel?.bounds?.length <= 3) {
     c.roundObjectives = true;
   }

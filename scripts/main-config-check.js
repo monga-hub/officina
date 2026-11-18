@@ -14,7 +14,7 @@ assert.equal(fresh.roundRondel.startingPolicy,'affinity');assert.deepEqual(fresh
 assert.deepEqual(fresh.roundRondel.bounds,[7,14,21]);assert.deepEqual(fresh.roundRondel.firstSeats,[0,1,2]);
 const prior={...structuredClone(fresh),cityMissions:false};prior.roundRondel.bounds=[9,18];prior.roundRondel.firstSeats=[0,1];
 assert.deepEqual(parseConfig(JSON.stringify(prior)).roundRondel.bounds,[9,18]);
-let calendar=initGame(gameConfig(fresh));const deadlines=[];
+let calendar=initGame(gameConfig(enableCityMissions(fresh)));const deadlines=[];
 while(!calendar.gameOver){
  const legal=legalCommands(calendar);
  if(calendar.phase==='roundRondel'&&calendar.roundRondel.active.at===0)deadlines.push([calendar.roundRondel.active.endTurn,calendar.current]);
@@ -22,10 +22,33 @@ while(!calendar.gameOver){
 }
 assert.deepEqual(deadlines,[[7,0],[14,1],[21,2]]);assert.equal(calendar.roundRondel.log.length,9);assert.equal(calendar.turn,28);
 assert.deepEqual(calendar.roundRondel.completed,[0,1,2]);
-assert.equal(fresh.cityMissions,true);
+assert.equal(fresh.cityMissions,false);
 assert.deepEqual(calendar.calendarMissions,[{},{},{}]);
 assert.equal(calendar.contracts.medium.active[0].card.id,'consegna4');
-const cityRules=gameConfig(fresh);
+// The default exposes the existing six-card market without changing its recipes or rewards.
+const normalRules=gameConfig(fresh),market=initGame(normalRules);
+assert.equal(Boolean(market.cityMissions),false);
+assert.equal(market.calendarMissions,undefined);
+for(const [size,pv,coins] of [['small',5,2],['medium',9,3],['large',13,4]]){
+ assert.equal(market.contracts[size].active.length,2);
+ const visit=structuredClone(market),player=visit.players[visit.current];
+ visit.phase='borsa';player.node='Borsa';player.resources={Tessuti:10,Acciaio:10,Coloranti:10};
+ const commands=legalCommands(visit);
+ assert.equal(commands.filter(c=>c.type==='completeContract').length,6);
+ assert.equal(commands.some(c=>c.type==='certifyCity'),false);
+ const command=commands.find(c=>c.type==='completeContract'&&c.size===size);
+ const slot=visit.contracts[size].active[command.slotIndex],req=slot.card.reqs[command.reqIndex];
+ const delivered=applyCommand(visit,command),after=delivered.players[player.id];
+ const resource={Tessile:'Tessuti',Metallurgica:'Acciaio',Chimica:'Coloranti'};
+ for(const [sector,name] of Object.entries(resource))assert.equal(after.resources[name],10-req.filter(s=>s===sector).length);
+ assert.equal(after.coins,player.coins+coins);
+ assert.equal(after.contractsWon.at(-1).pv,pv);
+ assert.equal(after.contractsWon.at(-1).cardId,slot.card.id);
+ assert.notEqual(delivered.contracts[size].active[command.slotIndex].card.id,slot.card.id);
+ assert.equal(delivered.contracts[size].deck.length,visit.contracts[size].deck.length-1);
+ assert.notEqual(delivered.current,player.id);
+}
+const cityRules=gameConfig(enableCityMissions(fresh));
 const missionVisit=initGame(cityRules);
 const visitor=missionVisit.players[missionVisit.current];
 missionVisit.phase='borsa';
@@ -58,6 +81,10 @@ assert.deepEqual(plain(loadGame(legacyStorage).state),plain(legacyCertified));
 const missionStorage=storage();
 saveGame(cityRules,{state:certified,history:[missionVisit],paused:false},missionStorage);
 assert.deepEqual(plain(loadGame(missionStorage).state),plain(certified));
+const savedCityBytes=missionStorage.getItem(GAME_SAVE_KEY);
+assert.deepEqual(plain(gameSession(normalRules,loadGame(missionStorage)).state),plain(certified));
+assert.equal(missionStorage.getItem(GAME_SAVE_KEY),savedCityBytes,'resuming City missions does not rewrite the save');
+
 // Custom calendars use identical rules at the table and in simulations.
 for(const [turns,bounds] of [[20,[4,11,17]],[32,[8,16,24]],[12,[]],[6,[1,2,3,4,5]],[1,[]]]){
  const custom={...mainDefaults(),cityMissions:false};custom.roundObjectives=bounds.length<=3;custom.turns=turns;custom.roundRondel.bounds=bounds;custom.roundRondel.firstSeats=bounds.map((_,i)=>i%3);
@@ -110,6 +137,10 @@ assert.ok(!legalCommands(city).some(c=>c.type==='refreshMarket'));
 assert.throws(()=>applyCommand(city,{type:'refreshMarket',target:'workers'}));
 assert.throws(()=>applyCommand(city,{type:'refreshMarket',target:'welfare'}));
 assert.deepEqual(loadMainConfig(storage()),fresh);
+const explicitCity=storage(),cityConfig=enableCityMissions(fresh);
+explicitCity.setItem(STORAGE_KEY,JSON.stringify(cityConfig));
+assert.deepEqual(loadMainConfig(explicitCity),cityConfig,'explicit saved City settings remain selectable');
+
 const old=storage(),legacy=JSON.stringify(defaults());old.setItem(PREVIOUS_STORAGE_KEY,legacy);
 assert.deepEqual(loadMainConfig(old),fresh);assert.equal(old.getItem(PREVIOUS_STORAGE_KEY),legacy,'old settings kept intact');
 assert.throws(()=>validateMainConfig(defaults()),/precedente/);
@@ -124,7 +155,7 @@ delete olderEditor.cityMissions;
 for(const key of [STORAGE_KEY,PREVIOUS_STORAGE_KEY]){
  const oldEditor=storage(),raw=JSON.stringify(olderEditor);
  oldEditor.setItem(key,raw);
- assert.deepEqual(loadMainConfig(oldEditor),enableCityMissions(olderEditor));
+ assert.deepEqual(loadMainConfig(oldEditor),olderEditor);
  assert.equal(oldEditor.getItem(key),raw);
 }
 const selectedLegacy={...olderEditor,cityMissions:false};

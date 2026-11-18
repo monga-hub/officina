@@ -115,10 +115,11 @@
 .game-save-state{margin-left:auto;align-self:center;font-size:12px;color:#4d6c49}
 
 /* Scale the complete table, while keeping choices and dialogs at screen size. */
-.table-fit-host{width:100%;background:#f5f5ed;min-height:100dvh}
+.table-fit-host{container:tableCanvas / inline-size;width:100%;background:#f5f5ed;min-height:100dvh}
 .table-fit-scroll{overflow:auto;width:100%}
 .table-fit-space{position:relative;margin:0 auto;overflow:clip}
-.table-fit-canvas{position:relative;container:tableCanvas / inline-size;transform-origin:top left;display:flow-root}
+.table-fit-canvas{position:relative;transform-origin:top left;display:flow-root}
+.table-fit-compact .table-fit-canvas{container:tableCanvas / inline-size}
 .table-fit-canvas .lab-shell.play-table{min-height:0}
 .lab-shell.play-table.table-overlay{display:contents;min-height:0;padding:0}
 .table-overlay .modal-back{z-index:100}
@@ -203,8 +204,8 @@
 .table-overview .play-departments{align-content:start}
 .table-overview .star-viewport{display:grid;place-items:center;flex:1;min-height:0;overflow:hidden;container-type:size;background:#e9dfca}
 .table-overview .star-stage{flex:none;width:min(100cqw,125cqh);height:min(100cqh,80cqw);min-height:0;max-height:none;aspect-ratio:5/4;container-type:size}
-.table-overview .star-market{width:17%}
-.table-overview .star-market .paper-card{height:min(30cqh,198px);max-height:none}
+.table-overview .star-market{width:min(17%,calc((var(--table-height,100dvh) - 210px)*.25))}
+.table-overview .star-market .paper-card{height:min(30cqh,198px,calc((var(--table-height,100dvh) - 210px)*.36));max-height:none}
 .table-overview .play-layout>.play-contracts-side{align-self:start;min-height:0;padding:10px}
 .table-overview .orders-table{display:block;width:100%;min-width:0}
 .table-overview .orders-table>.orders-grid{display:grid;grid-auto-rows:auto;gap:7px;align-content:start}

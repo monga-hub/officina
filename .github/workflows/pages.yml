@@ -34,10 +34,9 @@ jobs:
       - run: npm run build:game
       - run: npm ci
         working-directory: .legacy-source
-      - run: npm run build:lab
+      # Actions reserves GITHUB_* in YAML env; override only the legacy build process.
+      - run: env GITHUB_SHA=2a8e88c8c80ca18d2a7b85fbf30d0dbd76ece714 npm run build:lab
         working-directory: .legacy-source
-        env:
-          GITHUB_SHA: 2a8e88c8c80ca18d2a7b85fbf30d0dbd76ece714
       - run: node scripts/assemble-pages.mjs .legacy-source/dist-lab dist-game dist-pages
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5

@@ -63,7 +63,7 @@ assert.equal(scorePlayer(expected,expected.players[0]).total,0,'Starting money a
 assert.equal(expected.raceObjectives.enabled,false);
 assert.equal(expected.raceObjectives.list.length,0);
 assert.ok(!('race' in c)&&!('conversions' in c));
-const adjacent={Tessile:['A','E'],Metallurgica:['A','B'],Chimica:['B','C'],Servizi:['C','D'],Sindacato:['D','E']};
+const adjacent={Tessile:['A','E'],Metallurgica:['A','B'],Chimica:['B','C'],Servizi:['D','E'],Sindacato:['C','D']};
 assert.deepEqual(STAR_NODE_BANKS,adjacent);
 assert.equal(STAR_MARKETS.length,5);
 for(const [node,banks] of Object.entries(adjacent)){

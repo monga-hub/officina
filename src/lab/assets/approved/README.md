@@ -12,4 +12,4 @@ Web derivatives of the approved print compositions and Card-a-mon revision 21 (7
 
 The local source/proof package is the `officina-rondella-icons` task archive. `whole-board-draft/complete-board-composition.json` records registration and preserved image hashes. Source masters and the external Card-a-mon document remain unchanged.
 
-Purchase rules remain unchanged: market C is shared by Chimica–Welfare and E by Repressione–Tessile, while their printed bays sit between Chimica–Repressione and Welfare–Tessile. Card details and highlights follow the engine's purchase rules. This known discrepancy is separate from the authorized 1v1 chain correction.
+Purchase access matches the printed card bays: A Tessile–Metallurgia, B Metallurgia–Chimica, C Chimica–Repressione, D Repressione–Welfare and E Welfare–Tessile. The shared market mapping drives legal purchases, card details and highlights. Saved games with the former lab mapping adopt these C/E links, including Undo history, without changing cards or prices; custom and legacy mappings remain intact.

@@ -6,10 +6,17 @@ import { initGame, scorePlayer } from '../game/engine.js';
 import { withoutTrackPoints } from './config.js';
 import { welfarePolicies, rondelEnabled, validPolicyOrder } from '../game/welfare-rondel.js';
 import { tensionMachineCard } from '../game/row-economy.js';
+import { STAR_NODE_BANKS } from './markets.js';
 
 export const GAME_SAVE_KEY='officina1907-partita-v1';
 export const SAVED_UNDO_LIMIT=10;
 const ROLES=['terziario','secondario','primario'];
+const PREVIOUS_STAR_NODE_BANKS={Tessile:['A','E'],Metallurgica:['A','B'],Chimica:['B','C'],Servizi:['C','D'],Sindacato:['D','E']};
+function previousStarMarkets(rules) {
+  const mapping=rules.nodeBanks;
+  return mapping&&Object.keys(mapping).length===5&&Object.entries(PREVIOUS_STAR_NODE_BANKS).every(([node,banks])=>
+    Array.isArray(mapping[node])&&mapping[node].length===banks.length&&banks.every(bank=>mapping[node].includes(bank)));
+}
 function validCalendar(markers,players,turn,city,scoring) {
   return Array.isArray(markers)&&markers.length===players&&markers.every(row=>row&&typeof row==='object'&&!Array.isArray(row)
     &&Object.entries(row).every(([id,marker])=>marker&&Number.isInteger(marker.turn)&&marker.turn>=1&&marker.turn<=turn
@@ -81,18 +88,28 @@ function contractsOnlySave(save) {
   }
   return next;
 }
+function currentGameSave(save) {
+  const current=contractsOnlySave(save);
+  if(![current.config,current.state,...current.history].some(previousStarMarkets))return current;
+  const next=structuredClone(current);
+  // Correct only the former lab defaults, including Undo; preserve custom maps.
+  for(const rules of [next.config,next.state,...next.history]) {
+    if(previousStarMarkets(rules))rules.nodeBanks=structuredClone(STAR_NODE_BANKS);
+  }
+  return next;
+}
 export function loadGame(storage=localStorage) {
   const raw=storage.getItem(GAME_SAVE_KEY);
-  return raw?contractsOnlySave(validateGameSave(JSON.parse(raw))):null;
+  return raw?currentGameSave(validateGameSave(JSON.parse(raw))):null;
 }
 export function saveGame(config,session,storage=localStorage) {
-  const save=contractsOnlySave(validateGameSave({version:1,savedAt:new Date().toISOString(),config,state:session.state,history:session.history.slice(-SAVED_UNDO_LIMIT),paused:session.paused}));
+  const save=currentGameSave(validateGameSave({version:1,savedAt:new Date().toISOString(),config,state:session.state,history:session.history.slice(-SAVED_UNDO_LIMIT),paused:session.paused}));
   // A single atomic write keeps the previous save intact if storage is full or unavailable.
   storage.setItem(GAME_SAVE_KEY,JSON.stringify(save));
   return save;
 }
 export function gameSession(config,resume) {
-  if(resume)resume=contractsOnlySave(validateGameSave(resume));
+  if(resume)resume=currentGameSave(validateGameSave(resume));
   // Preserve the match and its prices while applying current scoring and hiring rules.
   const initial=initGame({...(resume?.config || config),headless:false});
   return resume?{state:resume.state,history:resume.history,paused:resume.paused}:{state:initial,history:[],paused:false};

@@ -38,7 +38,7 @@ for (const bank of Object.values(state.banks)) {
     if (index !== -1) bank.splice(index, 1);
   }
 }
-state.banks.C.unshift(large.id);
+state.banks[state.nodeBanks[player.node][0]].unshift(large.id);
 const install = legalCommands(state).find(c => c.type === 'hire' && c.side === 'sotto' &&
   c.role === 'terziario' && c.cardId === large.id);
 assert.ok(install);

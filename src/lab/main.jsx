@@ -12,6 +12,7 @@ import { loadGame } from './saved-game.js';
 import useVersionCheck, { RELEASE } from './useVersionCheck.js';
 import '../styles.css';
 import './styles.css';
+import './physical-table.css';
 const NAV=[['play','01','Gioca'],['rounds','02','Durata e round'],['sim','03','Simulazione'],['board','04','Plancia produttiva'],['economy','05','Welfare e denaro'],['cards','06','Carte'],['contracts','07','Commesse'],['files','08','Salva e apri']];
 function load() {
   try{return {config:loadMainConfig(localStorage),error:''};}

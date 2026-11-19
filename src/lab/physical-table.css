@@ -1,0 +1,153 @@
+/* One physical board; only the personal board is arranged in three strips. */
+.table-fit-host.physical-fit{height:100dvh;min-height:0;background:#211d18}
+.physical-fit .table-fit-canvas{height:100%;min-height:0}
+.lab-shell.play-table.physical-table{height:100%;min-height:0;padding:10px 12px;display:flex;flex-direction:column;background:#211d18;color:#eee3cf;--ink:#eee3cf;--muted:#cbbda3;--line:#74654d}
+.physical-table .play-header{width:100%;max-width:none;min-height:38px;flex:none;gap:20px;padding:0 0 7px;border-color:#6c5b42;flex-wrap:nowrap}
+.physical-table .play-header h1{font:22px Georgia,serif;color:#f5e2b8;white-space:nowrap}
+.physical-table .play-header .lab-eyebrow{display:none}
+.physical-table .play-header .lab-actions{width:auto;margin:0 0 0 auto;flex-wrap:nowrap;gap:5px}
+.physical-table .play-turn{display:flex;align-items:center;gap:10px;min-width:0}
+.physical-table .play-turn span{font-size:11px;color:#cbbda3}
+.physical-table button:not(.paper-card):not(.star-destination):not(.board-day):not(.board-policy):not(.board-fund){background:#3c3428;border-color:#786245;color:#f7e7c6;font-size:11px;padding:6px 9px}
+.physical-table button:focus-visible{outline:3px solid #e8f6ff;outline-offset:2px}
+.physical-table .play-jumps{position:static;display:flex;align-items:center;gap:8px;padding:6px 0;margin:0;flex:none;white-space:normal;max-width:none;width:100%;background:none;border:0;overflow:visible}
+.physical-table .play-jump-actions{display:flex;gap:5px;flex-wrap:wrap}
+.physical-table .game-save-state{font-size:10px;color:#beae8e;margin-left:auto}
+.physical-table .play-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(330px,29%);align-items:stretch;gap:14px;flex:1;min-height:0;height:auto;width:100%;max-width:none;margin:0}
+.physical-table .star-board{grid-column:1;grid-row:1;display:flex;min-height:0;min-width:0;width:100%;margin:0;background:none;border:0;box-shadow:none;overflow:visible}
+.physical-table .star-viewport{container-type:size;display:grid;place-items:center;width:100%;height:100%;min-height:0;overflow:visible;background:none;border:0}
+.physical-table .star-stage{position:relative;container-type:inline-size;width:min(100cqw,144.711cqh);height:auto;min-width:0;min-height:0;max-height:none;aspect-ratio:6253/4321;background:#29231a;isolation:isolate;box-shadow:0 7px 24px #0008}
+.approved-main-board{display:block;width:100%;height:100%;pointer-events:none}
+.physical-table .star-route-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.physical-table .star-route-overlay line{stroke:transparent;stroke-width:10}
+.physical-table .star-route-overlay .route-available{stroke:#fff5b5;stroke-dasharray:8 25;stroke-linecap:round;filter:drop-shadow(0 2px 3px #000)}
+.lab-shell.physical-table .star-destination{width:7.5%;min-height:0;aspect-ratio:1;padding:0;border:2px solid transparent;border-radius:50%;background:transparent;box-shadow:none;justify-content:flex-end;gap:0;font-size:1cqw;z-index:4}
+.lab-shell.physical-table .star-destination.star-available{border-color:#f5ffba;box-shadow:0 0 0 1px #314b25,0 0 10px #f5ffba66}
+.lab-shell.physical-table .star-destination.star-current{border-color:#fff0ad;box-shadow:0 0 0 1px #805029}
+.physical-table .star-node-name,.physical-table .node-entry{display:none}
+.physical-table .star-destination .star-seats{position:absolute;bottom:-7%;display:flex;justify-content:center;gap:0;background:#211b16a0;border-radius:4px;min-height:0}
+.physical-table .star-seat{width:1.8cqw;height:2cqw;background:none;border:0}
+.physical-table .star-seat i{display:none}
+.physical-table .star-meeple{width:1.8cqw;height:2.1cqw}
+.physical-table .star-node-action{font-size:.85cqw;color:#fff3cf;white-space:nowrap;padding:1px}
+.physical-table .star-live-cost{position:absolute;transform:translate(-50%,-50%);font:700 2.1cqw/1 OfficinaCard,sans-serif;color:#9b1b1b;pointer-events:none}
+.physical-table .star-market{position:absolute;width:12%;z-index:2;margin:0;padding:0}
+.physical-table .star-market .paper-card.approved-card{height:auto;width:100%;aspect-ratio:63.5/88.9;font-size:inherit;box-shadow:0 3px 7px #0009}
+.physical-table .star-market-active .paper-card{outline:2px solid #f1ffc1;outline-offset:2px}
+.star-market-count{position:absolute;bottom:-1.25cqw;left:50%;transform:translateX(-50%);font-size:.9cqw;line-height:1;background:#271f17dd;color:#f6e6c5;border-radius:3px;padding:.15cqw .3cqw;white-space:nowrap}
+.physical-table .empty-card{height:auto;min-height:0;aspect-ratio:63.5/88.9;width:100%;border:2px dashed #f5e2bb;display:grid;place-items:center;font-size:1cqw;color:#fff1d3}
+.lab-shell.physical-table .board-day,.lab-shell.physical-table .board-policy,.lab-shell.physical-table .board-fund{position:absolute;transform:translate(-50%,-50%);padding:0;background:transparent;color:#fff3cc;border:0;z-index:2}
+.lab-shell.physical-table .board-day{width:2.65%;aspect-ratio:1.04;border-radius:2px;font:700 1.3cqw/1 OfficinaCard,sans-serif;color:#271602}
+.lab-shell.physical-table .board-day-current{outline:2px solid #d9faff;box-shadow:0 0 0 4px #245d69;background:#d6faff22}
+.lab-shell.physical-table .board-day-custom{background-image:var(--amber-art);background-size:100% 100%;font-size:1cqw}
+.lab-shell.physical-table .board-policy{width:4.3%;aspect-ratio:1;border-radius:50%}
+.board-policy-pawns{display:flex;justify-content:center;position:absolute;bottom:0;width:100%}
+.physical-table .board-policy .star-meeple{width:1.3cqw;height:1.5cqw}
+.lab-shell.physical-table .board-policy-disabled{background:#19150c77}
+.lab-shell.physical-table .board-fund{width:7%;height:17%;display:flex;flex-direction:column;justify-content:space-between;align-items:center;transform:translate(-50%,-12%);font-size:1.2cqw;text-shadow:0 2px 3px #000}
+.board-fund strong{font:700 2.8cqw/1 OfficinaCard,sans-serif}
+.board-fund>span{display:flex;flex-direction:column;align-items:center;gap:.3cqw;font-size:2cqw}
+.physical-table .board-fund small{font-size:1.1cqw;color:#fff0ce}
+.physical-table .play-factory-column{grid-column:2;grid-row:1;display:flex;flex-direction:column;min-width:0;min-height:0;width:100%;gap:5px}
+.physical-table .play-player-tabs{display:flex;gap:4px;margin:0;flex:none}
+.physical-table .play-player-tabs button{min-width:0;flex:1;padding:5px 3px!important;font-size:10px!important}
+.physical-table .play-player-tabs small{display:inline-block;margin:0 0 0 3px}
+.physical-table .play-player-tabs .amount-token{width:17px;min-width:17px;height:17px;font-size:10px}
+.physical-table .play-factory{display:flex;flex-direction:column;min-height:0;flex:1;padding:0;border:0;background:none;box-shadow:none;margin:0;gap:5px}
+.physical-table .play-factory-heading{flex:none;gap:6px}
+.physical-table .play-factory-heading h2{font-size:15px;color:#f1dfbd}
+.physical-table .play-factory-heading .lab-eyebrow{display:none}
+.physical-table .play-factory-heading>span{font-size:10px;color:#cbbb9a}
+.physical-table .play-wallet{flex:none;gap:4px 10px;margin:0;padding:3px 0;border:0;font-size:10px}
+.physical-table .play-wallet .amount-token{width:26px;min-width:26px;height:26px;font-size:15px}
+.physical-table .play-wallet b{font-size:15px}
+.physical-table .wallet-welfare-icon{width:24px;height:24px}
+.player-strips{display:grid;grid-template-rows:repeat(3,minmax(0,1fr));gap:8px;flex:1;min-height:0}
+.lab-shell .physical-department{background-size:cover;background-position:center;border:2px solid #8d7554;border-radius:5px;box-shadow:inset 0 0 0 2px #30271c;padding:7px 8px;display:flex;flex-direction:column;min-width:0;min-height:0;gap:4px;color:#fff1d4}
+.physical-department>header{display:flex;align-items:center;justify-content:space-between;gap:5px;text-shadow:0 1px 3px #000}
+.lab-shell .physical-department>header h3{font-size:14px;color:#fff1d4;white-space:nowrap;margin:0}
+.lab-shell .physical-department>header>span{font-size:10px;line-height:1.1;color:#fff1d4;text-align:right}
+.physical-department .resource-mark{width:28px;height:28px;vertical-align:middle}
+.physical-department .play-row-count{display:none}
+.lab-shell .physical-department .opposed-track{flex:1;min-height:0;display:flex;flex-direction:column;gap:2px;padding:2px;background:#241c1255;border:0;margin:0;max-width:none;--tension-width:25px}
+.lab-shell .physical-department .opposed-track-head,.lab-shell .physical-department .opposed-track-foot{font-size:9px;line-height:1.2;color:#fff1d4;min-height:11px;flex:none;margin:0}
+.lab-shell .physical-department .opposed-track-row{display:grid;grid-template-columns:var(--tension-width) minmax(0,1fr);flex:1;min-height:0;margin:0;gap:8px}
+.lab-shell .physical-department .opposed-track-cells{gap:4px;min-height:0}
+.lab-shell .physical-department .opposed-cell{position:relative;min-height:0;height:auto;padding:1px 3px;display:flex;align-items:center;justify-content:center;gap:2px;font-size:11px;border-radius:10px;background:#fff6e4;color:#3d3321}
+.lab-shell .physical-department .opposed-cell.developed{background:#e9edce;border-color:#788b4b}
+.lab-shell .physical-department .opposed-cell.blocked-production{background:repeating-linear-gradient(135deg,#7c5548,#7c5548 4px,#e4c6ae 4px,#e4c6ae 8px);color:#2e130b}
+.lab-shell .physical-department .opposed-cell small{font-size:9px;color:#59472b;white-space:nowrap;position:absolute;left:3px;top:1px;line-height:1}
+.physical-department .opposed-cell>span{padding-left:12px;line-height:1}
+.physical-table .physical-department .track-milestone-reward{display:none}
+.table-action-dialog .physical-department .track-milestone-reward{display:inline-flex;align-items:center;gap:2px;font-size:9px}
+.physical-department .milestone-cell::after{content:"★";position:absolute;right:2px;top:0;color:#8a5d1c;font-size:8px}
+.physical-department .milestone-cell.production-marker::after{display:none}
+.lab-shell .physical-department .amount-token{width:21px;min-width:21px;height:21px;font-size:12px}
+.lab-shell .physical-department .row-tension-step{min-height:0;height:auto;padding:1px;font-size:10px;line-height:1.1;display:grid;place-items:center;background:#f7e9cd;color:#4a3422}
+.lab-shell .physical-department .row-tension-step.current{background:#a93728;color:white;border-color:#ffdc9e}
+.lab-shell .physical-department .production-pin{font-size:9px;min-width:13px;height:13px;line-height:12px;right:1px;bottom:0;padding:0 3px;background:#b83b2b;border:1px solid #ffe6b3;border-radius:50%;color:white}
+.lab-shell .physical-department .department-cards-button{display:flex;align-items:center;gap:4px;flex-wrap:wrap;width:100%;padding:3px 4px;border-color:#907756;background:#241c14cc;color:#fff0ce;font-size:10px;line-height:1.2;margin:0;flex:none}
+.physical-department .department-nations{display:flex;margin-left:auto;gap:2px}
+.physical-department .nation-badge{padding:0;background:none}
+.physical-department .nation-flag,.physical-department .nation-flag img{width:19px;height:19px}
+.physical-department .nation-badge b{font-size:10px}
+.physical-table .player-board-enlarge{flex:none;text-align:center;padding:4px!important}
+.table-action-dialog .player-strips{min-height:690px;gap:12px}
+.table-action-dialog .physical-department{min-height:220px}
+.table-action-dialog .physical-department .opposed-cell{min-height:25px}
+.table-action-dialog .player-board-detail{width:min(620px,100%)}
+.table-action-dialog .play-factory-column{display:block}
+.table-action-dialog .approved-welfare-bank{background:#f4ecd9;padding:15px}
+.table-action-dialog .approved-welfare-bank>div{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.table-action-dialog .approved-welfare-bank span{display:grid;gap:8px}
+.table-action-dialog .approved-welfare-bank strong{font-size:24px}
+.table-action-dialog .approved-welfare-bank .fund-powered{outline:2px solid #517b43;padding:5px}
+@media(max-height:800px) and (min-width:761px){
+ .physical-table .play-layout{grid-template-columns:minmax(0,1fr) minmax(320px,32%);gap:10px}
+ .physical-department .resource-mark{width:22px;height:22px}
+ .lab-shell .physical-department{padding:4px 6px;gap:2px}
+ .lab-shell .physical-department .opposed-track{gap:1px}
+ .lab-shell .physical-department .amount-token{width:16px;min-width:16px;height:16px;font-size:10px}
+ .lab-shell .physical-department .opposed-cell small{font-size:8px}
+ .physical-department .nation-flag,.physical-department .nation-flag img{width:15px;height:15px}
+}
+@media(max-width:760px){
+ .lab-shell.play-table.physical-table{padding:6px;gap:0}
+ .physical-table .play-header{gap:5px;flex-wrap:wrap;padding:0 0 4px;min-height:0}
+ .physical-table .play-header h1{font-size:16px}
+ .physical-table .play-header h1 small{font-size:11px}
+ .physical-table .play-turn{font-size:11px;margin-left:auto;gap:5px}
+ .physical-table .play-turn span{font-size:9px;max-width:140px}
+ .physical-table .play-header .lab-actions{display:none}
+ .physical-table .play-jumps{padding:4px 0}
+ .physical-table .play-jump-actions{gap:3px}
+ .physical-table .play-jump-actions button{padding:5px;font-size:9px!important}
+ .physical-table .game-save-state,.physical-table .calendar-mission-list{display:none}
+ .physical-table .play-layout{display:grid;grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) minmax(365px,1.1fr);gap:7px}
+ .physical-table .star-board{grid-column:1;grid-row:1}
+ .physical-table .play-factory-column{grid-column:1;grid-row:2;gap:3px}
+ .physical-table .play-factory-heading{display:none}
+ .physical-table .play-factory{gap:3px}
+ .physical-table .play-wallet{padding:0;gap:6px}
+ .physical-table .play-wallet .amount-token{height:20px;width:20px;min-width:20px;font-size:12px}
+ .physical-table .play-wallet b{font-size:12px}
+ .physical-table .wallet-welfare-icon{height:18px;width:18px}
+ .physical-table .player-strips{gap:4px}
+ .physical-table .physical-department{display:grid;grid-template-columns:90px minmax(0,1fr);grid-template-rows:1fr 1fr;gap:2px 6px;padding:4px}
+ .physical-table .physical-department>header{grid-column:1;grid-row:1;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px}
+ .physical-table .physical-department>header h3{font-size:11px}
+ .physical-table .physical-department>header>span{font-size:8px;text-align:left}
+ .physical-table .physical-department .resource-mark{width:20px;height:20px}
+ .physical-table .physical-department .opposed-track{grid-column:2;grid-row:1/3;gap:1px;padding:0;--tension-width:18px}
+ .physical-table .physical-department .opposed-track-row{gap:4px}
+ .physical-table .physical-department .opposed-track-head,.physical-table .physical-department .opposed-track-foot{font-size:7px;min-height:8px;line-height:1}
+ .physical-table .physical-department .opposed-cell small{font-size:7px;top:0;left:2px}
+ .physical-table .physical-department .opposed-cell{padding:0;font-size:8px}
+ .physical-table .physical-department .amount-token{width:10px;min-width:10px;height:10px;font-size:7px}
+ .physical-table .physical-department .production-pin{width:10px;min-width:10px;height:10px;line-height:9px;font-size:7px;padding:0}
+ .physical-table .physical-department .row-tension-step{padding:0;font-size:8px}
+ .physical-table .physical-department .department-nations{display:none}
+ .physical-table .physical-department .department-cards-button{grid-column:1;grid-row:2;font-size:8px!important;padding:2px!important;align-self:end}
+ .physical-table .physical-department .nation-flag,.physical-table .physical-department .nation-flag img{width:11px;height:11px}
+ .physical-table .player-board-enlarge{font-size:9px!important;padding:3px!important}
+}

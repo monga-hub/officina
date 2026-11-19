@@ -1,5 +1,6 @@
 import {policyDescription,policyFund} from '../game/welfare-funds.js';
 import PolicyHint from './PolicyHint.jsx';
+import {policyArt} from '../lab/approved-art.js';
 import React, { useState } from 'react';
 import { WELFARE_POLICIES, WELFARE_DISPLAY_POLICIES, welfareDisplayPolicies, welfarePolicies, welfareMaxSteps, freeWelfareEntry, rondelEnabled, welfarePolicy, welfarePolicyEnabled } from '../game/welfare-rondel.js';
 
@@ -26,7 +27,7 @@ export default function WelfareRondel({ state, player, legal = [], dispatch }) {
       const selected = dispatch && position === i;
       const fund=state.roundRondel?.fundThresholds?policyFund(policy.id):null;
       return <li key={policy.id} data-welfare-fund={fund?.id} className={`${selected&&enabled?'rondel-destination':''} ${enabled?'':'rondel-disabled'}`}>
-        <PolicyHint policy={policyDescription(state,policy)} fund={fund}>{dispatch && freeFirst ? <button disabled={!enabled} aria-pressed={selected&&enabled} onClick={() => setFirstPosition(i)}><b>{displayIndex + 1}. {policy.name}{policyDescription(state,policy).upgraded&&' ★'}{!enabled&&' · OFF'}</b></button> : <strong>{displayIndex + 1}. {policy.name}{policyDescription(state,policy).upgraded&&' ★'}{!enabled&&' · OFF'}</strong>}</PolicyHint>
+        <PolicyHint policy={policyDescription(state,policy)} fund={fund}><img className="policy-art" src={policyArt(policy.id)} alt=""/>{dispatch && freeFirst ? <button disabled={!enabled} aria-pressed={selected&&enabled} onClick={() => setFirstPosition(i)}><b>{displayIndex + 1}. {policy.name}{policyDescription(state,policy).upgraded&&' ★'}{!enabled&&' · OFF'}</b></button> : <strong>{displayIndex + 1}. {policy.name}{policyDescription(state,policy).upgraded&&' ★'}{!enabled&&' · OFF'}</strong>}</PolicyHint>
         <div className="rondel-occupants">{occupants.map(p => <span key={p.id} title={p.name} aria-label={p.name} style={{ borderColor: p.color }}><i style={{ background: p.color }} aria-hidden="true"/></span>)}</div>
       </li>;
     })}</ol>

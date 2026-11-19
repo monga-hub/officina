@@ -1,6 +1,7 @@
 import React from 'react';
 import { Amount } from '../components/Amount.jsx';
 import { machineText } from './cards.js';
+import {approvedArt} from './approved-art.js';
 
 export { Amount };
 export function WorkerSymbol(){return <svg className="function-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="4" fill="currentColor"/><path d="M5 23v-8a7 7 0 0 1 14 0v8h-5v-8h-4v8Z" fill="currentColor"/></svg>;}
@@ -10,8 +11,12 @@ export function Development({value}) {
 function Factor({factor,worker}) {
   return <Amount kind={factor.tipo==='moneta'?'coin':factor.settore==='scelta'?'choice':factor.settore==='carta'?worker.sector:factor.settore} value={factor.q}/>;
 }
-export function MachineEffect({worker}) {
+export function MachineEffect({worker,printed=false}) {
   const e=worker.effect;
+  if(printed&&(e.verbo==='prendi'||e.continuity||(e.verbo==='perOgni'&&e.f2?.conta==='tensione'))&&!e.tensionRewards&&(!e.continuity||!e.continuityRowsPerCoin||e.continuityRowsPerCoin===1)&&e.verbo!=='scambia') {
+    const multiplier=e.continuity?'rows':e.verbo==='perOgni'&&e.f2?.conta==='tensione'?'strike':null;
+    return <span className="symbol-effect printed-machine-effect" role="img" aria-label={`Sotto: macchinario, ${machineText(worker)}`} title={machineText(worker)}><Factor factor={e.f1} worker={worker}/>{multiplier&&<><b className="machine-times" aria-hidden="true">×</b><img src={approvedArt(`${multiplier}.png`)} alt=""/></>}</span>;
+  }
   if(e.continuity)return <span className="symbol-effect" role="img" aria-label={`Sotto: macchinario, ${machineText(worker)}`} title={machineText(worker)}><span className="function-icon" aria-hidden="true">⚙</span><Amount kind="coin" value="R" label={machineText(worker)}/><small>righe libere</small></span>;
   if(e.verbo==='perOgni'&&e.f2?.conta==='tensione')return <span className="symbol-effect" role="img" aria-label={`Sotto: macchinario, ${machineText(worker)}`} title={`Sotto: macchinario, ${machineText(worker)}`}><span className="function-icon" aria-hidden="true">⚙</span><Amount kind="coin" value={e.tensionRewards?'C(T)':e.f1.q===1?'T':`${e.f1.q}T`} label={machineText(worker)}/></span>;
   return <span className="symbol-effect" role="img" aria-label={`Sotto: macchinario, ${machineText(worker)}`} title={`Sotto: macchinario, ${machineText(worker)}`}><span className="function-icon" aria-hidden="true">⚙</span>{e.verbo!=='scambia'&&<span aria-hidden="true">+</span>}<Factor factor={e.f1} worker={worker}/>{e.verbo==='scambia'&&<><span aria-hidden="true">→</span><Factor factor={e.f2} worker={worker}/></>}</span>;

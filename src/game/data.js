@@ -291,15 +291,14 @@ export const STARTING_COINS = [10, 10, 10, 10];
 export const TENSION_LIMIT = 3;
 export const CLOCK_THRESHOLD = { 2: 8, 3: 12, 4: 16 };
 export const MOVE_COSTS = [0, 1]; // slot 1 gratis, slot 2 = 1 marco
-// Movimento a stella (pentagramma, opzionale in 2 giocatori): da ogni nodo raggiungi gratis i 2 nodi collegati
-// dalle punte; gli altri 2 ("a fianco") costano +1 marco a scavallare. Borsa/Città esclusa (raggiungibile da tutti).
-export const STAR_ADJ = {
-  Metallurgica: ['Servizi', 'Sindacato'],
-  Tessile:      ['Chimica', 'Servizi'],
-  Chimica:      ['Tessile', 'Sindacato'],
-  Servizi:      ['Metallurgica', 'Tessile'],
-  Sindacato:    ['Metallurgica', 'Chimica'],
-};
+// In 1v1 star mode only the opposite poles connected by chains are reachable.
+// City keeps its independent entry rules. Rendering uses this same edge list.
+export const STAR_EDGES = [
+  ['Metallurgica', 'Sindacato'], ['Sindacato', 'Tessile'],
+  ['Tessile', 'Chimica'], ['Chimica', 'Servizi'], ['Servizi', 'Metallurgica'],
+];
+export const STAR_ADJ = Object.fromEntries(NODES.filter(n => n !== 'Borsa').map(node =>
+  [node, STAR_EDGES.flatMap(([a, b]) => a === node ? [b] : b === node ? [a] : [])]));
 export const MAX_CONTRACTS_PER_VISIT = 2;
 export const DIREZIONE_MAX = { sopra: 3, sotto: 0 };
 export const UNBLOCK_COST = 2;

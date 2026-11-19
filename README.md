@@ -1,4 +1,14 @@
-# Officina 1907 — Laboratorio
+# Officina 1907 — Gioco e Laboratorio
+
+Il repository produce due pagine separate. Il gioco autonomo è destinato a **`/officina/gioco/`** in Mongames: ingresso Nuova partita/Riprendi, tavolo illustrato completo, da una a tre persone sullo stesso schermo. Riusa il motore e i componenti del Laboratorio.
+
+La pubblicazione conserva **`/officina/` e `/officina/lab.html`** sul sorgente storico immutabile `2a8e88c8c80ca18d2a7b85fbf30d0dbd76ece714`. Il workflow costruisce quel commit separatamente e mantiene il suo `version.json`; le modifiche correnti al gioco non sostituiscono il simulatore online. Le sezioni successive documentano il Laboratorio presente nei sorgenti, che può differire da quello pubblicato.
+
+Per il gioco autonomo usa `npm run build:game` (`dist-game/game.html`), oppure `/game.html` durante lo sviluppo. `scripts/assemble-pages.mjs <legacy-dist> <game-dist> <output>` compone i due output e rifiuta un manifest legacy diverso dal commit fissato. Il workflow Pages esegue prima `npm run check:lab`.
+
+Il gioco usa una partita attiva per account Mongames (`game_id=officina-1907`, slot `active`) e una copia ospite separata sul dispositivo. Nessun salvataggio del simulatore viene importato. L'SDK `/hub/saves.js` deve fornire `loadVersioned(expectedUserId, gameId, slot)` e `saveVersioned(expectedUserId, gameId, data, expectedVersion, slot)`: lettura con versione `updated_at`, controllo dell'account atteso e scrittura condizionata a quella versione. Con un SDK precedente il gioco conserva soltanto la copia locale, senza chiamare la vecchia scrittura non condizionata. La patch Mongames è una consegna separata da applicare prima di abilitare il cloud; usa la tabella saves e il trigger updated_at esistenti, senza migrazioni.
+
+Ogni mossa viene salvata subito in locale; gli invii cloud sono seriali. Il cambio account chiude la partita visibile e apre lo spazio del nuovo account. Se le copie divergono viene chiesto quale riprendere; scegliendo il cloud o iniziando una nuova partita si conserva una copia locale di riserva. In caso di rete assente resta il salvataggio locale. I test `scripts/game-store-check.js` usano un SDK controllato: non attestano la persistenza di una sessione reale su Supabase.
 
 Simulatore giocabile del prototipo Officina 1907: plancia a stella, carte illustrate, tre reparti produttivi, tensione, welfare, repressione e commesse. Include editor e simulazioni con IA.
 

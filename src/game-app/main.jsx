@@ -3,7 +3,7 @@ import {createRoot} from 'react-dom/client';
 import {mainDefaults,gameConfig,newMatchConfig} from '../lab/config.js';
 import {gameSession} from '../lab/saved-game.js';
 import LiveGame from '../lab/LiveGame.jsx';
-import useVersionCheck,{RELEASE} from '../lab/useVersionCheck.js';
+import useVersionCheck from '../lab/useVersionCheck.js';
 import {approvedArt} from '../lab/approved-art.js';
 import {GameStore} from './store.js';
 import '../styles.css';
@@ -60,7 +60,7 @@ function App(){
         {replace&&<button onClick={()=>setReplace(false)}>Annulla</button>}
       </div>}
       {error&&<p role="alert" className="game-error">{error}</p>}
-      <small className="game-release">{RELEASE?`Versione ${RELEASE.version.slice(0,8)}`:'Anteprima'} · {view.owner?'Una partita attiva nel tuo account.':'La partita ospite resta su questo dispositivo.'}</small>
+      <small className="game-release">{view.owner?'Una partita attiva nel tuo account.':'La partita ospite resta su questo dispositivo.'}</small>
     </section>
     <div className="game-cover" aria-hidden="true"><img src={approvedArt('main-board.jpg')} alt="" width="6253" height="4321"/></div>
   </main>;

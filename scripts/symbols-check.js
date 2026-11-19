@@ -14,7 +14,7 @@ try {
   const {initGame,legalCommands}=await server.ssrLoadModule('/src/game/engine.js');
   const {beginRoundRondel}=await server.ssrLoadModule('/src/game/round-rondel.js');
   const {default:Rondel}=await server.ssrLoadModule('/src/components/WelfareRondel.jsx');
-  const {default:Board}=await server.ssrLoadModule('/src/lab/StarBoard.jsx');
+  const {WelfareBank:Board}=await server.ssrLoadModule('/src/lab/StarBoard.jsx');
   const {default:RoundChoice}=await server.ssrLoadModule('/src/components/RoundRondelChoice.jsx');
   const funds=initGame(gameConfig({...mainDefaults(),cityMissions:false,roundObjectives:true}));
   assert.doesNotMatch(render(RoundsEditor,{c:{...mainDefaults(),roundObjectives:true},set(){}}),/Richieste comuni|Tre carte estratte/);

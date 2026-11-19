@@ -89,9 +89,11 @@ try{
  assert.ok(nodeButton(empty,'Tessile').includes('disabled'),'Production still needs a staffed department');
  const city=structuredClone(boardState);city.phase='borsa';city.players[0].node='Borsa';
  assert.ok(nodeButton(city,'Borsa').includes('aria-label="Commesse · Città"'));
- assert.ok(render({...round,welfareBank:0}).includes('Banca Welfare: 0 marchi'));
- assert.ok(render({...round,welfareBank:7}).includes('Banca Welfare: 7 marchi'));
- assert.ok(!render({...round,rowEconomy:{...round.rowEconomy,welfareBank:false}}).includes('star-welfare-bank'));
+ const {WelfareBank}=await server.ssrLoadModule('/src/lab/StarBoard.jsx');
+ const bank=state=>renderToStaticMarkup(React.createElement(WelfareBank,{state}));
+ assert.ok(bank({...round,welfareBank:0}).includes('Banca Welfare: 0 marchi'));
+ assert.ok(bank({...round,welfareBank:7}).includes('Banca Welfare: 7 marchi'));
+ assert.equal(bank({...round,rowEconomy:{...round.rowEconomy,welfareBank:false}}),'');
  const {default:Choice}=await server.ssrLoadModule('/src/components/RoundRondelChoice.jsx');
  const choice=renderToStaticMarkup(React.createElement(Choice,{state:round,player:round.players[0],legal:roundRondelCommands(round),dispatch(){}}));
  assert.ok(choice.includes('Devi avanzare'));assert.ok(!choice.includes('Resta su'));assert.ok(!choice.includes('Rinvia'));

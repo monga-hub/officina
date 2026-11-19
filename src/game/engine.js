@@ -620,7 +620,7 @@ export function initGame(config) {
     contractEngine: !!config.contractEngine, // commessa completata → carta-motore sotto Direzione (risorsa/turno per forza-settore dominante)
     ...(config.machineReserve === true ? { machineReserve: true } : {}),
     sottoInstantEffect: !!config.sottoInstantEffect, // true: installare una carta Sotto ne esegue subito l'azione, invece di aspettare l'attivazione del reparto
-    starMovement: !!config.starMovement, // 2 giocatori: movimento a stella (pentagramma), +1 per scavallare a un nodo a fianco
+    starMovement: !!config.starMovement, // 2 giocatori: solo i poli opposti collegati dalle catene
     // bonus carta-motore ora è PER-CARTA (contract.engine: {yield, amount, uses}); nessun valore globale, solo il master toggle contractEngine.
     // requisito milestone per completare commesse di ogni taglia (0-3): quante milestone di tracciato servono
     contractMilestoneReq: { small: 0, medium: 0, large: 0, ...(config.contractMilestoneReq || {}) },
@@ -1690,9 +1690,10 @@ function legalCommandsInner(state) {
     for (const node of NODES) {
       if (node === p.node) continue; // nodo diverso ogni turno (Borsa inclusa: niente turni consecutivi in Borsa)
       if (node === 'Borsa') { cmds.push({ type: 'move', node, cost: 0 }); continue; }
+      if (!starMoveAllowed(state, p, node)) continue;
       const occupants = state.players.filter(q => q.node === node).length;
       if (occupants >= 2) continue;
-      const cost = moveCost(p, node, occupants) + starScavallo(state, p, node);
+      const cost = moveCost(p, node, occupants);
       if (p.coins >= cost) cmds.push({ type: 'move', node, cost });
     }
     return cmds;
@@ -1952,12 +1953,10 @@ function moveCost(p, node, occupants) {
   if (occupants === 1 && (p.struttura || []).some(e => effectNodes(e, 'freeSecond_').includes(node))) return 0;
   return MOVE_COSTS[occupants];
 }
-// Movimento a stella (2 giocatori, opzionale): +1 per "scavallare" a un nodo NON collegato dalle punte.
-// Borsa esclusa; da Borsa (centro) nessun sovrapprezzo (raggiunge tutti). Si SOMMA al costo di 2° posto.
-function starScavallo(state, p, node) {
-  if (!(state.starMovement && state.nPlayers === 2)) return 0;
-  if (node === 'Borsa' || p.node === 'Borsa') return 0;
-  return (STAR_ADJ[p.node] || []).includes(node) ? 0 : 1;
+function starMoveAllowed(state, p, node) {
+  if (!(state.starMovement && state.nPlayers === 2)) return true;
+  if (node === 'Borsa' || p.node === 'Borsa') return true;
+  return (STAR_ADJ[p.node] || []).includes(node);
 }
 
 function canPay(p, req) {
@@ -2227,8 +2226,9 @@ export function applyCommand(prev, cmd) {
       return state;
     }
     case 'move': {
+      if (!starMoveAllowed(state, p, cmd.node)) throw new Error('Polo non collegato dalle catene');
       const occupants = state.players.filter(q => q.node === cmd.node).length;
-      spendCoins(p, 'movimento', moveCost(p, cmd.node, occupants) + starScavallo(state, p, cmd.node)); // struttura "2° posto gratis" + scavallo stella
+      spendCoins(p, 'movimento', moveCost(p, cmd.node, occupants));
       p.prevNode = p.node;
       p.node = cmd.node;
       p.nodeVisits[cmd.node] = (p.nodeVisits[cmd.node] || 0) + 1;

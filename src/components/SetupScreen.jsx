@@ -1069,7 +1069,7 @@ function BorsaEditor({ borsa, setBorsa, borsaExit, setBorsaExit, borsaRefresh, s
         <button className={starMovement ? 'sel' : ''} onClick={() => updStar(true)}>Attiva</button>
         <button className={!starMovement ? 'sel' : ''} onClick={() => updStar(false)}>Disattiva</button>
         <span className="hint" style={{ marginLeft: 8 }}>{starMovement
-          ? 'in 2 giocatori il Procuratore segue le punte della stella: 2 nodi raggiungibili gratis, gli altri 2 "a fianco" costano +1 (si somma al +1 del 2° posto). Città sempre raggiungibile.'
+          ? 'in 2 giocatori il Procuratore segue le catene verso i due poli opposti; i poli vicini non sono raggiungibili. Resta il costo del 2° posto. Città sempre raggiungibile.'
           : 'movimento libero: qualsiasi nodo, costo solo per 2° posto (attuale)'}</span>
       </label>
       <hr />

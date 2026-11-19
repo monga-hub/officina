@@ -1,21 +1,26 @@
 import {policyBoosted} from '../game/welfare-funds.js';
 import { welfarePolicy } from '../game/welfare-rondel.js';
 import React from 'react';
-import { Amount, Development, MachineEffect } from './GameSymbols.jsx';
+import { Amount, MachineEffect } from './GameSymbols.jsx';
 import { NATION_FLAGS_NUOVO, SECTOR_COLORS } from '../game/data.js';
 import { hireCost } from '../game/engine.js';
 import { cardArtKey, machineText } from './cards.js';
+import {approvedArt,approvedManifest,departmentArt} from './approved-art.js';
 
-const art=import.meta.glob('./assets/workers/*.jpg',{eager:true,query:'?url',import:'default'});
+const art=import.meta.glob('./assets/workers/GR_*.jpg',{eager:true,query:'?url',import:'default'});
 export function NationBadge({nation,count}) {
-  return <span className="nation-badge" aria-label={count==null?nation:`${nation}: ${count} ${count===1?'operaio':'operai'}`}><span className="nation-flag" aria-hidden="true">{NATION_FLAGS_NUOVO[nation]}</span>{count!=null&&<b>×{count}</b>}</span>;
+  return <span className="nation-badge" aria-label={count==null?nation:`${nation}: ${count} ${count===1?'operaio':'operai'}`}><span className="nation-flag" aria-hidden="true">{approvedManifest.nations[nation]?<img src={approvedArt(approvedManifest.nations[nation])} alt=""/>:NATION_FLAGS_NUOVO[nation]}</span>{count!=null&&<b>×{count}</b>}</span>;
 }
 export default function WorkerCard({worker:w,onInspect,side}) {
-  const content=<><div className="paper-card-top"><b className="card-value">{w.v}</b><NationBadge nation={w.nation}/></div>
-    <img className="card-portrait" src={art[`./assets/workers/${cardArtKey(w)}.jpg`]} alt=""/>
-    <div className={`card-half ${side==='sopra'?'card-active-half':''}`}><Development value={w.v}/></div>
-    <div className={`card-half card-machine ${side==='sotto'?'card-active-half':''}`}><MachineEffect worker={w}/></div></>;
-  const props={className:'paper-card',style:{'--card-color':SECTOR_COLORS[w.sector]},'aria-label':`${w.nation}, ${w.sector}, valore ${w.v}. Sopra: sviluppo +${w.v}. Sotto: ${machineText(w)}`};
+  const portrait=approvedArt(`portrait-${cardArtKey(w)}.jpg`)||art[`./assets/workers/${cardArtKey(w)}.jpg`];
+  const content=<><img className="approved-card-portrait" src={portrait} alt=""/>
+    <div className={`approved-card-header ${side==='sopra'?'approved-side-active':''}`}>
+      <Amount kind="coin" value={w.v} label={`Valore e sviluppo: ${w.v}`}/>
+      <img className="card-department" src={departmentArt(w.sector)} alt={w.sector}/>
+      <NationBadge nation={w.nation}/>
+    </div>
+    <div className={`approved-card-machine ${side==='sotto'?'approved-side-active':''}`} style={{backgroundImage:`url(${approvedArt(approvedManifest.bands[w.nation]||'band-italia.png')})`}}><MachineEffect worker={w} printed/></div></>;
+  const props={className:'paper-card approved-card',style:{'--card-color':SECTOR_COLORS[w.sector]},'aria-label':`${w.nation}, ${w.sector}, valore ${w.v}. Sopra: sviluppo +${w.v}. Sotto: ${machineText(w)}`};
   return onInspect?<button type="button" {...props} onClick={onInspect}>{content}</button>:<article {...props}>{content}</article>;
 }
 export function HireChoices({worker:w,options,state,player,dispatch}) {

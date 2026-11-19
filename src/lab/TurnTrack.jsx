@@ -1,4 +1,5 @@
 import React from 'react';
+import {approvedArt} from './approved-art.js';
 import { CITY_CATEGORIES, CITY_HANDS, cityDayBonus, periodOf } from '../game/city-missions.js';
 import { CALENDAR_MISSIONS } from '../game/calendar-missions.js';
 
@@ -7,7 +8,7 @@ export default function TurnTrack({state}) {
   const boundaries=[...(state.roundRondel?.bounds||[]),state.roundLimit];
   const markers=state.calendarMissions;
   return <div className={`turn-track${markers?' turn-track-missions':state.roundLimit>40||boundaries.length>8?' turn-track-dense':''}`}
-    style={markers?undefined:{minWidth:Math.max(280,Math.min(720,state.roundLimit*13))}}
+    style={{'--amber-art':`url(${approvedArt('amber.jpg')})`}}
     aria-label={`Tracciato dei turni: turno ${current} di ${state.roundLimit}`}>
     {boundaries.map((end,index)=>{
       const start=(boundaries[index-1]||0)+1,final=end===state.roundLimit;

@@ -1,0 +1,996 @@
+{
+  "revision": 21,
+  "cardCount": 75,
+  "convention": {
+    "resource": "hexagon",
+    "department": "circle"
+  },
+  "icons": {
+    "textile": "textile.png",
+    "chemical": "chemical.png",
+    "metal": "metal.png",
+    "welfare": "welfare.png",
+    "repression": "repression.png",
+    "city": "city.png",
+    "resource-textile": "resource-textile.png",
+    "resource-chemical": "resource-chemical.png",
+    "resource-metal": "resource-metal.png",
+    "coin": "coin.png",
+    "strike": "strike.png",
+    "rows": "rows.png"
+  },
+  "policies": {
+    "affinity": "policy-affinity.png",
+    "cooperation": "policy-cooperation.png",
+    "innovation": "policy-innovation.png",
+    "reliability": "policy-reliability.png",
+    "integration": "policy-integration.png",
+    "mutualAid": "policy-mutualAid.png",
+    "formation": "policy-formation.png"
+  },
+  "nations": {
+    "Italiani": "nation-italia.png",
+    "Francesi": "nation-francia.png",
+    "Tedeschi": "nation-germania.png",
+    "Polacchi": "nation-polonia.png",
+    "Spagnoli": "nation-spagna.png"
+  },
+  "bands": {
+    "Italiani": "band-italia.png",
+    "Francesi": "band-francia.png",
+    "Tedeschi": "band-germania.png",
+    "Polacchi": "band-polonia.png",
+    "Spagnoli": "band-spagna.png"
+  },
+  "cards": {
+    "nw_it6": {
+      "portrait": "portrait-IT_T.jpg"
+    },
+    "nw_it1": {
+      "portrait": "portrait-IT_M.jpg"
+    },
+    "nw_it9": {
+      "portrait": "portrait-IT_C.jpg"
+    },
+    "nw_fr4": {
+      "portrait": "portrait-FR_T.jpg"
+    },
+    "nw_fr9": {
+      "portrait": "portrait-FR_M.jpg"
+    },
+    "nw_fr5": {
+      "portrait": "portrait-FR_C.jpg"
+    },
+    "nw_po11": {
+      "portrait": "portrait-PL_T.jpg"
+    },
+    "nw_po5": {
+      "portrait": "portrait-PL_M.jpg"
+    },
+    "nw_po2": {
+      "portrait": "portrait-PL_C.jpg"
+    },
+    "nw_te3": {
+      "portrait": "portrait-D_T.jpg"
+    },
+    "nw_te7": {
+      "portrait": "portrait-D_M.jpg"
+    },
+    "nw_te12": {
+      "portrait": "portrait-D_C.jpg"
+    },
+    "nw_gr5": {
+      "portrait": "portrait-SP_T.jpg"
+    },
+    "nw_gr10": {
+      "portrait": "portrait-SP_M.jpg"
+    },
+    "nw_gr1": {
+      "portrait": "portrait-SP_C.jpg"
+    },
+    "nw_it5": {
+      "portrait": "portrait-IT_T.jpg"
+    },
+    "nw_it4": {
+      "portrait": "portrait-IT_M.jpg"
+    },
+    "nw_it11": {
+      "portrait": "portrait-IT_C.jpg"
+    },
+    "nw_fr3": {
+      "portrait": "portrait-FR_T.jpg"
+    },
+    "nw_fr10": {
+      "portrait": "portrait-FR_M.jpg"
+    },
+    "nw_fr7": {
+      "portrait": "portrait-FR_C.jpg"
+    },
+    "nw_po12": {
+      "portrait": "portrait-PL_T.jpg"
+    },
+    "nw_po6": {
+      "portrait": "portrait-PL_M.jpg"
+    },
+    "nw_po3": {
+      "portrait": "portrait-PL_C.jpg"
+    },
+    "nw_te2": {
+      "portrait": "portrait-D_T.jpg"
+    },
+    "nw_te8": {
+      "portrait": "portrait-D_M.jpg"
+    },
+    "nw_te11": {
+      "portrait": "portrait-D_C.jpg"
+    },
+    "nw_gr7": {
+      "portrait": "portrait-SP_T.jpg"
+    },
+    "nw_gr11": {
+      "portrait": "portrait-SP_M.jpg"
+    },
+    "nw_gr3": {
+      "portrait": "portrait-SP_C.jpg"
+    },
+    "nw_it8": {
+      "portrait": "portrait-IT_T.jpg"
+    },
+    "nw_5n_1_2": {
+      "portrait": "portrait-IT_M.jpg"
+    },
+    "nw_it10": {
+      "portrait": "portrait-IT_C.jpg"
+    },
+    "nw_fr2": {
+      "portrait": "portrait-FR_T.jpg"
+    },
+    "nw_fr12": {
+      "portrait": "portrait-FR_M.jpg"
+    },
+    "nw_fr6": {
+      "portrait": "portrait-FR_C.jpg"
+    },
+    "nw_po10": {
+      "portrait": "portrait-PL_T.jpg"
+    },
+    "nw_po7": {
+      "portrait": "portrait-PL_M.jpg"
+    },
+    "nw_po4": {
+      "portrait": "portrait-PL_C.jpg"
+    },
+    "nw_te4": {
+      "portrait": "portrait-D_T.jpg"
+    },
+    "nw_te6": {
+      "portrait": "portrait-D_M.jpg"
+    },
+    "nw_te9": {
+      "portrait": "portrait-D_C.jpg"
+    },
+    "nw_gr8": {
+      "portrait": "portrait-SP_T.jpg"
+    },
+    "nw_gr9": {
+      "portrait": "portrait-SP_M.jpg"
+    },
+    "nw_gr4": {
+      "portrait": "portrait-SP_C.jpg"
+    },
+    "nw_5n_1_1": {
+      "portrait": "portrait-IT_T.jpg"
+    },
+    "nw_it2": {
+      "portrait": "portrait-IT_M.jpg"
+    },
+    "nw_5n_1_3": {
+      "portrait": "portrait-IT_C.jpg"
+    },
+    "nw_5n_2_1": {
+      "portrait": "portrait-FR_T.jpg"
+    },
+    "nw_fr11": {
+      "portrait": "portrait-FR_M.jpg"
+    },
+    "nw_fr8": {
+      "portrait": "portrait-FR_C.jpg"
+    },
+    "nw_po9": {
+      "portrait": "portrait-PL_T.jpg"
+    },
+    "nw_po8": {
+      "portrait": "portrait-PL_M.jpg"
+    },
+    "nw_5n_3_3": {
+      "portrait": "portrait-PL_C.jpg"
+    },
+    "nw_te1": {
+      "portrait": "portrait-D_T.jpg"
+    },
+    "nw_5n_4_2": {
+      "portrait": "portrait-D_M.jpg"
+    },
+    "nw_5n_4_3": {
+      "portrait": "portrait-D_C.jpg"
+    },
+    "nw_5n_5_1": {
+      "portrait": "portrait-SP_T.jpg"
+    },
+    "nw_gr12": {
+      "portrait": "portrait-SP_M.jpg"
+    },
+    "nw_5n_5_3": {
+      "portrait": "portrait-SP_C.jpg"
+    },
+    "nw_it7": {
+      "portrait": "portrait-IT_T.jpg"
+    },
+    "nw_it3": {
+      "portrait": "portrait-IT_M.jpg"
+    },
+    "nw_it12": {
+      "portrait": "portrait-IT_C.jpg"
+    },
+    "nw_fr1": {
+      "portrait": "portrait-FR_T.jpg"
+    },
+    "nw_5n_2_2": {
+      "portrait": "portrait-FR_M.jpg"
+    },
+    "nw_5n_2_3": {
+      "portrait": "portrait-FR_C.jpg"
+    },
+    "nw_5n_3_1": {
+      "portrait": "portrait-PL_T.jpg"
+    },
+    "nw_5n_3_2": {
+      "portrait": "portrait-PL_M.jpg"
+    },
+    "nw_po1": {
+      "portrait": "portrait-PL_C.jpg"
+    },
+    "nw_5n_4_1": {
+      "portrait": "portrait-D_T.jpg"
+    },
+    "nw_te5": {
+      "portrait": "portrait-D_M.jpg"
+    },
+    "nw_te10": {
+      "portrait": "portrait-D_C.jpg"
+    },
+    "nw_gr6": {
+      "portrait": "portrait-SP_T.jpg"
+    },
+    "nw_5n_5_2": {
+      "portrait": "portrait-SP_M.jpg"
+    },
+    "nw_gr2": {
+      "portrait": "portrait-SP_C.jpg"
+    }
+  },
+  "boardPlaces": {
+    "Metallurgica": {
+      "x": 74.35869,
+      "y": 23.11583
+    },
+    "Tessile": {
+      "x": 53.84805,
+      "y": 42.7723
+    },
+    "Chimica": {
+      "x": 95.18211,
+      "y": 42.70779
+    },
+    "Servizi": {
+      "x": 60.33334,
+      "y": 73.77807
+    },
+    "Sindacato": {
+      "x": 88.44084,
+      "y": 73.70436
+    },
+    "Borsa": {
+      "x": 74.37671,
+      "y": 51.05388
+    }
+  },
+  "boardCoins": {
+    "Metallurgica": {
+      "x": 74.36288,
+      "y": 31.73138
+    },
+    "Tessile": {
+      "x": 59.6483,
+      "y": 45.94724
+    },
+    "Chimica": {
+      "x": 89.33183,
+      "y": 45.94724
+    },
+    "Servizi": {
+      "x": 64.50098,
+      "y": 66.35432
+    },
+    "Sindacato": {
+      "x": 84.00954,
+      "y": 66.38089
+    }
+  },
+  "boardPolicies": {
+    "affinity": {
+      "x": 18.74134177716208,
+      "y": 58.74764848159097
+    },
+    "cooperation": {
+      "x": 13.872946764298435,
+      "y": 55.17334049986563
+    },
+    "innovation": {
+      "x": 13.180288937264992,
+      "y": 48.13222252082773
+    },
+    "reliability": {
+      "x": 16.445675836136946,
+      "y": 44.55791453910239
+    },
+    "integration": {
+      "x": 20.878685929151,
+      "y": 44.3966675624832
+    },
+    "mutualAid": {
+      "x": 23.86700969720958,
+      "y": 47.97097554420854
+    },
+    "formation": {
+      "x": 23.31288343558282,
+      "y": 54.931470034936844
+    }
+  },
+  "sources": [
+    {
+      "file": "textile.png",
+      "source": "canonical-icons-clean/reparto_tessile.png",
+      "sourceSha256": "442da63e9b757282f1ef3d6d3e62928ab3badf4642510105c27066e2f4ac4028",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "chemical.png",
+      "source": "canonical-icons-clean/reparto_chimica.png",
+      "sourceSha256": "1cd63f1d0b3f00a2637bcf5718506391d6c5a8c6169b373269afe33d32f1e926",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "metal.png",
+      "source": "canonical-icons-clean/reparto_metallurgia.png",
+      "sourceSha256": "fd66bc9a4f49061d2c8c2f190b8830ebb9af888be6d7fa684f6af393713378f6",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "welfare.png",
+      "source": "canonical-icons-clean/settore_welfare.png",
+      "sourceSha256": "07d188ad64c0b5c07747bce0f2add96e4451197bfdcfc2f3b6411cae7b612f6e",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "repression.png",
+      "source": "canonical-icons-clean/settore_repressione.png",
+      "sourceSha256": "e69f40c3f868859a223be92a7f52f4cf67730e4e38c2ac71aefa05f26d41b5b7",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "city.png",
+      "source": "canonical-icons-clean/citta.png",
+      "sourceSha256": "85b91a6a942e342bf91d30fc890f27713a5ecb8049641c8c343e46f2fca69025",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "resource-textile.png",
+      "source": "player-board-icons-hex/masters/risorsa_tessile_esagonale.png",
+      "sourceSha256": "c9b769f46a251c01f2fba037a94b85a0284ae8134b19949d241d423006984c59",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "resource-chemical.png",
+      "source": "player-board-icons-hex/masters/risorsa_chimica_esagonale.png",
+      "sourceSha256": "99834c233047d6b84909f0d2efbcde77c7bae65af1d203538ee3f027c751f9a3",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "resource-metal.png",
+      "source": "player-board-icons-hex/masters/risorsa_metallurgia_esagonale.png",
+      "sourceSha256": "40dbd14a98e79adf766adf72a9c9cde0a573c701b0b0af7954c426688dc03bbf",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "policy-affinity.png",
+      "source": "canonical-icons-clean/A4-affinita-bandiera.png",
+      "sourceSha256": "47ba2c65be976362cf0ff088a8041bc77654042b72a06d6a1ec77c2071ba8834",
+      "width": 256,
+      "height": 192
+    },
+    {
+      "file": "policy-cooperation.png",
+      "source": "canonical-icons-clean/B1-cooperazione-stretta-di-mano.png",
+      "sourceSha256": "f1304f45dc04988826cad821968821fcc9de86a8aacf4756c86c0f7d7a7f3faf",
+      "width": 256,
+      "height": 128
+    },
+    {
+      "file": "policy-innovation.png",
+      "source": "canonical-icons-clean/C4-innovazione-lampadina.png",
+      "sourceSha256": "24928d88e6766b3c9ec713a829816806ca28a2f52e8d998cf06f3b4edbd02536",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "policy-reliability.png",
+      "source": "canonical-icons-clean/D2-affidabilita-sigillo.png",
+      "sourceSha256": "e0451f975340db3873076ae71455f50c7b4cda2e1ceabedaf2e9b0f854c03d88",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "policy-integration.png",
+      "source": "canonical-icons-clean/E3-integrazione-cerchio-aperto.png",
+      "sourceSha256": "e18d189421bfa28fc4dab39b8e7dd722a9df0492d3ecc7cfb378f25a83264e9c",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "policy-mutualAid.png",
+      "source": "canonical-icons-clean/F4-interscambio-frecce-circolari.png",
+      "sourceSha256": "9b87a29940d93e7eabd1cac87be05675638d9b69b6b32df23913124633ceac0c",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "policy-formation.png",
+      "source": "canonical-icons-clean/G1-formazione-libro-aperto.png",
+      "sourceSha256": "8b7804dac8354606fbf881d6fcd480fc1b2eda0e58662bd42dfe9e7afff9eed6",
+      "width": 256,
+      "height": 234
+    },
+    {
+      "file": "coin.png",
+      "source": "card-finishing/masters/marchi_fondo.png",
+      "sourceSha256": "65202d95932354ae283c8a30b79615fa20b52697414b64e6bc7c585ca828f7a5",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "strike.png",
+      "source": "card-icons-restyle/masters/sciopero.png",
+      "sourceSha256": "8f6bab01901028320bcb48765b91b01ebfae70347f6a9af1c85056055b608e63",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "rows.png",
+      "source": "card-icons-restyle/masters/riga-libera-pilota.png",
+      "sourceSha256": "3e86f083f37a71f6ac75b50dbb5c3944a61f97fbe0a7b0fda0bd0977d2f5dcff",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "nation-italia.png",
+      "source": "card-icons-restyle/masters/naz_italia.png",
+      "sourceSha256": "d19d0a3a74f1ce6b689444e50f80777477636cb4309c2194865c1dd6ce593572",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "band-italia.png",
+      "source": "card-band-final/masters/fascia-italia.png",
+      "sourceSha256": "9ef23f400bbae78a6f1dd71cf3086f89678c1b9c03647f7cc2cbeb29e0702467",
+      "width": 480,
+      "height": 255
+    },
+    {
+      "file": "nation-francia.png",
+      "source": "card-icons-restyle/masters/naz_francia.png",
+      "sourceSha256": "33c51694d6a38dc10557e0283aefc3a0afab12a1e9a8bee6725a3dc8f28a2801",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "band-francia.png",
+      "source": "card-band-final/masters/fascia-francia.png",
+      "sourceSha256": "6e6921b4936eeb6c46b39d2cccb60853963aa666e6e8e6d8eb30f2b14934f5c2",
+      "width": 480,
+      "height": 255
+    },
+    {
+      "file": "nation-germania.png",
+      "source": "card-icons-restyle/masters/naz_germania.png",
+      "sourceSha256": "c1172c219f42a1c8593bfa8f2de8f6b3cc8ea55f8490bd4658e93a7878253b7f",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "band-germania.png",
+      "source": "card-band-final/masters/fascia-germania.png",
+      "sourceSha256": "30f2295176d423a2ea8e3028051b65ec4b8562c918341555664213681e0099fd",
+      "width": 480,
+      "height": 255
+    },
+    {
+      "file": "nation-polonia.png",
+      "source": "card-icons-restyle/masters/naz_polonia.png",
+      "sourceSha256": "4180fa6b2c3760e9d9f88612d2e743d699d53e2921b83352f6c6319fa7816c86",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "band-polonia.png",
+      "source": "card-band-final/masters/fascia-polonia.png",
+      "sourceSha256": "b7cf9c0f1306e1f8873c10135aa831ba39ab8d27344f93699db764e5af1618fb",
+      "width": 480,
+      "height": 255
+    },
+    {
+      "file": "nation-spagna.png",
+      "source": "card-icons-restyle/masters/naz_spagna.png",
+      "sourceSha256": "6c004e83c1c851156c90ab4110c31cb89df7421e2bbf11ad19353ff3fd58bc90",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "band-spagna.png",
+      "source": "card-band-final/masters/fascia-spagna.png",
+      "sourceSha256": "443c9aa9bff04cfad2ea1b4c283e10e904ec96546257f6c857180a0d1236e38d",
+      "width": 480,
+      "height": 255
+    },
+    {
+      "file": "portrait-IT_T.jpg",
+      "source": "simulator-proof/portrait-sources/IT_T.jpg",
+      "sourceSha256": "97d296fe674e3fdda4c95a8ce4219589eca16956860d8dd9dbf1201347af27ab",
+      "field": {
+        "angle": 0,
+        "cx": -5.537790697674418,
+        "cy": -5.1686046511627906,
+        "frozen": true,
+        "height": 88.9,
+        "id": "illustrazione",
+        "imageHeight": 2114,
+        "imageWidth": 1180,
+        "isOnBack": false,
+        "locked": true,
+        "name": "IT_T.jpg",
+        "type": "image",
+        "width": 63.5,
+        "x": 0,
+        "y": 0,
+        "zoom": 0.06111869906775078
+      },
+      "width": 420,
+      "height": 588
+    },
+    {
+      "file": "portrait-IT_M.jpg",
+      "source": "simulator-proof/portrait-sources/IT_M.jpg",
+      "sourceSha256": "91a5e3cc9c4fb87c44b48ef7b9a148f00a830d84489e20467a711efad78102c6",
+      "field": {
+        "angle": 0,
+        "cx": -2.309090909090909,
+        "cy": -2.3106060606060606,
+        "frozen": true,
+        "height": 88.9,
+        "id": "illustrazione",
+        "imageHeight": 2114,
+        "imageWidth": 1180,
+        "isOnBack": false,
+        "locked": true,
+        "name": "IT_M.jpg",
+        "type": "image",
+        "width": 63.5,
+        "x": 0,
+        "y": 0,
+        "zoom": 0.05734045221628981
+      },
+      "width": 420,
+      "height": 588
+    },
+    {
+      "file": "portrait-IT_C.jpg",
+      "source": "simulator-proof/portrait-sources/IT_C.jpg",
+      "sourceSha256": "df786042ea132666ebd8f90505c62b908c13606076dcac2afa8e2339c3734e38",
+      "field": {
+        "angle": 0,
+        "cx": -9.921875,
+        "cy": -4.762499999999999,
+        "frozen": true,
+        "height": 88.9,
+        "id": "illustrazione",
+        "imageHeight": 2114,
+        "imageWidth": 1180,
+        "isOnBack": false,
+        "locked": true,
+        "name": "IT_C.jpg",
+        "type": "image",
+        "width": 63.5,
+        "x": 0,
+        "y": 0,
+        "zoom": 0.06570260149783208
+      },
+      "width": 420,
+      "height": 588
+    },
+    {
+      "file": "portrait-FR_T.jpg",
+      "source": "simulator-proof/portrait-sources/FR_T.jpg",
+      "sourceSha256": "195c90f17809c54f9fe0984abf14a66a85ace83f1f6d5ede484a9131efa1e855",
+      "field": {
+        "angle": 0,
+        "cx": -8.13109756097561,
+        "cy": -4.646341463414633,
+        "frozen": true,
+        "height": 88.9,
+        "id": "illustrazione",
+        "imageHeight": 2114,
+        "imageWidth": 1180,
+        "isOnBack": false,
+        "locked": true,
+        "name": "FR_T.jpg",
+        "type": "image",
+        "width": 63.5,
+        "x": 0,
+        "y": 0,
+        "zoom": 0.06410009902227519
+      },
+      "width": 420,
+      "height": 588
+    },
+    {
+      "file": "portrait-FR_M.jpg",
+      "source": "simulator-proof/portrait-sources/FR_M.jpg",
+      "sourceSha256": "c9db70c16bb2fefaef143de4af1c43049099173abe619de34c6029a315875b8c",
+      "field": {
+        "angle": 0,
+        "cx": -12.96830985915493,
+        "cy": 0,
+        "frozen": true,
+        "height": 88.9,
+        "id": "illustrazione",
+        "imageHeight": 2114,
+        "imageWidth": 1180,
+        "isOnBack": false,
+        "locked": true,
+        "name": "FR_M.jpg",
+        "type": "image",
+        "width": 63.5,
+        "x": 0,
+        "y": 0,
+        "zoom": 0.07403110027924743
+      },
+      "width": 420,
+      "height": 588
+    },
+    {
+      "file": "portrait-FR_C.jpg",
+      "source": "simulator-proof/portrait-sources/FR_C.jpg",
+      "sourceSha256": "59ca6652bc75a22e1928706dce1bedee4343a66344205192fa1700f4c7f2b154",
+      "field": {
+        "angle": 0,
+        "cx": -1.5119047619047619,
+        "cy": -4.30357142857143,
+        "frozen": true,
+        "height": 88.9,
+        "id": "illustrazione",
+        "imageHeight": 2114,
+        "imageWidth": 1180,
+        "isOnBack": false,
+        "locked": true,
+        "name": "FR_C.jpg",
+        "type": "image",
+        "width": 63.5,
+        "x": 0,
+        "y": 0,
+        "zoom": 0.05631651556957036
+      },
+      "width": 420,
+      "height": 588
+    },
+    {
+      "file": "portrait-PL_T.jpg",
+      "source": "simulator-proof/portrait-sources/PL_T.jpg",
+      "sourceSha256": "526420ced2047a8e4670bca4e3905b04919a74be5aeb5c998f222de1a251586b",
+      "field": {
+        "angle": 0,
+        "cx": -14.111111111111112,
+        "cy": -3.9687499999999996,
+        "frozen": true,
+        "height": 88.9,
+        "id": "illustrazione",
+        "imageHeight": 2114,
+        "imageWidth": 1180,
+        "isOnBack": false,
+        "locked": true,
+        "name": "PL_T.jpg",
+        "type": "image",
+        "width": 63.5,
+        "x": 0,
+        "y": 0,
+        "zoom": 0.07300289055314677
+      },
+      "width": 420,
+      "height": 588
+    },
+    {
+      "file": "portrait-PL_M.jpg",
+      "source": "simulator-proof/portrait-sources/PL_M.jpg",
+      "sourceSha256": "fa4adc29e13c5a648837a92502ec5af1eb6354fb2edada7d834633f321f5470c",
+      "field": {
+        "angle": 0,
+        "cx": -1.3189910979228485,
+        "cy": -9.044510385756675,
+        "frozen": true,
+        "height": 88.9,
+        "id": "illustrazione",
+        "imageHeight": 2114,
+        "imageWidth": 1180,
+        "isOnBack": false,
+        "locked": true,
+        "name": "PL_M.jpg",
+        "type": "image",
+        "width": 63.5,
+        "x": 0,
+        "y": 0,
+        "zoom": 0.05614940424740545
+      },
+      "width": 420,
+      "height": 588
+    },
+    {
+      "file": "portrait-PL_C.jpg",
+      "source": "simulator-proof/portrait-sources/PL_C.jpg",
+      "sourceSha256": "8e20ffae12d7b8c05032ecfebe9eba891b6d6f75e41988bde927ac52ab10584e",
+      "field": {
+        "angle": 0,
+        "cx": -5.772727272727272,
+        "cy": -6.157575757575757,
+        "frozen": true,
+        "height": 88.9,
+        "id": "illustrazione",
+        "imageHeight": 2114,
+        "imageWidth": 1180,
+        "isOnBack": false,
+        "locked": true,
+        "name": "PL_C.jpg",
+        "type": "image",
+        "width": 63.5,
+        "x": 0,
+        "y": 0,
+        "zoom": 0.06371161357365536
+      },
+      "width": 420,
+      "height": 588
+    },
+    {
+      "file": "portrait-D_T.jpg",
+      "source": "simulator-proof/portrait-sources/D_T.jpg",
+      "sourceSha256": "e15e08d011501bcabf04582d2e9b548e0134f65732f47aa5bf6985fb3dabf33d",
+      "field": {
+        "angle": 0,
+        "cx": -10.933774834437086,
+        "cy": -5.04635761589404,
+        "frozen": true,
+        "height": 88.9,
+        "id": "illustrazione",
+        "imageHeight": 2114,
+        "imageWidth": 1180,
+        "isOnBack": false,
+        "locked": true,
+        "name": "D_T.jpg",
+        "type": "image",
+        "width": 63.5,
+        "x": 0,
+        "y": 0,
+        "zoom": 0.06961865059372938
+      },
+      "width": 420,
+      "height": 588
+    },
+    {
+      "file": "portrait-D_M.jpg",
+      "source": "simulator-proof/portrait-sources/D_M.jpg",
+      "sourceSha256": "6a644a61a7688ccfc5edf2da88fbfffc69f3b259554df36348f29db05820860e",
+      "field": {
+        "angle": 0,
+        "cx": -14.3,
+        "cy": 0,
+        "frozen": true,
+        "height": 88.9,
+        "id": "illustrazione",
+        "imageHeight": 2114,
+        "imageWidth": 1180,
+        "isOnBack": false,
+        "locked": true,
+        "name": "D_M.jpg",
+        "type": "image",
+        "width": 63.5,
+        "x": 0,
+        "y": 0,
+        "zoom": 0.07810169491525423
+      },
+      "width": 420,
+      "height": 588
+    },
+    {
+      "file": "portrait-D_C.jpg",
+      "source": "simulator-proof/portrait-sources/D_C.jpg",
+      "sourceSha256": "2cb96a98d65ce2c9fcf2fefd0642a415d7b6f95cae23df3fb03db9e1e13888cc",
+      "field": {
+        "angle": 0,
+        "cx": -1.7445054945054947,
+        "cy": -0.6978021978021979,
+        "frozen": true,
+        "height": 88.9,
+        "id": "illustrazione",
+        "imageHeight": 2114,
+        "imageWidth": 1180,
+        "isOnBack": false,
+        "locked": true,
+        "name": "D_C.jpg",
+        "type": "image",
+        "width": 63.5,
+        "x": 0,
+        "y": 0,
+        "zoom": 0.05776052878930294
+      },
+      "width": 420,
+      "height": 588
+    },
+    {
+      "file": "portrait-SP_T.jpg",
+      "source": "simulator-proof/portrait-sources/SP_T.jpg",
+      "sourceSha256": "1c3045c60c4699117986e606da74f342fc2ebdc8bed730e99c736a3de052b075",
+      "field": {
+        "angle": 0,
+        "cx": -3.1625,
+        "cy": -3,
+        "frozen": true,
+        "height": 88.9,
+        "id": "illustrazione",
+        "imageHeight": 2752,
+        "imageWidth": 1536,
+        "isOnBack": false,
+        "locked": true,
+        "name": "SP_T.jpg",
+        "type": "image",
+        "width": 63.5,
+        "x": 0,
+        "y": 0,
+        "zoom": 0.04545898437499999
+      },
+      "width": 420,
+      "height": 588
+    },
+    {
+      "file": "portrait-SP_M.jpg",
+      "source": "simulator-proof/portrait-sources/SP_M.jpg",
+      "sourceSha256": "68784199822ca3c98c510ac77ca4c88210c570bf52ab18b00279f244bacef59a",
+      "field": {
+        "angle": 0,
+        "cx": -5,
+        "cy": -10,
+        "frozen": true,
+        "height": 88.9,
+        "id": "illustrazione",
+        "imageHeight": 2752,
+        "imageWidth": 1536,
+        "isOnBack": false,
+        "locked": true,
+        "name": "SP_M.jpg",
+        "type": "image",
+        "width": 63.5,
+        "x": 0,
+        "y": 0,
+        "zoom": 0.0478515625
+      },
+      "width": 420,
+      "height": 588
+    },
+    {
+      "file": "portrait-SP_C.jpg",
+      "source": "portrait-spain-chemistry/SP_C.jpg",
+      "sourceSha256": "fe6839d6c6adce3d8097196dabf37fd858a55069c49d945ef368cc9b7414e727",
+      "field": {
+        "angle": 0,
+        "cx": -6.25,
+        "cy": -16.5,
+        "frozen": true,
+        "height": 88.9,
+        "id": "illustrazione",
+        "imageHeight": 2752,
+        "imageWidth": 1536,
+        "isOnBack": false,
+        "locked": true,
+        "name": "SP_C.jpg",
+        "type": "image",
+        "width": 63.5,
+        "x": 0,
+        "y": 0,
+        "zoom": 0.0475
+      },
+      "width": 420,
+      "height": 588
+    },
+    {
+      "file": "main-board.jpg",
+      "source": "whole-board-draft/plancia-completa-live.pdf",
+      "sourceSha256": "b8181989e6abb2e677c31999e4dd38cc79d3ab1595a5cf24ef4e08c74f1b8e49",
+      "width": 2200,
+      "height": 1521,
+      "boardCoordinatesPx": [
+        6253,
+        4321
+      ],
+      "fivePriceNumeralsOmitted": true,
+      "compositionProof": "whole-board-draft/complete-board-composition.json"
+    },
+    {
+      "file": "amber.jpg",
+      "source": "card-finishing/plancia-12-coerente.pdf",
+      "sourceSha256": "5d49b376f5f3199d1451de2c167c43742724c44a68988b91c050ecf798955e13",
+      "cropBoardPx": [
+        245,
+        230,
+        275,
+        360
+      ],
+      "width": 90,
+      "height": 390,
+      "fivePriceNumeralsOmitted": true
+    },
+    {
+      "file": "textile-texture.jpg",
+      "source": "player-board-icons-hex/plancia-giocatore-icone-esagonali.pdf",
+      "sourceSha256": "1d6588fcfe9325829d6a0baf34e29f105bc2727719b7b973630eb79574febef9",
+      "cropPlayerPx": [
+        150,
+        65,
+        450,
+        300
+      ],
+      "width": 320,
+      "height": 251
+    },
+    {
+      "file": "chemical-texture.jpg",
+      "source": "player-board-icons-hex/plancia-giocatore-icone-esagonali.pdf",
+      "sourceSha256": "1d6588fcfe9325829d6a0baf34e29f105bc2727719b7b973630eb79574febef9",
+      "cropPlayerPx": [
+        1300,
+        65,
+        1600,
+        300
+      ],
+      "width": 321,
+      "height": 251
+    },
+    {
+      "file": "metal-texture.jpg",
+      "source": "player-board-icons-hex/plancia-giocatore-icone-esagonali.pdf",
+      "sourceSha256": "1d6588fcfe9325829d6a0baf34e29f105bc2727719b7b973630eb79574febef9",
+      "cropPlayerPx": [
+        2460,
+        65,
+        2760,
+        300
+      ],
+      "width": 320,
+      "height": 251
+    }
+  ]
+}

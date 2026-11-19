@@ -6,3 +6,6 @@ report/
 reports/
 .env
 .env.*
+dist-game/
+dist-pages/
+.legacy-source/

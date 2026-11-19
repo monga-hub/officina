@@ -5,7 +5,7 @@ import { gameSession, saveGame } from './saved-game.js';
 import PlayTable from './PlayTable.jsx';
 import TurnTrack from './TurnTrack.jsx';
 import Worker from './worker.js?worker&inline';
-export default function LiveGame({config,resume,onSaved,onClose}) {
+export default function LiveGame({config,resume,onSaved,onClose,onPersist=saveGame,closeLabel="Torna al laboratorio",saveNotice}) {
   const [session,setSession]=useState(()=>gameSession(config,resume));
   const [error,setError]=useState(''),[thinking,setThinking]=useState(false),[saveError,setSaveError]=useState(''),[saved,setSaved]=useState(false);
   const {state,history,paused}=session;
@@ -16,7 +16,7 @@ export default function LiveGame({config,resume,onSaved,onClose}) {
   };
   useEffect(()=>stopWorker,[]);
   const persist=next=>{
-    try{const record=saveGame(config,next);setSaveError('');setSaved(true);onSaved(record);return true;}
+    try{const record=onPersist(config,next);setSaveError('');setSaved(true);onSaved(record);return true;}
     catch(e){setSaved(false);setSaveError('Salvataggio della partita non riuscito. Mantieni aperta questa scheda: le ultime mosse potrebbero non essere recuperabili.');return false;}
   };
   // Save immediately on each action; do not depend on an unload event or a delayed effect.
@@ -60,6 +60,6 @@ export default function LiveGame({config,resume,onSaved,onClose}) {
       if(awaiting)stopWorker();
     };
   },[state,paused]);
-  if(state.gameOver)return <div className="lab-shell lab-standalone"><div className="lab-content"><h1>Partita conclusa</h1>{saveError&&<p className="lab-error" role="alert">{saveError}</p>}{state.calendarMissions&&<TurnTrack state={state}/>}<div className="lab-card game-final-scores"><table><thead><tr><th>Giocatore</th><th>PV totali</th>{(state.cityMissions||state.finalCoinPV||state.finalResourcePV)&&<th>{state.cityMissions?'PV consegne':'PV commesse'}</th>}{state.finalCoinPV&&<th>PV marchi</th>}{state.finalResourcePV&&<th title="1 PV per ogni terna: 1 tessuto + 1 acciaio + 1 colorante">PV risorse</th>}{state.calendarMissions&&<th>{state.cityMissions?'PV certificazioni':'PV missioni'}</th>}<th>Welfare</th><th>Repressioni</th></tr></thead><tbody>{state.players.map(p=><tr key={p.id}><td>{p.name}</td><td>{scorePlayer(state,p).total}</td>{(state.cityMissions||state.finalCoinPV||state.finalResourcePV)&&<td>{scorePlayer(state,p).pvContracts}</td>}{state.finalCoinPV&&<td>{scorePlayer(state,p).pvCoins}</td>}{state.finalResourcePV&&<td>{scorePlayer(state,p).pvResources}</td>}{state.calendarMissions&&<td>{scorePlayer(state,p).pvCalendarMissions}</td>}<td>{p.industrialStats.welfareBuys}</td><td>{p.industrialStats.repressions}</td></tr>)}</tbody></table></div><button className="lab-primary" onClick={close}>Torna al laboratorio</button></div></div>;
-  return <PlayTable state={state} dispatch={dispatch} undo={history.length?()=>{commit({state:history.at(-1),history:history.slice(0,-1),paused:true});setError('');}:null} paused={paused} setPaused={setPaused} onClose={close} thinking={thinking} error={error} saved={saved} saveError={saveError}/>;
+  if(state.gameOver)return <div className="lab-shell lab-standalone"><div className="lab-content"><h1>Partita conclusa</h1>{saveError&&<p className="lab-error" role="alert">{saveError}</p>}{state.calendarMissions&&<TurnTrack state={state}/>}<div className="lab-card game-final-scores"><table><thead><tr><th>Giocatore</th><th>PV totali</th>{(state.cityMissions||state.finalCoinPV||state.finalResourcePV)&&<th>{state.cityMissions?'PV consegne':'PV commesse'}</th>}{state.finalCoinPV&&<th>PV marchi</th>}{state.finalResourcePV&&<th title="1 PV per ogni terna: 1 tessuto + 1 acciaio + 1 colorante">PV risorse</th>}{state.calendarMissions&&<th>{state.cityMissions?'PV certificazioni':'PV missioni'}</th>}<th>Welfare</th><th>Repressioni</th></tr></thead><tbody>{state.players.map(p=><tr key={p.id}><td>{p.name}</td><td>{scorePlayer(state,p).total}</td>{(state.cityMissions||state.finalCoinPV||state.finalResourcePV)&&<td>{scorePlayer(state,p).pvContracts}</td>}{state.finalCoinPV&&<td>{scorePlayer(state,p).pvCoins}</td>}{state.finalResourcePV&&<td>{scorePlayer(state,p).pvResources}</td>}{state.calendarMissions&&<td>{scorePlayer(state,p).pvCalendarMissions}</td>}<td>{p.industrialStats.welfareBuys}</td><td>{p.industrialStats.repressions}</td></tr>)}</tbody></table></div><button className="lab-primary" onClick={close}>{closeLabel}</button></div></div>;
+  return <PlayTable state={state} dispatch={dispatch} undo={history.length?()=>{commit({state:history.at(-1),history:history.slice(0,-1),paused:true});setError('');}:null} paused={paused} setPaused={setPaused} onClose={close} closeLabel={closeLabel} saveNotice={saveNotice} thinking={thinking} error={error} saved={saved} saveError={saveError}/>;
 }

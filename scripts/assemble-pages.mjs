@@ -1,0 +1,16 @@
+import {readFile,mkdir,copyFile,cp} from 'node:fs/promises';
+import {resolve} from 'node:path';
+export const LEGACY_SHA='2a8e88c8c80ca18d2a7b85fbf30d0dbd76ece714';
+const [legacy,game,out]=process.argv.slice(2).map(p=>resolve(p));
+if(!legacy||!game||!out)throw Error('Usage: node scripts/assemble-pages.mjs <legacy-dist> <game-dist> <output>');
+const old=JSON.parse(await readFile(`${legacy}/version.json`,'utf8'));
+const current=JSON.parse(await readFile(`${game}/version.json`,'utf8'));
+if(old.version!==LEGACY_SHA)throw Error('Refusing to replace the published simulator with another revision.');
+if(current.version===LEGACY_SHA)throw Error('The standalone game must have its own release manifest.');
+await mkdir(out,{recursive:true});
+await cp(legacy,out,{recursive:true});
+await copyFile(`${legacy}/lab.html`,`${out}/index.html`);
+await mkdir(`${out}/gioco`,{recursive:true});
+await cp(game,`${out}/gioco`,{recursive:true});
+await copyFile(`${game}/game.html`,`${out}/gioco/index.html`);
+console.log(JSON.stringify({simulator:old.version,game:current.version,output:out}));

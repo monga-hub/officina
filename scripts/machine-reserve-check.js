@@ -6,7 +6,8 @@ import { gameConfig, mainDefaults, parseConfig, enableCityMissions } from '../sr
 import { newStudy, observeStudy } from '../src/lab/study.js';
 import { gameSession } from '../src/lab/saved-game.js';
 
-const editor = mainDefaults();
+const initial=mainDefaults();
+const editor = {...initial,turns:28,mirrorProduction:false,roundRondel:{...initial.roundRondel,bounds:[7,14,21]}};
 assert.equal(editor.machineReserve, true);
 assert.equal(parseConfig(JSON.stringify(editor)).machineReserve, true);
 const legacy = { ...editor, cityMissions: false, machineReserve: false };

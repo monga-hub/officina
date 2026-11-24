@@ -18,7 +18,8 @@ try {
   const {default:Rondel}=await server.ssrLoadModule('/src/components/WelfareRondel.jsx');
   const {WelfareBank:Board}=await server.ssrLoadModule('/src/lab/StarBoard.jsx');
   const {default:RoundChoice}=await server.ssrLoadModule('/src/components/RoundRondelChoice.jsx');
-  const funds=initGame(gameConfig({...mainDefaults(),cityMissions:false,roundObjectives:true}));
+  const original={...mainDefaults(),turns:28,mirrorProduction:false,roundRondel:{...mainDefaults().roundRondel,bounds:[7,14,21]}};
+  const funds=initGame(gameConfig({...original,cityMissions:false,roundObjectives:true}));
   assert.doesNotMatch(render(RoundsEditor,{c:{...mainDefaults(),roundObjectives:true},set(){}}),/Richieste comuni|Tre carte estratte/);
   assert.equal(funds.roundObjectives,undefined);
 
@@ -67,7 +68,7 @@ try {
   for(const end of [7,14,21])assert.ok(quarters.includes(`Turno ${end} · Fine periodo`));
   assert.match(quarters,/4° periodo/);
   assert.doesNotMatch(render(TurnTrack,{state:initGame(gameConfig(mainDefaults()))}),/calendar-day-bonus/);
-  const missionTrack=render(TurnTrack,{state:initGame(gameConfig(enableCityMissions(mainDefaults())))});
+  const missionTrack=render(TurnTrack,{state:initGame(gameConfig(enableCityMissions(original)))});
   assert.deepEqual([...missionTrack.matchAll(/title="Turno (\d+) · Bonus missioni in Città: \+1 PV"/g)].map(m=>+m[1]),[1,2,8,9,15,16,22,23]);
   assert.equal((missionTrack.match(/class="calendar-day-bonus">\+1 PV/g)||[]).length,8);
   assert.doesNotMatch(quarters,/calendar-day-bonus/);

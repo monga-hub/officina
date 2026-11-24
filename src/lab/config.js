@@ -18,7 +18,7 @@ export const PREVIOUS_STORAGE_KEY = 'officina1907-laboratorio-v1';
 export const STORAGE_KEY = 'officina1907-laboratorio-principale-v1';
 export const RULES_REVISION = 4;
 const PRESET_REVISION = 2;
-export const mainDefaults=()=>({
+export const mainDefaults=()=>mirrorTrialConfig({
   ...structuredClone(latestPlaytest), cityMissions:false, roundObjectives:false, finalCoinPV:false, finalResourcePV:false,
 });
 export function mirrorTrialConfig(c = mainDefaults()) {
@@ -42,7 +42,12 @@ export function enableCityMissions(c) {
   return { ...c, cityMissions:true, machineReserve:true, calendarMissions:false, roundObjectives:false, finalCoinPV:false, finalResourcePV:false };
 }
 function readStoredConfig(raw) {
-  return parseConfig(raw);
+  const c = parseConfig(raw);
+  if (c.mirrorProduction === undefined && !c.cityMissions && !c.calendarMissions
+    && c.roundRondel?.enabled && fitsCityCalendar(c.turns, c.roundRondel.bounds)) {
+    return mirrorTrialConfig(c);
+  }
+  return c;
 }
 export function loadMainConfig(storage){
   const raw = storage.getItem(STORAGE_KEY);

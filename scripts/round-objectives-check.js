@@ -13,7 +13,7 @@ for(const key of [STORAGE_KEY,PREVIOUS_STORAGE_KEY]){
  assert.equal(store.getItem(key),raw,'Reading preferences must not rewrite user storage');
 }
 assert.equal(parseConfig(JSON.stringify(editor)).roundObjectives,false);
-const config=gameConfig(editor);assert.equal(config.roundObjectives,undefined);
+const config=gameConfig({...editor,turns:28,mirrorProduction:false,roundRondel:{...editor.roundRondel,bounds:[7,14,21]}});assert.equal(config.roundObjectives,undefined);
 assert.equal(initGame({...config,roundObjectives:true}).roundObjectives,undefined,'Legacy flag cannot enable new requests');
 
 // Reconstruct an actual legacy save, including an awarded round and an undo state.

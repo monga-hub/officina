@@ -271,50 +271,50 @@
   },
   "boardPlaces": {
     "Metallurgica": {
-      "x": 74.35869,
-      "y": 23.11583
+      "x": 74.87265421316653,
+      "y": 21.93776801467581
     },
     "Tessile": {
-      "x": 53.84805,
-      "y": 42.7723
+      "x": 53.31529268019859,
+      "y": 42.86920299592209
     },
     "Chimica": {
-      "x": 95.18211,
-      "y": 42.70779
+      "x": 96.04604238549635,
+      "y": 42.86920299592209
     },
     "Servizi": {
-      "x": 60.33334,
-      "y": 73.77807
+      "x": 61.7078532770029,
+      "y": 77.80458735963919
     },
     "Sindacato": {
-      "x": 88.44084,
-      "y": 73.70436
+      "x": 88.14716182379819,
+      "y": 77.80458735963919
     },
     "Borsa": {
-      "x": 74.37671,
-      "y": 51.05388
+      "x": 74.87265421316653,
+      "y": 53.297675940315244
     }
   },
   "boardCoins": {
     "Metallurgica": {
-      "x": 74.36288,
-      "y": 31.73138
+      "x": 74.87265421316653,
+      "y": 30.429524555110245
     },
     "Tessile": {
-      "x": 59.6483,
-      "y": 45.94724
+      "x": 59.62342646211033,
+      "y": 45.476321232020375
     },
     "Chimica": {
-      "x": 89.33183,
-      "y": 45.94724
+      "x": 90.39614865039279,
+      "y": 46.29570124907985
     },
     "Servizi": {
-      "x": 64.50098,
-      "y": 66.35432
+      "x": 65.05390684827782,
+      "y": 69.98323265134432
     },
     "Sindacato": {
-      "x": 84.00954,
-      "y": 66.38089
+      "x": 83.70404150784294,
+      "y": 70.28118902118412
     }
   },
   "boardPolicies": {
@@ -928,8 +928,8 @@
     },
     {
       "file": "main-board.jpg",
-      "source": "whole-board-draft/plancia-completa-live.pdf",
-      "sourceSha256": "b8181989e6abb2e677c31999e4dd38cc79d3ab1595a5cf24ef4e08c74f1b8e49",
+      "source": "officina-original-star/board-live.pdf",
+      "sourceSha256": "f0b4936255674aa2984a6aa3d31f980648158206752a8d617842cb46659df915",
       "width": 2200,
       "height": 1521,
       "boardCoordinatesPx": [
@@ -937,7 +937,7 @@
         4321
       ],
       "fivePriceNumeralsOmitted": true,
-      "compositionProof": "whole-board-draft/complete-board-composition.json"
+      "compositionProof": "officina-original-star/composition.json"
     },
     {
       "file": "amber.jpg",

@@ -1,5 +1,5 @@
 import React from 'react';
-import {enableCityMissions,fitsCityCalendar} from './config.js';
+import {enableCityMissions,fitsCityCalendar,mirrorTrialConfig} from './config.js';
 import {CALENDAR_BOUNDS} from '../game/calendar-missions.js';
 import {Card,NumberField,Toggle} from './Editors.jsx';
 
@@ -9,6 +9,9 @@ export default function RoundsEditor({c,set}) {
   const toggle=turn=>update(c.turns,bounds.includes(turn)?bounds.filter(end=>end!==turn):[...bounds,turn].sort((a,b)=>a-b));
   const ends=[...bounds,c.turns];
   return <Card title="Durata e round">
+    <button type="button" onClick={()=>set(mirrorTrialConfig(c))}>Prova commesse · 20 turni · Mirror a 1 marco</button>
+    <Toggle label="Mirror al posto della repressione" value={c.mirrorProduction===true} onChange={mirrorProduction=>set({mirrorProduction})}/>
+    {c.mirrorProduction&&<p>Nel nodo Mirror paghi 1 marco e produci in un reparto a scelta, con tensione, macchinari e bonus della politica. Puoi scegliere la produzione protetta spendendo un gettone Welfare.</p>}
     <NumberField label="Turni totali della partita" value={c.turns} min={1} max={60} onChange={turns=>update(turns,bounds.filter(end=>end<turns))}/>
     <p>Seleziona i turni alla cui fine scegliere la rondella. Premi di nuovo una scadenza per rimuoverla. Il turno finale conclude la partita.</p>
     <div className="rounds-calendar" role="group" aria-label="Scadenze della rondella">

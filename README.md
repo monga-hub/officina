@@ -2,9 +2,11 @@
 
 Il repository produce due pagine separate. Il gioco autonomo è destinato a **`/officina/gioco/`** in Mongames: ingresso Nuova partita/Riprendi, tavolo illustrato completo, da una a tre persone sullo stesso schermo. Riusa il motore e i componenti del Laboratorio.
 
-La pubblicazione conserva **`/officina/` e `/officina/lab.html`** sul sorgente storico immutabile `2a8e88c8c80ca18d2a7b85fbf30d0dbd76ece714`. Il workflow costruisce quel commit separatamente e mantiene il suo `version.json`; le modifiche correnti al gioco non sostituiscono il simulatore online. Le sezioni successive documentano il Laboratorio presente nei sorgenti, che può differire da quello pubblicato.
+Il simulatore è pubblicato su **`/officina/` e `/officina/lab.html`**, il gioco autonomo su **`/officina/gioco/`**. Entrambi vengono costruiti dal commit corrente e hanno lo stesso identificativo di versione.
 
-Per il gioco autonomo usa `npm run build:game` (`dist-game/game.html`), oppure `/game.html` durante lo sviluppo. `scripts/assemble-pages.mjs <legacy-dist> <game-dist> <output>` compone i due output e rifiuta un manifest legacy diverso dal commit fissato. Il workflow Pages esegue prima `npm run check:lab`.
+Per il simulatore usa `npm run build:lab` (`dist-lab/lab.html`). Per il gioco autonomo usa `npm run build:game` (`dist-game/game.html`), oppure `/game.html` durante lo sviluppo. `scripts/assemble-pages.mjs <simulator-dist> <game-dist> <output>` compone i due output e verifica che i manifest appartengano alla stessa versione. Il workflow Pages esegue prima `npm run check:lab`.
+
+In **Durata e round** il pulsante **Prova commesse · 20 turni · Mirror a 1 marco** attiva quattro periodi da cinque turni, con rondella dopo 5/10/15. Nel nodo Mirror paghi un marco e produci in un reparto a scelta con tutti i suoi bonus e malus. La produzione protetta richiede un gettone Welfare. Le nuove impostazioni si applicano alle partite avviate successivamente.
 
 Il gioco usa una partita attiva per account Mongames (`game_id=officina-1907`, slot `active`) e una copia ospite separata sul dispositivo. Nessun salvataggio del simulatore viene importato. L'SDK `/hub/saves.js` deve fornire `loadVersioned(expectedUserId, gameId, slot)` e `saveVersioned(expectedUserId, gameId, data, expectedVersion, slot)`: lettura con versione `updated_at`, controllo dell'account atteso e scrittura condizionata a quella versione. Con un SDK precedente il gioco conserva soltanto la copia locale, senza chiamare la vecchia scrittura non condizionata. La patch Mongames è una consegna separata da applicare prima di abilitare il cloud; usa la tabella saves e il trigger updated_at esistenti, senza migrazioni.
 

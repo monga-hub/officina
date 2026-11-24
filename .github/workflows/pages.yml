@@ -16,28 +16,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      # Keep the existing simulator exactly on its last published source revision.
-      - uses: actions/checkout@v7
-        with:
-          ref: 2a8e88c8c80ca18d2a7b85fbf30d0dbd76ece714
-          path: .legacy-source
-          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            .legacy-source/package-lock.json
       - run: npm ci
       - run: npm run check:lab
       - run: npm run build:game
-      - run: npm ci
-        working-directory: .legacy-source
-      # Actions reserves GITHUB_* in YAML env; override only the legacy build process.
-      - run: env GITHUB_SHA=2a8e88c8c80ca18d2a7b85fbf30d0dbd76ece714 npm run build:lab
-        working-directory: .legacy-source
-      - run: node scripts/assemble-pages.mjs .legacy-source/dist-lab dist-game dist-pages
+      - run: npm run build:lab
+      - run: node scripts/assemble-pages.mjs dist-lab dist-game dist-pages
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:

@@ -580,6 +580,7 @@ export function initGame(config) {
 
   const state = {
     ...(config.calendarMissions || config.cityMissions ? { calendarMissions: players.map(() => ({})) } : {}),
+    ...(config.mirrorProduction ? { mirrorProduction: true } : {}),
     ...(config.cityMissions ? { cityMissions: true, calendarDeck: CITY_HANDS, ...(config.cityScoring ? { cityScoring: config.cityScoring } : {}) } : {}),
     seed, nPlayers: n, industrial, trackModel, rowTrack, rowEconomy,
     headless: !!config.headless, // true nei batch: disattiva il log di partita
@@ -1631,6 +1632,32 @@ function refreshWelfareMarket(state, cause) {
 
 // ---------- Mosse legali ----------
 let searchLegalCommands = new WeakMap();
+function productionCommands(state, p, node) {
+  const cmds = [];
+  const max = maxIntensity(state, deptOfSector(p, node));
+  for (let intensity = 1; intensity <= max; intensity++) cmds.push(state.industrial.enabled ? { type: 'activate', sector: node, intensity } : { type: 'activate', sector: node });
+  const d = deptOfSector(p, node);
+  if (tokenWelfare(state) && availableWelfareTokens(state, p) > 0 && max) {
+    cmds.push({ type: 'activate', sector: node, intensity: 1, welfareToken: true });
+  } else if (state.rowEconomy?.enabled && !tokenWelfare(state) && d.sustainableWelfare && max) {
+    const range = activeTrackRange(d.prod, d.tension, state.trackModel, true, state.rowEconomy?.productionThresholds, state.rowEconomy?.productionUnlock, state.rowEconomy?.tensionDirection);
+    const columns = rowTrackModel(state.trackModel).columns;
+    const firstRow = Math.floor((range.start - 1) / columns);
+    const rows = range.available ? Math.ceil(range.end / columns) - firstRow : 0;
+    const count = Math.min(rows, d.sustainableWelfare);
+    const select = (chosen, start) => {
+      if (chosen.length === count) {
+        // Il campo storico resta scalare con una riga, array con più righe.
+        cmds.push({ type: 'activate', sector: node, intensity: 1, sustainableRow: count === 0 ? -1 : count === 1 ? chosen[0] + firstRow : chosen.map(row => row + firstRow) });
+        return;
+      }
+      for (let row = start; row <= rows - (count - chosen.length); row++) select([...chosen, row], row + 1);
+    };
+    select([], 0);
+  }
+  return cmds;
+}
+
 export function legalCommands(state) {
   if (!state[SEARCH_ONLY]) return legalCommandsInner(state);
   // Search states keep their game data immutable; callers may reorder the returned list.
@@ -1714,27 +1741,7 @@ function legalCommandsInner(state) {
       }
     }
     if (SECTORS.includes(node)) {
-      const max = maxIntensity(state, deptOfSector(p, node));
-      for (let intensity = 1; intensity <= max; intensity++) cmds.push(state.industrial.enabled ? { type: 'activate', sector: node, intensity } : { type: 'activate', sector: node });
-      const d = deptOfSector(p, node);
-      if (tokenWelfare(state) && availableWelfareTokens(state, p) > 0 && max) {
-        cmds.push({ type: 'activate', sector: node, intensity: 1, welfareToken: true });
-      } else if (state.rowEconomy?.enabled && !tokenWelfare(state) && d.sustainableWelfare && max) {
-        const range = activeTrackRange(d.prod, d.tension, state.trackModel, true, state.rowEconomy?.productionThresholds, state.rowEconomy?.productionUnlock, state.rowEconomy?.tensionDirection);
-        const columns = rowTrackModel(state.trackModel).columns;
-        const firstRow = Math.floor((range.start - 1) / columns);
-        const rows = range.available ? Math.ceil(range.end / columns) - firstRow : 0;
-        const count = Math.min(rows, d.sustainableWelfare);
-        const select = (chosen, start) => {
-          if (chosen.length === count) {
-            // Il campo storico resta scalare con una riga, array con più righe.
-            cmds.push({ type: 'activate', sector: node, intensity: 1, sustainableRow: count === 0 ? -1 : count === 1 ? chosen[0] + firstRow : chosen.map(row => row + firstRow) });
-            return;
-          }
-          for (let row = start; row <= rows - (count - chosen.length); row++) select([...chosen, row], row + 1);
-        };
-        select([], 0);
-      }
+      cmds.push(...productionCommands(state, p, node));
     } else if (node === 'Servizi' && state.rowEconomy?.enabled) {
       if(state.roundRondel){for(let count=1;count<=state.roundRondel.tokenMax&&count*state.roundRondel.tokenCost<=p.coins;count++){if(fundBalances(state))for(const funds of welfareAllocations(count))cmds.push({type:'investWelfare',count,funds});else cmds.push({type:'investWelfare',count});}}
       else if (rondelEnabled(state)) cmds.push(...welfareRondelCommands(state, p));
@@ -1775,6 +1782,12 @@ function legalCommandsInner(state) {
           if (p.coins < wf.v) continue;
           if (p.direzione.sopra.length < state.slots.direzione.sopra) cmds.push({ type: 'buyWelfare', cardId: id, side: 'sopra' });
           if (p.direzione.sotto.length < state.slots.direzione.sotto) cmds.push({ type: 'buyWelfare', cardId: id, side: 'sotto' });
+        }
+      }
+    } else if (node === 'Sindacato' && state.rowEconomy?.enabled && state.mirrorProduction) {
+      if (p.coins >= 1) {
+        for (const sector of SECTORS) {
+          cmds.push(...productionCommands(state, p, sector).map(c => ({ ...c, mirror: true })));
         }
       }
     } else if (node === 'Sindacato' && state.rowEconomy?.enabled) {
@@ -2099,7 +2112,7 @@ export function applyCommand(prev, cmd) {
   const p = currentPlayer(state);
 
   // Le nuove varianti hanno più requisiti: UI e agenti non possono aggirarli con un comando obsoleto.
-  if ((state.industrial.enabled || tokenWelfare(state)) && !legalCommands(prev).some(c => Object.keys(c).every(k => commandValueMatches(c[k], cmd[k])) && (!state.rowEconomy?.enabled || cmd.type !== 'activate' || (commandValueMatches(c.sustainableRow, cmd.sustainableRow) && commandValueMatches(c.welfareToken, cmd.welfareToken))))) throw new Error('Azione non disponibile');
+  if ((state.industrial.enabled || tokenWelfare(state)) && !legalCommands(prev).some(c => Object.keys(c).every(k => commandValueMatches(c[k], cmd[k])) && (!state.rowEconomy?.enabled || cmd.type !== 'activate' || (commandValueMatches(c.sustainableRow, cmd.sustainableRow) && commandValueMatches(c.welfareToken, cmd.welfareToken) && commandValueMatches(c.mirror, cmd.mirror))))) throw new Error('Azione non disponibile');
   switch (cmd.type) {
     case 'advanceRoundRondel':
     case 'keepRoundRondel': {
@@ -2249,6 +2262,10 @@ export function applyCommand(prev, cmd) {
     case 'hire':
       return doHire(state, p, cmd);
     case 'activate':
+      if (cmd.mirror) {
+        spendCoins(p, 'repressione', 1);
+        log(state, `${p.name} paga 1 marco alla squadra repressiva e usa Mirror su ${cmd.sector}.`);
+      }
       return doActivate(state, p, cmd.sector, cmd.intensity ?? 1, cmd.sustainableRow ?? null, cmd.welfareToken === true);
     case 'buyWelfare':
       return doBuyWelfare(state, p, cmd);

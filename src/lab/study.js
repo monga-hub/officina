@@ -82,7 +82,7 @@ export function observeStudy(out,before,cmd,after) {
     const machines=selected?owned.filter(m=>selected.includes(m.cardId)):owned;
     const targets=machines.filter(m=>m.kind==='tensione');
     const income=sum(machines,m=>machineIncome(m,false));
-    out.productions.push({...(selected?{selectedMachines:selected,installedMachines:owned.length}:{}),seq,seat:p.id,role,turn:before.turn,tension:p.depts[role].tension,targets:targets.length,machinesOperational:machinesOperational(before,p.depts[role]),targetIncome:machinesOperational(before,p.depts[role])?sum(targets,m=>tensionMachineIncome(m.effect,p.depts[role].tension)):0,machineIncome:income,protected:cmd.welfareToken===true,...rowPressureState(before,p.depts[role])});
+    out.productions.push({...(selected?{selectedMachines:selected,installedMachines:owned.length}:{}),seq,seat:p.id,role,turn:before.turn,tension:p.depts[role].tension,targets:targets.length,machinesOperational:machinesOperational(before,p.depts[role]),targetIncome:machinesOperational(before,p.depts[role])?sum(targets,m=>tensionMachineIncome(m.effect,p.depts[role].tension)):0,machineIncome:income,protected:cmd.welfareToken===true,...(cmd.mirror?{mirror:true,mirrorCost:1}:{}),...rowPressureState(before,p.depts[role])});
   }
   if(cmd.type==='resolveEffect'&&cmd.use&&before.pending?.cardId) {
     const m=out.machines.find(m=>m.seat===p.id&&m.cardId===before.pending.cardId);

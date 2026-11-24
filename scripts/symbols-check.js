@@ -11,6 +11,8 @@ try {
   const {default:RoundsEditor}=await server.ssrLoadModule('/src/lab/RoundsEditor.jsx');
   const {mainDefaults,gameConfig,enableCityMissions}=await server.ssrLoadModule('/src/lab/config.js');
   assert.match(render(RoundsEditor,{c:mainDefaults(),set(){}}),/Ricambio dei mazzi operai/);
+  const {mirrorTrialConfig}=await server.ssrLoadModule('/src/lab/config.js');
+  assert.match(render(RoundsEditor,{c:mirrorTrialConfig(),set(){}}),/20 turni · Mirror a 1 marco/);
   const {initGame,legalCommands}=await server.ssrLoadModule('/src/game/engine.js');
   const {beginRoundRondel}=await server.ssrLoadModule('/src/game/round-rondel.js');
   const {default:Rondel}=await server.ssrLoadModule('/src/components/WelfareRondel.jsx');

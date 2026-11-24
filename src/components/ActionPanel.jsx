@@ -345,7 +345,7 @@ function BorsaActions({ state, p, legal, dispatch }) {
 export function ProductionActions({state,p,activations,dispatch}) {
   return activations.length > 0 && (
         <>
-          <h4>Attiva un reparto</h4>
+          <h4>{state.mirrorProduction&&p.node==='Sindacato'?'Mirror · scegli il reparto · costo 1 marco':'Attiva un reparto'}</h4>
           {productionChoices(state,activations).map(c => {
             const d = deptOfSector(p, c.sector);
             const I = state.industrial;
@@ -355,7 +355,7 @@ export function ProductionActions({state,p,activations,dispatch}) {
               const preview=productionPreview(state,c);
               const resources=Object.entries(preview.resources).filter(([resource,amount])=>amount!==0||resource===RESOURCE_OF[c.sector]);
               return <button key={`${c.sector}-${protectedProduction?'protected':sustainable?'sustainable':'intense'}`} className="primary production-choice" onClick={()=>dispatch(c)}>
-                <strong>{protectedProduction?'Protetta · 1 gettone':sustainable?'Sostenibile':'Intensa'}</strong>
+                <strong>{c.mirror&&`${c.sector} · `}{protectedProduction?'Protetta · 1 gettone':sustainable?'Sostenibile':'Intensa'}</strong>
                 <span className="production-yield">
                   {resources.map(([resource,amount])=><Amount key={resource} kind={resource} value={amount}/>)}
                   <Amount kind="coin" value={preview.coins}/>

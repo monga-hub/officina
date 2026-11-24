@@ -31,6 +31,7 @@ function validState(state,config) {
     &&(state.phase!=='roundRondel'||(state.roundRondel?.active&&Array.isArray(state.roundRondel.log)&&Array.isArray(state.roundRondel.completed)&&state.roundRondel.active.order[state.roundRondel.active.at]===state.current))
     &&(!state.roundRondel?.fundThresholds||(fundBalances(state)&&Object.keys(fundBalances(state)).length===3&&WELFARE_FUNDS.every(f=>Number.isInteger(fundBalances(state)[f.id])&&fundBalances(state)[f.id]>=0)&&Object.values(fundBalances(state)).reduce((a,b)=>a+b,0)===state.welfareBank))
     &&(state.roundRondel?.policyOrder===undefined||validPolicyOrder(state.roundRondel.policyOrder))
+    &&Boolean(config.mirrorProduction)===Boolean(state.mirrorProduction)
     &&Boolean(config.cityMissions)===Boolean(state.cityMissions)
     &&state.cityScoring===config.cityScoring
     &&(state.cityScoring===undefined||state.cityScoring===CITY_SCORING)

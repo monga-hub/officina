@@ -81,7 +81,7 @@ export default function StarBoard({state,dispatch,onActions,onNodeAction,onInfo=
   const commands=(canMove||canChoose||inCity)?legalCommands(state):[];
   const legal=commands.filter(c=>c.type==='move');
   const isDepartment=SECTORS.includes(p.node);
-  const nodeAction=isDepartment?{type:'activate',label:'Produci',unavailable:'Produzione non disponibile: serve un operaio attivo nel reparto.'}:state.rowEconomy?.enabled&&p.node==='Sindacato'?{type:'repress',label:'Repressione',unavailable:'Serve tensione da ridurre e marchi sufficienti.'}:state.rowEconomy?.enabled&&p.node==='Servizi'?{type:'investWelfare',label:'Welfare',unavailable:'Marchi insufficienti per investire nel welfare.'}:null;
+  const nodeAction=isDepartment?{type:'activate',label:'Produci',unavailable:'Produzione non disponibile: serve un operaio attivo nel reparto.'}:state.rowEconomy?.enabled&&p.node==='Sindacato'?state.mirrorProduction?{type:'activate',label:'Mirror · 1 marco',unavailable:'Servono 1 marco e un reparto con operai attivi.'}:{type:'repress',label:'Repressione',unavailable:'Serve tensione da ridurre e marchi sufficienti.'}:state.rowEconomy?.enabled&&p.node==='Servizi'?{type:'investWelfare',label:'Welfare',unavailable:'Marchi insufficienti per investire nel welfare.'}:null;
   const canAct=nodeAction&&commands.some(c=>c.type===nodeAction.type);
   const canRecover=canChoose&&welfareRecoveryCommands(state,p).length>0;
   return <section id="stella" className="star-board" aria-label="Plancia principale completa">

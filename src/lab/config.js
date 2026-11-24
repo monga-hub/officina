@@ -21,6 +21,12 @@ const PRESET_REVISION = 2;
 export const mainDefaults=()=>({
   ...structuredClone(latestPlaytest), cityMissions:false, roundObjectives:false, finalCoinPV:false, finalResourcePV:false,
 });
+export function mirrorTrialConfig(c = mainDefaults()) {
+  return { ...structuredClone(c), name:'Commesse · Mirror · 20 turni',
+    turns:20, cityMissions:false, calendarMissions:false, mirrorProduction:true,
+    roundRondel:{...structuredClone(c.roundRondel), bounds:[5,10,15], firstSeats:[0,1,2]},
+  };
+}
 export const mainWorkerDeck=()=>structuredClone(latestPlaytest.workers);
 // The six-nationality reference used 72 cards in five nonempty markets.
 const REFERENCE_WORKER_SHUFFLE_DRAWS = 72 - 5;
@@ -82,6 +88,7 @@ export function validate(c) {
   if(c.finalResourcePV!==undefined)check(typeof c.finalResourcePV==='boolean','PV finali delle risorse non validi.');
   if (c.finalCoinPV !== undefined) check(typeof c.finalCoinPV === 'boolean', 'Conversione finale marchi non valida.');
   check(c.contractsOnly === true, 'Nel Laboratorio si contano i PV delle commesse e gli eventuali PV dei marchi e delle risorse finali.');
+  if (c.mirrorProduction !== undefined) check(typeof c.mirrorProduction === 'boolean' && (!c.mirrorProduction || c.welfareRondel), 'Mirror richiede il Welfare a gettoni.');
   if (c.cityMissions !== undefined) check(typeof c.cityMissions === 'boolean', 'Missioni in Città non valide.');
   if (c.cityMissions) check(!c.calendarMissions && !c.roundObjectives && !c.finalCoinPV && !c.finalResourcePV && c.roundRondel?.enabled
     && fitsCityCalendar(c.turns, c.roundRondel.bounds),
@@ -186,6 +193,7 @@ export function gameConfig(c, { seed = c.simulation.seed, humans = 0 } = {}) {
     ...(c.roundRondel?.enabled ? {roundRondel:structuredClone(c.roundRondel)} : {}),
     ...(c.calendarMissions ? { calendarMissions: true } : {}),
     ...(c.cityMissions ? { cityMissions: true, cityScoring: CITY_SCORING } : {}),
+    ...(c.mirrorProduction ? { mirrorProduction: true } : {}),
     ...(machineReserve ? { machineReserve: true } : {}),
     seed, headless: humans === 0, endMode: 'rounds', roundLimit: c.turns, singleContractVisit: true,
     startingCoins: [...c.startingCoins], trackModel: c.trackModel,
@@ -244,7 +252,7 @@ export function parseConfig(raw) {
   validate(c);
   if (c.cityMissions) c.machineReserve = true;
   // Only the current schema is persisted; imported legacy knobs cannot alter rules.
-  const optional=['cityMissions','calendarMissions','roundRondel','machineReserve','conversionMachines','machinesRequireOpenRow','finalCoinPV','finalCoinsPerPV','finalResourcePV'];
+  const optional=['mirrorProduction','cityMissions','calendarMissions','roundRondel','machineReserve','conversionMachines','machinesRequireOpenRow','finalCoinPV','finalCoinsPerPV','finalResourcePV'];
   return Object.fromEntries([...Object.keys(defaults()),...optional.filter(k=>Object.hasOwn(c,k))].map(k => [k, structuredClone(c[k])]));
 }
 export function playableConfig(c, humans = 1, pace = 'rapid') {

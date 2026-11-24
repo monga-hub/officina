@@ -42,7 +42,7 @@ export function availableWelfareTokens(state, p) {
 }
 export const repressionCost = (state, p) => state.rowEconomy.welfareBank ? 0 : state.rowEconomy.repressionBase + (tokenWelfare(state) ? 0 : state.rowEconomy.repressionStep * (p.repressions || 0));
 export const rowNodeLabel = (state, node) => state.rowEconomy?.enabled
-  ? ({ Servizi: 'Welfare', Sindacato: 'Repressione', Borsa: 'Città' }[node] || node)
+  ? ({ Servizi: 'Welfare', Sindacato: state.mirrorProduction ? 'Mirror' : 'Repressione', Borsa: 'Città' }[node] || node)
   : ({ Servizi: 'Fabbriche', Borsa: 'Città' }[node] || node);
 
 export function rowEconomyConfig(config) {
